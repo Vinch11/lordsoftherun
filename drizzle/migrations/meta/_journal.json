@@ -8,6 +8,13 @@
       "when": 1787996058710,
       "tag": "0000_create_conquete_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788007281031,
+      "tag": "0001_teachers_return_zone_messages",
+      "breakpoints": true
     }
   ]
 }

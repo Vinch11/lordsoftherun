@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Flag, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { randomCode } from "@/lib/conquete";
 
 export const Route = createFileRoute("/")({
@@ -27,17 +28,22 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function createGame() {
+    if (!user) {
+      await navigate({ to: "/auth" });
+      return;
+    }
     setCreating(true);
     try {
       for (let i = 0; i < 6; i++) {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c })
+          .insert({ code: c, owner_id: user.id })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -92,12 +98,29 @@ function Home() {
           <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
             <Flag className="h-4 w-4" /> Enseignant
           </div>
-          <button className="btn-huge btn-huge-dark" disabled={creating} onClick={createGame}>
-            {creating ? "Création..." : "Créer une partie"}
+          <button
+            className="btn-huge btn-huge-dark"
+            disabled={creating || loading}
+            onClick={createGame}
+          >
+            {creating ? "Création..." : user ? "Créer une partie" : "Se connecter pour créer"}
           </button>
           <p className="text-sm text-muted-foreground">
-            Vous obtiendrez un code à 4 chiffres à donner aux groupes.
+            {user
+              ? "Vous obtiendrez un code à 4 chiffres à donner aux groupes."
+              : "Créez votre compte enseignant (e-mail + mot de passe) pour lancer une partie."}
           </p>
+          {user && (
+            <button
+              className="text-left text-sm font-semibold underline text-muted-foreground"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toast("Déconnecté.");
+              }}
+            >
+              Se déconnecter ({user.email})
+            </button>
+          )}
         </section>
       </div>
     </main>
