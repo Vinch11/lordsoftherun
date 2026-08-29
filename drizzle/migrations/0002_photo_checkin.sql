@@ -16,25 +16,29 @@ GRANT ALL ON public.photo_submissions TO service_role;
 
 ALTER TABLE public.photo_submissions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "photo submissions insertable"
-  ON public.photo_submissions FOR INSERT TO anon, authenticated WITH CHECK (true);
+DROP POLICY IF EXISTS "photo submissions insertable" ON public.photo_submissions;
+CREATE POLICY "photo submissions insertable" ON public.photo_submissions FOR INSERT TO anon, authenticated WITH CHECK (true);
 
-CREATE POLICY "photo submissions readable by game owner"
-  ON public.photo_submissions FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "photo submissions readable by game owner" ON public.photo_submissions;
+CREATE POLICY "photo submissions readable by game owner" ON public.photo_submissions FOR SELECT TO authenticated
   USING (EXISTS (SELECT 1 FROM public.games g WHERE g.id = photo_submissions.game_id AND g.owner_id = auth.uid()));
 
 CREATE INDEX IF NOT EXISTS photo_submissions_game_idx ON public.photo_submissions (game_id, submitted_at DESC);
 CREATE INDEX IF NOT EXISTS photo_submissions_team_idx ON public.photo_submissions (team_id);
 
 ALTER TABLE public.photo_submissions REPLICA IDENTITY FULL;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.photo_submissions;
+DO $pub$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='photo_submissions') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.photo_submissions;
+  END IF;
+END $pub$;
 
-CREATE POLICY "team photos upload"
-  ON storage.objects FOR INSERT TO anon, authenticated
+DROP POLICY IF EXISTS "team photos upload" ON storage.objects;
+CREATE POLICY "team photos upload" ON storage.objects FOR INSERT TO anon, authenticated
   WITH CHECK (bucket_id = 'team-photos');
 
-CREATE POLICY "team photos readable by game owner"
-  ON storage.objects FOR SELECT TO authenticated
+DROP POLICY IF EXISTS "team photos readable by game owner" ON storage.objects;
+CREATE POLICY "team photos readable by game owner" ON storage.objects FOR SELECT TO authenticated
   USING (
     bucket_id = 'team-photos'
     AND EXISTS (
