@@ -613,9 +613,8 @@ function TeacherDashboard() {
             {(["minutes", "heures", "jours"] as DurationUnit[]).map((u) => (
               <button
                 key={u}
-                className={`rounded-xl py-2 text-sm font-bold uppercase ${
-                  durationUnit === u ? "bg-primary text-primary-foreground" : "bg-muted"
-                }`}
+                className="seg-btn"
+                data-active={durationUnit === u}
                 onClick={() => {
                   setDurationUnit(u);
                   setDurationValue(UNIT_DEFAULT[u]);
@@ -625,6 +624,7 @@ function TeacherDashboard() {
               </button>
             ))}
           </div>
+
           {durationUnit !== "minutes" && (
             <p className="text-xs text-muted-foreground">
               Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne pas
