@@ -161,7 +161,7 @@ function Home() {
     <main className="min-h-screen px-5 py-8">
       <div className="mx-auto flex max-w-md flex-col gap-8">
         <header className="pt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-secondary-foreground">
+          <div className="pill">
             <MapPin className="h-3.5 w-3.5" /> EPS · plein air
           </div>
           <h1 className="mt-4 text-6xl leading-[0.9]">
