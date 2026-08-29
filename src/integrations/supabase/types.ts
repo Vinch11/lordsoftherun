@@ -14,7 +14,122 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      games: {
+        Row: {
+          code: string
+          created_at: string
+          duration_minutes: number
+          ends_at: string | null
+          id: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          duration_minutes?: number
+          ends_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          duration_minutes?: number
+          ends_at?: string | null
+          id?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          color: string
+          created_at: string
+          game_id: string
+          id: string
+          lat: number | null
+          lng: number | null
+          name: string
+          score_m2: number
+          updated_at: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          game_id: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name: string
+          score_m2?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          name?: string
+          score_m2?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      territories: {
+        Row: {
+          area_m2: number
+          created_at: string
+          game_id: string
+          geometry: Json
+          id: string
+          team_id: string
+        }
+        Insert: {
+          area_m2?: number
+          created_at?: string
+          game_id: string
+          geometry: Json
+          id?: string
+          team_id: string
+        }
+        Update: {
+          area_m2?: number
+          created_at?: string
+          game_id?: string
+          geometry?: Json
+          id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "territories_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "territories_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
