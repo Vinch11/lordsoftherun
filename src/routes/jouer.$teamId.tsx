@@ -439,6 +439,16 @@ function PlayView() {
         )}
       </button>
 
+      <button
+        aria-label="Règles et consignes"
+        className="hud-badge pointer-events-auto absolute right-3 top-44 z-[1000] flex h-12 w-12 items-center justify-center"
+        onClick={() => setRulesOpen(true)}
+      >
+        <HelpCircle className="h-6 w-6" />
+      </button>
+
+
+
       {chatOpen && (
         <div className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
