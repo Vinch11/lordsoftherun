@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MultiPolygon, Polygon } from "geojson";
+import { resolveMapStyle, type MapStyleId, type MapStyleSpec } from "@/lib/mapStyles";
 
 export type MapTeam = {
   id: string;
@@ -34,27 +35,23 @@ type Props = {
   landmarks?: MapLandmark[];
   forbiddenZones?: MapForbiddenZone[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
+  mapStyle?: MapStyleId | string | null;
 };
 
-const landmarkIcon = (claimed: boolean) =>
+const landmarkIcon = (claimed: boolean, spec: MapStyleSpec) =>
   L.divIcon({
-    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));opacity:${claimed ? 0.4 : 1}">⭐</div>`,
+    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));opacity:${claimed ? 0.4 : 1}">${spec.landmarkEmoji}</div>`,
     className: "",
     iconSize: [26, 26],
     iconAnchor: [13, 13],
   });
 
-const blipIcon = (color: string) =>
+const blipIcon = (color: string, spec: MapStyleSpec) =>
   L.divIcon({
-    html: `<div style="
-      width:16px;height:16px;border-radius:50%;
-      background:${color};
-      border:2px solid #ffffff;
-      box-shadow:0 0 4px 2px rgba(0,0,0,.6), 0 0 14px 4px ${color};
-    "></div>`,
+    html: spec.blip(color),
     className: "",
-    iconSize: [16, 16],
-    iconAnchor: [8, 8],
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
   });
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
@@ -70,7 +67,9 @@ export default function GameMap({
   landmarks = [],
   forbiddenZones = [],
   onMapClick,
+  mapStyle = "classic",
 }: Props) {
+  const spec = resolveMapStyle(mapStyle);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const territoryLayer = useRef<L.LayerGroup | null>(null);
@@ -119,6 +118,14 @@ export default function GameMap({
   }, []);
 
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.classList.add(spec.containerClass);
+    mapRef.current?.invalidateSize();
+    return () => el.classList.remove(spec.containerClass);
+  }, [spec.containerClass]);
+
+  useEffect(() => {
     const map = mapRef.current;
     if (!map || !center) return;
     if (!didInitialFit.current) {
@@ -136,15 +143,15 @@ export default function GameMap({
     for (const t of territories) {
       L.geoJSON(t.geometry, {
         style: {
-          color: t.color,
-          weight: 3,
+          color: spec.territory.className === "territory-arcade" ? "#ffffff" : t.color,
+          weight: spec.territory.weight,
           fillColor: t.color,
-          fillOpacity: 0.4,
-          className: "territory-glow",
+          fillOpacity: spec.territory.fillOpacity,
+          className: spec.territory.className,
         },
       }).addTo(layer);
     }
-  }, [territories]);
+  }, [territories, spec]);
 
   useEffect(() => {
     const layer = zoneLayer.current;
@@ -154,16 +161,16 @@ export default function GameMap({
       L.circle([returnZone.lat, returnZone.lng], {
         radius: returnZone.radiusM,
         color: "#0891b2",
-        weight: 3,
-        dashArray: "8 8",
+        weight: spec.zone.weight,
+        dashArray: spec.zone.dashArray,
         fillColor: "#0891b2",
-        fillOpacity: 0.12,
+        fillOpacity: spec.zone.fillOpacity,
         className: "zone-glow-cyan",
       })
         .bindTooltip("Zone de retour", { permanent: false })
         .addTo(layer);
     }
-  }, [returnZone]);
+  }, [returnZone, spec]);
 
   useEffect(() => {
     const layer = forbiddenLayer.current;
@@ -173,7 +180,7 @@ export default function GameMap({
       L.circle([z.lat, z.lng], {
         radius: z.radiusM,
         color: "#dc2626",
-        weight: 2,
+        weight: spec.zone.weight,
         dashArray: "4 6",
         fillColor: "#dc2626",
         fillOpacity: 0.18,
@@ -182,18 +189,18 @@ export default function GameMap({
         .bindTooltip("⚠️ Zone interdite")
         .addTo(layer);
     }
-  }, [forbiddenZones]);
+  }, [forbiddenZones, spec]);
 
   useEffect(() => {
     const layer = landmarkLayer.current;
     if (!layer) return;
     layer.clearLayers();
     for (const lm of landmarks) {
-      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.claimed) })
+      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.claimed, spec) })
         .bindTooltip(lm.claimed ? "Repère pris" : "Repère bonus")
         .addTo(layer);
     }
-  }, [landmarks]);
+  }, [landmarks, spec]);
 
   useEffect(() => {
     const layer = teamLayer.current;
@@ -201,18 +208,23 @@ export default function GameMap({
     layer.clearLayers();
     for (const t of teams) {
       if (t.lat == null || t.lng == null) continue;
-      L.marker([t.lat, t.lng], { icon: blipIcon(t.color) })
+      L.marker([t.lat, t.lng], { icon: blipIcon(t.color, spec) })
         .bindTooltip(t.name, { permanent: true, direction: "top", offset: [0, -12] })
         .addTo(layer);
     }
-  }, [teams]);
+  }, [teams, spec]);
 
   useEffect(() => {
     const line = trailLine.current;
     if (!line) return;
-    line.setStyle({ color: trailColor });
+    line.setStyle({
+      color: trailColor,
+      weight: spec.trail.weight,
+      opacity: spec.trail.opacity,
+      className: spec.trail.className,
+    });
     line.setLatLngs(trail);
-  }, [trail, trailColor]);
+  }, [trail, trailColor, spec]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }
