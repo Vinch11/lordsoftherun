@@ -57,6 +57,20 @@
       "when": 1788017851561,
       "tag": "0007_admin_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788022226739,
+      "tag": "0008_add_map_style",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788022369520,
+      "tag": "0009_games_map_style_column",
+      "breakpoints": true
     }
   ]
 }

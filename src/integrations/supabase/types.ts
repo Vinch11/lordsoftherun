@@ -59,6 +59,7 @@ export type Database = {
           duration_minutes: number
           ends_at: string | null
           id: string
+          map_style: string
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
@@ -74,6 +75,7 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           id?: string
+          map_style?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -89,6 +91,7 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           id?: string
+          map_style?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
