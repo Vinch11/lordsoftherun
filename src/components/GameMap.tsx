@@ -70,6 +70,8 @@ export default function GameMap({
   mapStyle = "classic",
 }: Props) {
   const spec = resolveMapStyle(mapStyle);
+  const specRef = useRef(spec);
+  specRef.current = spec;
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const territoryLayer = useRef<L.LayerGroup | null>(null);
@@ -78,6 +80,7 @@ export default function GameMap({
   const landmarkLayer = useRef<L.LayerGroup | null>(null);
   const forbiddenLayer = useRef<L.LayerGroup | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const didInitialFit = useRef(false);
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
@@ -90,13 +93,11 @@ export default function GameMap({
       zoomControl: false,
       attributionControl: true,
     });
-    // Bright, colorful basemap, readable in full sunlight outdoors. CARTO's
-    // free anonymous tiles now require an API key, so use standard OSM tiles
-    // instead (no key needed, still colorful with green parks/blue water).
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      subdomains: "abc",
-      attribution: "© OpenStreetMap contributors",
+    // Basemap tiles depend on the selected style (all free, no API key).
+    tileLayerRef.current = L.tileLayer(specRef.current.tiles.url, {
+      maxZoom: specRef.current.tiles.maxZoom,
+      subdomains: specRef.current.tiles.subdomains,
+      attribution: specRef.current.tiles.attribution,
     }).addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     territoryLayer.current = L.layerGroup().addTo(map);
@@ -124,6 +125,21 @@ export default function GameMap({
     mapRef.current?.invalidateSize();
     return () => el.classList.remove(spec.containerClass);
   }, [spec.containerClass]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    tileLayerRef.current?.remove();
+    tileLayerRef.current = L.tileLayer(spec.tiles.url, {
+      maxZoom: spec.tiles.maxZoom,
+      subdomains: spec.tiles.subdomains,
+      attribution: spec.tiles.attribution,
+    }).addTo(map);
+    tileLayerRef.current.getContainer()?.classList.add("leaflet-base-tiles");
+    if (tileLayerRef.current.getPane()) {
+      map.getPane("tilePane")!.style.zIndex = "200";
+    }
+  }, [spec.tiles.url, spec.tiles.maxZoom, spec.tiles.subdomains, spec.tiles.attribution]);
 
   useEffect(() => {
     const map = mapRef.current;
