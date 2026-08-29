@@ -7,12 +7,14 @@ import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
+  DEFAULT_RUNNING_BONUS_SPEED_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
   formatArea,
   formatClock,
   formatCountdown,
   haversine,
+  kmhToMs,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
@@ -58,6 +60,8 @@ function PlayView() {
   const loopStartRef = useRef(0);
   const lastSync = useRef(0);
   const closing = useRef(false);
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  const instSpeedRef = useRef(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
@@ -176,7 +180,12 @@ function PlayView() {
       try {
         const elapsedS = (Date.now() - loopStartRef.current) / 1000;
         const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
-        const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs);
+        const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs, {
+          enabled: gameRef.current?.running_bonus_enabled ?? true,
+          speedMs: kmhToMs(
+            gameRef.current?.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH,
+          ),
+        });
         toast.success(
           `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
         );
@@ -197,6 +206,21 @@ function PlayView() {
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
+
+      const prevPos = lastPosRef.current;
+      const nowMs = Date.now();
+      if (prevPos) {
+        const dt = (nowMs - prevPos.t) / 1000;
+        const dist = haversine(prevPos.point, point);
+        // Ignore samples too close together in time/space: GPS jitter would
+        // otherwise produce wildly inflated instantaneous speed readings.
+        if (dt > 0.5 && dist > 2) {
+          instSpeedRef.current = dist / dt;
+          lastPosRef.current = { point, t: nowMs };
+        }
+      } else {
+        lastPosRef.current = { point, t: nowMs };
+      }
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
@@ -224,6 +248,12 @@ function PlayView() {
         if (haversine(point, [zone.lat, zone.lng]) > zone.radius_m) continue;
         const last = lastPenalizedRef.current.get(zone.id) ?? 0;
         if (Date.now() - last < FORBIDDEN_PENALTY_COOLDOWN_MS) continue;
+        if (gameRef.current?.forbidden_zone_running_only) {
+          const speedMs = kmhToMs(
+            gameRef.current.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH,
+          );
+          if (instSpeedRef.current < speedMs) continue;
+        }
         lastPenalizedRef.current.set(zone.id, Date.now());
         void applyPenalty(zone, teamId).then(() => {
           toast.error(`⚠️ Zone interdite ! -${formatArea(zone.penalty_m2)}`);
@@ -359,7 +389,10 @@ function PlayView() {
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
         <div className="hud-badge min-w-0 px-3 py-2">
           <div className="flex min-w-0 items-center gap-2">
             <span
@@ -386,7 +419,8 @@ function PlayView() {
 
       <button
         aria-label="Messages"
-        className="hud-badge pointer-events-auto absolute right-3 top-28 z-[1000] flex h-12 w-12 items-center justify-center"
+        className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+        style={{ top: "max(7rem, calc(env(safe-area-inset-top) + 4.5rem))" }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -399,7 +433,10 @@ function PlayView() {
       </button>
 
       {chatOpen && (
-        <div className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4">
+        <div
+          className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
           <div className="flex items-center justify-between">
             <span className="section-title">
               <MessageCircle className="h-4 w-4" /> Messages avec le prof
@@ -445,7 +482,10 @@ function PlayView() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3">
+      <div
+        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}

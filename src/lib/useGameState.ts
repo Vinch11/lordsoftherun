@@ -15,6 +15,9 @@ export type Game = {
   photo_requested_at: string | null;
   photo_deadline: string | null;
   map_style: string | null;
+  running_bonus_enabled: boolean;
+  running_bonus_speed_kmh: number;
+  forbidden_zone_running_only: boolean;
 };
 
 export type Team = {

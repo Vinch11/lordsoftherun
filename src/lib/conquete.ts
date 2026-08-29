@@ -14,10 +14,16 @@ export const TEAM_COLORS: TeamColor[] = [
 export const MIN_LOOP_DISTANCE_M = 100;
 export const CLOSE_RADIUS_M = 20;
 
+/** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
+export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;
 /** A loop closed at or above this average speed (~8 km/h, a brisk jog) counts as "run". */
-export const RUNNING_SPEED_MS = 2.2;
+export const RUNNING_SPEED_MS = kmhToMs(DEFAULT_RUNNING_BONUS_SPEED_KMH);
 /** Extra score credit multiplier applied to a loop closed while running. */
 export const RUNNING_BONUS_MULTIPLIER = 1.5;
+
+export function kmhToMs(kmh: number): number {
+  return kmh / 3.6;
+}
 
 export const LANDMARK_CLAIM_RADIUS_M = 15;
 export const DEFAULT_LANDMARK_BONUS_M2 = 30;
