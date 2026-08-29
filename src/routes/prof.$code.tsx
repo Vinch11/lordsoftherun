@@ -1,7 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  ArrowLeft,
   Bookmark,
   Camera,
   MapPin,
@@ -37,6 +38,7 @@ import {
   formatClock,
   formatCountdown,
   haversine,
+  randomCode,
 } from "@/lib/conquete";
 
 type DurationUnit = "minutes" | "heures" | "jours";
@@ -68,7 +70,9 @@ const DEFAULT_ZONE_RADIUS = 25;
 
 function TeacherDashboard() {
   const { code } = Route.useParams();
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const [creatingGame, setCreatingGame] = useState(false);
   const [gameId, setGameId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -426,6 +430,28 @@ function TeacherDashboard() {
     }
   }
 
+  async function createAnotherGame() {
+    if (!user) return;
+    setCreatingGame(true);
+    try {
+      for (let i = 0; i < 6; i++) {
+        const c = randomCode();
+        const { data, error } = await supabase
+          .from("games")
+          .insert({ code: c, owner_id: user.id })
+          .select()
+          .maybeSingle();
+        if (!error && data) {
+          await navigate({ to: "/prof/$code", params: { code: c } });
+          return;
+        }
+      }
+      toast.error("Impossible de créer la partie, réessayez.");
+    } finally {
+      setCreatingGame(false);
+    }
+  }
+
   async function sendMessage() {
     if (!gameId || !isOwner || !messageBody.trim()) return;
     const body = messageBody.trim();
@@ -466,13 +492,26 @@ function TeacherDashboard() {
           }
         />
         <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2">
-          <div className="panel px-3 py-2">
+          <Link to="/" className="nav-back pointer-events-auto" aria-label="Retour à l'accueil">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          {isOwner && (
+            <button
+              className="nav-back pointer-events-auto"
+              aria-label="Lancer une nouvelle partie"
+              disabled={creatingGame}
+              onClick={() => void createAnotherGame()}
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          )}
+          <div className="hud-badge px-3 py-2">
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Code
             </div>
             <div className="display text-2xl tracking-[0.3em]">{code}</div>
           </div>
-          <div className="panel px-3 py-2">
+          <div className="hud-badge px-3 py-2">
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Temps
             </div>

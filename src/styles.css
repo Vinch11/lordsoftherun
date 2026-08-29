@@ -58,40 +58,41 @@
 
 :root {
   --radius: 0.9rem;
-  --background: oklch(0.985 0.012 95);
-  --foreground: oklch(0.16 0.02 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.02 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.02 260);
-  --primary: oklch(0.62 0.24 30);
+  /* AAA console-menu palette: near-black stage, neon cyan/orange duo. */
+  --background: oklch(0.13 0.03 264);
+  --foreground: oklch(0.97 0.01 95);
+  --card: oklch(0.2 0.035 264 / 78%);
+  --card-foreground: oklch(0.97 0.01 95);
+  --popover: oklch(0.19 0.035 264);
+  --popover-foreground: oklch(0.97 0.01 95);
+  --primary: oklch(0.68 0.23 34);
   --primary-foreground: oklch(0.99 0.01 95);
-  --secondary: oklch(0.22 0.03 250);
-  --secondary-foreground: oklch(0.98 0.01 95);
-  --muted: oklch(0.94 0.012 95);
-  --muted-foreground: oklch(0.42 0.02 260);
-  --accent: oklch(0.85 0.19 128);
-  --accent-foreground: oklch(0.2 0.05 130);
-  --destructive: oklch(0.55 0.24 27);
+  --secondary: oklch(0.26 0.025 264);
+  --secondary-foreground: oklch(0.97 0.01 95);
+  --muted: oklch(0.24 0.02 264);
+  --muted-foreground: oklch(0.7 0.02 264);
+  --accent: oklch(0.78 0.15 200);
+  --accent-foreground: oklch(0.1 0.03 220);
+  --destructive: oklch(0.62 0.24 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --success: oklch(0.65 0.19 150);
-  --success-foreground: oklch(0.15 0.03 150);
-  --border: oklch(0.86 0.015 95);
-  --input: oklch(0.86 0.015 95);
-  --ring: oklch(0.62 0.24 30);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.98 0.012 95);
-  --sidebar-foreground: oklch(0.16 0.02 260);
-  --sidebar-primary: oklch(0.62 0.24 30);
+  --success: oklch(0.72 0.18 150);
+  --success-foreground: oklch(0.12 0.03 150);
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.78 0.15 200);
+  --chart-1: oklch(0.68 0.23 34);
+  --chart-2: oklch(0.78 0.15 200);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.19 0.035 264);
+  --sidebar-foreground: oklch(0.97 0.01 95);
+  --sidebar-primary: oklch(0.68 0.23 34);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.94 0.012 95);
-  --sidebar-accent-foreground: oklch(0.16 0.02 260);
-  --sidebar-border: oklch(0.86 0.015 95);
-  --sidebar-ring: oklch(0.62 0.24 30);
+  --sidebar-accent: oklch(0.24 0.02 264);
+  --sidebar-accent-foreground: oklch(0.97 0.01 95);
+  --sidebar-border: oklch(1 0 0 / 14%);
+  --sidebar-ring: oklch(0.78 0.15 200);
 }
 
 .dark {
@@ -143,9 +144,36 @@
 
   body {
     background-color: var(--color-background);
+    background-image:
+      radial-gradient(
+        ellipse 900px 600px at 12% -10%,
+        color-mix(in oklch, var(--color-accent) 20%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        ellipse 900px 700px at 100% 110%,
+        color-mix(in oklch, var(--color-primary) 22%, transparent),
+        transparent 60%
+      ),
+      linear-gradient(
+        color-mix(in oklch, var(--color-foreground) 4%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        90deg,
+        color-mix(in oklch, var(--color-foreground) 4%, transparent) 1px,
+        transparent 1px
+      );
+    background-size:
+      auto,
+      auto,
+      44px 44px,
+      44px 44px;
+    background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-text-size-adjust: 100%;
+    min-height: 100dvh;
   }
 
   h1,
@@ -155,6 +183,10 @@
     font-family: var(--font-display);
     letter-spacing: -0.01em;
     text-transform: uppercase;
+  }
+
+  h1 {
+    text-shadow: 0 0 28px color-mix(in oklch, var(--color-accent) 55%, transparent);
   }
 }
 
@@ -172,6 +204,12 @@
     text-transform: uppercase;
     letter-spacing: 0.02em;
     background-color: var(--color-primary);
+    background-image: linear-gradient(
+      180deg,
+      oklch(1 0 0 / 18%),
+      transparent 40%,
+      oklch(0 0 0 / 12%)
+    );
     color: var(--color-primary-foreground);
     box-shadow: 0 6px 0 0 color-mix(in oklch, var(--color-primary) 65%, black);
     transition:
@@ -229,17 +267,44 @@
 
   .panel {
     background-color: var(--color-card);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     color: var(--color-card-foreground);
-    border: 2px solid var(--color-border);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-2xl);
-    box-shadow: 0 10px 30px -14px oklch(0 0 0 / 0.5);
+    box-shadow:
+      0 10px 30px -14px oklch(0 0 0 / 0.7),
+      inset 0 1px 0 0 oklch(1 0 0 / 6%);
+  }
+
+  .hud-badge {
+    background-color: color-mix(in oklch, var(--color-background) 55%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid color-mix(in oklch, var(--color-accent) 45%, var(--color-border));
+    border-radius: var(--radius-xl);
+    box-shadow: 0 0 18px -4px color-mix(in oklch, var(--color-accent) 60%, transparent);
+  }
+
+  .nav-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.75rem;
+    width: 2.75rem;
+    border-radius: var(--radius-xl);
+    background-color: color-mix(in oklch, var(--color-background) 55%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--color-border);
+    color: var(--color-foreground);
   }
 
   .field {
     width: 100%;
     border: 2px solid var(--color-input);
     border-radius: var(--radius-xl);
-    background-color: var(--color-card);
+    background-color: color-mix(in oklch, var(--color-card) 90%, transparent);
     color: var(--color-card-foreground);
     padding: 0.9rem 1rem;
     font-size: 1.15rem;
@@ -248,6 +313,7 @@
 
   .field:focus {
     border-color: var(--color-ring);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 35%, transparent);
   }
 }
 
