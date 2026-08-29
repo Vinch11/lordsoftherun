@@ -261,7 +261,9 @@ function PlayView() {
         {!running && (
           <div className="panel flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
             <Crosshair className="h-4 w-4" />
-            {accuracy ? `Précision GPS ±${Math.round(accuracy)} m` : "Recherche du GPS…"}
+            {pos
+              ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
+              : "Recherche du GPS…"}
           </div>
         )}
 
