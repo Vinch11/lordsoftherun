@@ -378,17 +378,56 @@
 
 /* ── Styles de carte (choisis par l'enseignant) ───────────────────── */
 
+/* NÉON CYBERPUNK : fond bleu nuit profond, rues cyan lumineuses */
+.map-style-neon {
+  background: #04060f;
+}
+.map-style-neon .leaflet-container,
+.map-style-neon.leaflet-container {
+  background: #04060f !important;
+}
 .map-style-neon .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(185deg) saturate(1.5) brightness(0.82) contrast(1.15);
+  filter: invert(1) hue-rotate(190deg) saturate(2.4) brightness(0.62) contrast(1.7);
+  mix-blend-mode: screen;
 }
-.map-style-tactical .leaflet-tile-pane {
-  filter: grayscale(1) invert(1) brightness(0.5) contrast(1.35) sepia(0.6) hue-rotate(55deg)
-    saturate(1.6);
-}
-.map-style-arcade .leaflet-tile-pane {
-  filter: saturate(1.85) contrast(1.12) brightness(1.06);
+.map-style-neon .leaflet-tile-pane::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(150deg, rgb(56 189 248 / 22%), rgb(217 70 239 / 18%));
+  mix-blend-mode: overlay;
 }
 
+/* TACTIQUE : nuit verte, écran de mission */
+.map-style-tactical {
+  background: #050b07;
+}
+.map-style-tactical .leaflet-container,
+.map-style-tactical.leaflet-container {
+  background: #050b07 !important;
+}
+.map-style-tactical .leaflet-tile-pane {
+  filter: grayscale(1) invert(1) brightness(0.42) contrast(2) sepia(1) hue-rotate(58deg)
+    saturate(3.2);
+}
+
+/* ARCADE : couleurs poster, gros aplats lumineux */
+.map-style-arcade .leaflet-tile-pane {
+  filter: saturate(2.6) contrast(1.35) brightness(1.12) hue-rotate(-6deg);
+}
+.map-style-arcade::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 450;
+  background: radial-gradient(ellipse at 50% 0%, rgb(255 255 255 / 22%), transparent 60%);
+  mix-blend-mode: soft-light;
+}
+
+.map-style-neon::before,
+.map-style-tactical::before,
 .map-style-neon::after,
 .map-style-tactical::after {
   content: "";
@@ -397,76 +436,141 @@
   pointer-events: none;
   z-index: 450;
 }
+/* scanlines */
+.map-style-neon::before,
+.map-style-tactical::before {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgb(255 255 255 / 5%) 0 1px,
+    transparent 1px 3px
+  );
+  opacity: 0.55;
+}
 .map-style-neon::after {
-  background: radial-gradient(ellipse at center, transparent 45%, rgb(2 6 23 / 55%) 100%);
+  background:
+    radial-gradient(ellipse at center, transparent 38%, rgb(2 4 12 / 82%) 100%),
+    linear-gradient(180deg, rgb(56 189 248 / 8%), transparent 40%);
 }
 .map-style-tactical::after {
   background-image:
-    linear-gradient(rgb(134 239 172 / 8%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(134 239 172 / 8%) 1px, transparent 1px);
-  background-size: 48px 48px;
+    linear-gradient(rgb(134 239 172 / 14%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(134 239 172 / 14%) 1px, transparent 1px),
+    radial-gradient(ellipse at center, transparent 40%, rgb(2 10 5 / 85%) 100%);
+  background-size:
+    40px 40px,
+    40px 40px,
+    100% 100%;
 }
 
 .territory-neon {
-  filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 16px currentColor);
-}
-.territory-tactical {
-  stroke-dasharray: 10 4;
-  filter: drop-shadow(0 0 2px rgb(0 0 0 / 60%));
-}
-.territory-arcade {
-  filter: drop-shadow(0 4px 0 rgb(0 0 0 / 25%));
+  filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 12px currentColor)
+    drop-shadow(0 0 32px currentColor);
   stroke-linejoin: round;
 }
+.territory-tactical {
+  stroke-dasharray: 12 5;
+  filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 2px rgb(0 0 0 / 70%));
+  animation: tactical-march 6s linear infinite;
+}
+@keyframes tactical-march {
+  to {
+    stroke-dashoffset: -68;
+  }
+}
+.territory-arcade {
+  filter: drop-shadow(0 6px 0 rgb(0 0 0 / 30%));
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
 .trail-neon {
-  filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 18px currentColor);
+  filter: drop-shadow(0 0 6px currentColor) drop-shadow(0 0 16px currentColor)
+    drop-shadow(0 0 36px currentColor);
+  stroke-linecap: round;
 }
 .trail-tactical {
-  stroke-dasharray: 2 8;
+  stroke-dasharray: 2 9;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 6px currentColor);
+  animation: tactical-march 3s linear infinite;
 }
 .trail-arcade {
   stroke-linecap: round;
-  filter: drop-shadow(0 3px 0 rgb(0 0 0 / 25%));
+  stroke-linejoin: round;
+  filter: drop-shadow(0 4px 0 rgb(0 0 0 / 30%));
 }
 
 .blip-neon {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
 }
 .blip-neon-core {
   position: absolute;
-  inset: 7px;
+  inset: 9px;
   border-radius: 50%;
-  background: var(--blip);
-  box-shadow: 0 0 8px 3px var(--blip);
+  background: #fff;
+  box-shadow:
+    0 0 6px 2px var(--blip),
+    0 0 18px 6px var(--blip),
+    0 0 36px 12px var(--blip);
 }
 .blip-neon-ring {
   position: absolute;
   inset: 0;
   border-radius: 50%;
   border: 2px solid var(--blip);
-  animation: blip-pulse 1.8s ease-out infinite;
+  box-shadow:
+    0 0 12px var(--blip),
+    inset 0 0 12px var(--blip);
+  animation: blip-pulse 1.6s ease-out infinite;
 }
 @keyframes blip-pulse {
   0% {
-    transform: scale(0.55);
+    transform: scale(0.4);
     opacity: 1;
   }
   100% {
-    transform: scale(1.35);
+    transform: scale(1.6);
     opacity: 0;
   }
 }
 .blip-tactical {
-  width: 24px;
-  height: 24px;
+  position: relative;
+  width: 26px;
+  height: 26px;
   border: 2px solid var(--blip);
-  background: color-mix(in srgb, var(--blip) 22%, transparent);
+  background: color-mix(in srgb, var(--blip) 18%, transparent);
+  box-shadow:
+    0 0 10px color-mix(in srgb, var(--blip) 70%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--blip) 40%, transparent);
+  clip-path: polygon(
+    0 0,
+    30% 0,
+    30% 8%,
+    8% 8%,
+    8% 30%,
+    0 30%,
+    0 70%,
+    8% 70%,
+    8% 92%,
+    30% 92%,
+    30% 100%,
+    70% 100%,
+    70% 92%,
+    92% 92%,
+    92% 70%,
+    100% 70%,
+    100% 30%,
+    92% 30%,
+    92% 8%,
+    70% 8%,
+    70% 0
+  );
 }
 .blip-tactical-cross {
   position: absolute;
   inset: 10px;
   background: var(--blip);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--blip);
 }
