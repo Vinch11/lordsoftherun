@@ -229,6 +229,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          approved: boolean
+          created_at: string
+          email: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          approved?: boolean
+          created_at?: string
+          email?: string | null
+          id: string
+          role?: string
+        }
+        Update: {
+          approved?: boolean
+          created_at?: string
+          email?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
       saved_points: {
         Row: {
           created_at: string
@@ -371,7 +395,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: { uid: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
