@@ -394,12 +394,12 @@ function PlayView() {
 
 
       {chatOpen && (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
+        <div className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <span className="section-title">
-              Messages avec le prof
+              <MessageCircle className="h-4 w-4" /> Messages avec le prof
             </span>
-            <button aria-label="Fermer" onClick={() => setChatOpen(false)}>
+            <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -410,18 +410,18 @@ function PlayView() {
             {myMessages.map((m) => (
               <div
                 key={m.id}
-                className={`rounded-xl px-3 py-2 text-sm ${
-                  m.sender === "prof" ? "bg-muted" : "self-end bg-primary/15"
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                  m.sender === "prof"
+                    ? "bg-secondary text-secondary-foreground"
+                    : "self-end bg-primary/20"
                 }`}
               >
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {m.sender === "prof" ? "Prof" : "Vous"}
-                </div>
+                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
                 <div>{m.body}</div>
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <input
               className="field"
               placeholder="Votre message au prof..."
@@ -431,7 +431,7 @@ function PlayView() {
             />
             <button
               aria-label="Envoyer"
-              className="rounded-xl bg-primary p-3 text-primary-foreground"
+              className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
               onClick={sendChat}
             >
               <Send className="h-5 w-5" />
@@ -439,6 +439,7 @@ function PlayView() {
           </div>
         </div>
       )}
+
 
       <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 p-3">
         {geoError && (
