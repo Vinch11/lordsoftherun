@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN IF NOT EXISTS map_style text NOT NULL DEFAULT 'classic';
