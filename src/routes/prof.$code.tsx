@@ -815,7 +815,7 @@ function TeacherDashboard() {
           )}
           {isOwner && landmarkTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Mes modèles
               </span>
               {landmarkTemplates.map((p) => (
@@ -823,7 +823,7 @@ function TeacherDashboard() {
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
                   <button
-                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    className="mini-btn"
                     onClick={() => void useTemplate(p)}
                   >
                     Réutiliser
@@ -936,7 +936,7 @@ function TeacherDashboard() {
           )}
           {isOwner && forbiddenTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Mes modèles
               </span>
               {forbiddenTemplates.map((p) => (
@@ -944,7 +944,7 @@ function TeacherDashboard() {
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
                   <button
-                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    className="mini-btn"
                     onClick={() => void useTemplate(p)}
                   >
                     Réutiliser
@@ -1079,7 +1079,7 @@ function TeacherDashboard() {
           ))}
           {finished && unvalidated.length > 0 && (
             <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Hors classement — pas revenues dans la zone à temps
               </span>
               {unvalidated.map((t) => (
