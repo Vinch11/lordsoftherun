@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Flag, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { randomCode } from "@/lib/conquete";
 
 export const Route = createFileRoute("/")({
