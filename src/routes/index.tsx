@@ -82,7 +82,7 @@ function Home() {
           <button
             className="btn-huge"
             disabled={code.length !== 4}
-            onClick={() => navigate({ to: "/rejoindre", search: { code } })}
+            onClick={() => navigate({ to: "/rejoindre/$code", params: { code } })}
           >
             Rejoindre la partie
           </button>

@@ -25,8 +25,8 @@ export const Route = createFileRoute("/rejoindre/$code")({
 
 function Join() {
   const navigate = useNavigate();
-  const { code: initialCode } = Route.useSearch();
-  const [code, setCode] = useState(initialCode);
+  const { code: initialCode } = Route.useParams();
+  const [code, setCode] = useState(initialCode.replace(/\D/g, "").slice(0, 4));
   const [name, setName] = useState("");
   const [color, setColor] = useState(TEAM_COLORS[0]!.hex);
   const [busy, setBusy] = useState(false);
