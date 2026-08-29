@@ -350,29 +350,27 @@ function PlayView() {
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-2 p-3">
-        <div className="panel px-3 py-2">
-          <div className="flex items-center gap-2">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3">
+        <div className="hud-badge min-w-0 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
             <span
-              className="h-5 w-5 rounded-full border-2 border-foreground"
+              className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
               style={{ backgroundColor: myColor }}
             />
-            <span className="text-lg font-bold">{me?.name ?? "…"}</span>
+            <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
           </div>
           <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
-          <div className="text-[10px] text-muted-foreground">
-            Total conquis : {formatArea(me?.total_captured_m2 ?? 0)}
+          <div className="label-xs">
+            Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}
           </div>
           {!!me?.penalty_m2 && (
-            <div className="text-[10px] font-semibold text-destructive">
-              Pénalités : -{formatArea(me.penalty_m2)}
+            <div className="label-xs text-destructive">
+              Pénalités · -{formatArea(me.penalty_m2)}
             </div>
           )}
         </div>
-        <div className="panel px-3 py-2 text-right">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Temps
-          </div>
+        <div className="hud-badge shrink-0 px-3 py-2 text-right">
+          <div className="label-xs">Temps</div>
           <div className="display text-2xl tabular-nums">
             {remaining === null ? "--:--" : formatCountdown(remaining)}
           </div>
@@ -381,7 +379,7 @@ function PlayView() {
 
       <button
         aria-label="Messages"
-        className="panel pointer-events-auto absolute right-3 top-24 z-[1000] flex h-12 w-12 items-center justify-center"
+        className="hud-badge pointer-events-auto absolute right-3 top-28 z-[1000] flex h-12 w-12 items-center justify-center"
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -392,6 +390,8 @@ function PlayView() {
           <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
         )}
       </button>
+
+
 
       {chatOpen && (
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
