@@ -137,6 +137,9 @@ function PlayView() {
         toast(`💬 Prof : ${latest.body}`);
         notifyMessage("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
+      } else if (latest?.sender === "system") {
+        toast.error(latest.body, { duration: 8000 });
+        notifyMessage("⚠️ Territoire perdu !", latest.body);
       }
     }
     seenMessageCount.current = myMessages.length;
