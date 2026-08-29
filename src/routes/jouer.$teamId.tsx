@@ -201,11 +201,24 @@ function PlayView() {
       try {
         const elapsedS = (Date.now() - loopStartRef.current) / 1000;
         const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
+        const loopTrack = [...trackRef.current];
+        const loopDistance = distRef.current;
         const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs);
+        const { data: teamRow } = await supabase
+          .from("teams")
+          .select("score_m2")
+          .eq("id", teamId)
+          .maybeSingle();
+        setSummary({
+          area: result.area,
+          durationS: elapsedS,
+          distanceM: loopDistance,
+          ran: result.ran,
+          track: loopTrack,
+          totalM2: teamRow?.score_m2 ?? 0,
+        });
         toast.success(
-          `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
-        );
-      } catch {
+
         toast.error("La capture a échoué.");
       }
     }
