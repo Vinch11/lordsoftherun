@@ -516,13 +516,13 @@ function TeacherDashboard() {
             </button>
           )}
           <div className="hud-badge px-3 py-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="label-xs">
               Code
             </div>
             <div className="display text-2xl tracking-[0.3em]">{code}</div>
           </div>
           <div className="hud-badge px-3 py-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="label-xs">
               Temps
             </div>
             <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
@@ -1143,7 +1143,7 @@ function TeacherDashboard() {
                   : `${teams.find((t) => t.id === m.team_id)?.name ?? "Équipe"} →`;
               return (
                 <div key={m.id} className="rounded-xl bg-muted px-3 py-2 text-sm">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="label-xs">
                     {label}
                   </div>
                   <div>{m.body}</div>
