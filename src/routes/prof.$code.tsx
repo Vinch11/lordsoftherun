@@ -474,11 +474,30 @@ function TeacherDashboard() {
 
   if (notFound) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <p className="text-lg">Aucune partie avec le code {code}.</p>
+      <main className="min-h-screen px-5 py-10">
+        <div className="mx-auto flex max-w-md flex-col gap-6">
+          <Link to="/" className="nav-back" aria-label="Retour à l'accueil">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <header>
+            <div className="pill">
+              <MapPin className="h-3.5 w-3.5" /> Tableau de bord
+            </div>
+            <h1 className="page-title mt-4">
+              Partie <em>{code}</em> introuvable
+            </h1>
+            <p className="mt-3 text-muted-foreground">
+              Vérifiez le code à 4 chiffres ou créez une nouvelle partie depuis l'accueil.
+            </p>
+          </header>
+          <Link to="/" className="btn-huge btn-huge-accent">
+            Retour à l'accueil
+          </Link>
+        </div>
       </main>
     );
   }
+
 
   return (
     <main className="flex min-h-screen flex-col">
