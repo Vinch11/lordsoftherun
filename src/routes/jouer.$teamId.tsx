@@ -18,7 +18,7 @@ import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
-import { checkLandmarkClaims, useLandmarks } from "@/lib/landmarks";
+import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 
 export const Route = createFileRoute("/jouer/$teamId")({
@@ -88,6 +88,8 @@ function PlayView() {
   }, [teamId]);
 
   const { game, teams, territories } = useGameState(gameId);
+  const gameRef = useRef(game);
+  gameRef.current = game;
   const { messages } = useMessages(gameId);
   const { landmarks } = useLandmarks(gameId);
   const landmarksRef = useRef(landmarks);
@@ -205,10 +207,15 @@ function PlayView() {
       }
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
-        void checkLandmarkClaims(landmarksRef.current, teamId, point).then((won) => {
+        void checkLandmarkClaims(
+          landmarksRef.current,
+          teamId,
+          point,
+          gameRef.current?.started_at ?? null,
+        ).then((won) => {
           if (won) {
-            toast.success(`⭐ Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
-            notifyMessage("⭐ Repère bonus !", `+${formatArea(won.bonus_m2)}`);
+            toast.success(`${won.icon} Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
+            notifyMessage(`${won.icon} Repère bonus !`, `+${formatArea(won.bonus_m2)}`);
           }
         });
       }
@@ -273,8 +280,10 @@ function PlayView() {
 
   const mapLandmarks = useMemo(
     () =>
-      landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
-    [landmarks],
+      landmarks
+        .filter((l) => isLandmarkActive(l, game?.started_at ?? null, now))
+        .map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, icon: l.icon })),
+    [landmarks, game?.started_at, now],
   );
 
   const mapForbiddenZones = useMemo(
@@ -360,9 +369,7 @@ function PlayView() {
             <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
           </div>
           <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
-          <div className="label-xs">
-            Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}
-          </div>
+          <div className="label-xs">Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}</div>
           {!!me?.penalty_m2 && (
             <div className="label-xs text-destructive">
               Pénalités · -{formatArea(me.penalty_m2)}
@@ -390,8 +397,6 @@ function PlayView() {
           <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
         )}
       </button>
-
-
 
       {chatOpen && (
         <div className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4">
@@ -439,7 +444,6 @@ function PlayView() {
           </div>
         </div>
       )}
-
 
       <div className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3">
         {geoError && (
@@ -513,7 +517,6 @@ function PlayView() {
             </span>
           </div>
         )}
-
 
         {finished ? (
           <div className="btn-huge btn-huge-dark">

@@ -20,7 +20,7 @@ export type MapTerritory = {
 
 export type ReturnZone = { lat: number; lng: number; radiusM: number };
 
-export type MapLandmark = { id: string; lat: number; lng: number; claimed: boolean };
+export type MapLandmark = { id: string; lat: number; lng: number; icon: string };
 
 export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: number };
 
@@ -38,9 +38,9 @@ type Props = {
   mapStyle?: MapStyleId | string | null | undefined;
 };
 
-const landmarkIcon = (claimed: boolean, spec: MapStyleSpec) =>
+const landmarkIcon = (icon: string) =>
   L.divIcon({
-    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));opacity:${claimed ? 0.4 : 1}">${spec.landmarkEmoji}</div>`,
+    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">${icon}</div>`,
     className: "",
     iconSize: [26, 26],
     iconAnchor: [13, 13],
@@ -212,11 +212,11 @@ export default function GameMap({
     if (!layer) return;
     layer.clearLayers();
     for (const lm of landmarks) {
-      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.claimed, spec) })
-        .bindTooltip(lm.claimed ? "Repère pris" : "Repère bonus")
+      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.icon) })
+        .bindTooltip("Repère bonus")
         .addTo(layer);
     }
-  }, [landmarks, spec]);
+  }, [landmarks]);
 
   useEffect(() => {
     const layer = teamLayer.current;

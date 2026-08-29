@@ -9,6 +9,7 @@ import {
   MapPin,
   Medal,
   Minus,
+  Pencil,
   Plus,
   QrCode,
   Send,
@@ -23,10 +24,18 @@ import { JoinQRCode } from "@/components/JoinQRCode";
 import { useGameState } from "@/lib/useGameState";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/lib/profile";
+import { getTerminology } from "@/lib/terminology";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
-import { addLandmark, removeLandmark, useLandmarks } from "@/lib/landmarks";
+import {
+  addLandmark,
+  isLandmarkActive,
+  removeLandmark,
+  updateLandmark,
+  useLandmarks,
+} from "@/lib/landmarks";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import {
   applySavedPoint,
@@ -38,6 +47,8 @@ import {
   DEFAULT_FORBIDDEN_PENALTY_M2,
   DEFAULT_FORBIDDEN_RADIUS_M,
   DEFAULT_LANDMARK_BONUS_M2,
+  DEFAULT_LANDMARK_ICON,
+  LANDMARK_ICONS,
   formatArea,
   formatClock,
   formatCountdown,
@@ -72,10 +83,138 @@ export const Route = createFileRoute("/prof/$code")({
 
 const DEFAULT_ZONE_RADIUS = 25;
 
+type LandmarkFieldsProps = {
+  icon: string;
+  onIcon: (icon: string) => void;
+  bonus: number;
+  onBonus: (updater: (b: number) => number) => void;
+  appearAfter: number;
+  onAppearAfter: (updater: (m: number) => number) => void;
+  expires: boolean;
+  onExpires: (expires: boolean) => void;
+  disappearAfter: number;
+  onDisappearAfter: (updater: (m: number) => number) => void;
+};
+
+function LandmarkFields({
+  icon,
+  onIcon,
+  bonus,
+  onBonus,
+  appearAfter,
+  onAppearAfter,
+  expires,
+  onExpires,
+  disappearAfter,
+  onDisappearAfter,
+}: LandmarkFieldsProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap gap-2">
+        {LANDMARK_ICONS.map((i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={`Icône ${i}`}
+            className="seg-btn flex h-11 w-11 items-center justify-center !text-xl"
+            data-active={icon === i}
+            onClick={() => onIcon(i)}
+          >
+            {i}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold">Bonus</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="Réduire le bonus"
+            className="icon-btn"
+            onClick={() => onBonus((b) => Math.max(10, b - 10))}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="display w-24 text-center text-lg">{formatArea(bonus)}</span>
+          <button
+            type="button"
+            aria-label="Augmenter le bonus"
+            className="icon-btn"
+            onClick={() => onBonus((b) => Math.min(500, b + 10))}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold">Apparaît après</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            aria-label="Réduire le délai d'apparition"
+            className="icon-btn"
+            onClick={() => onAppearAfter((m) => Math.max(0, m - 5))}
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="display w-20 text-center text-lg">{appearAfter} min</span>
+          <button
+            type="button"
+            aria-label="Augmenter le délai d'apparition"
+            className="icon-btn"
+            onClick={() => onAppearAfter((m) => m + 5)}
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      <label className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold">Disparaît après un délai</span>
+        <input
+          type="checkbox"
+          className="h-5 w-5"
+          checked={expires}
+          onChange={(e) => onExpires(e.target.checked)}
+        />
+      </label>
+      {expires ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">Délai</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Réduire le délai de disparition"
+              className="icon-btn"
+              onClick={() => onDisappearAfter((m) => Math.max(5, m - 5))}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="display w-20 text-center text-lg">{disappearAfter} min</span>
+            <button
+              type="button"
+              aria-label="Augmenter le délai de disparition"
+              className="icon-btn"
+              onClick={() => onDisappearAfter((m) => m + 5)}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Reste sur la carte jusqu'à ce qu'une équipe le capture.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function TeacherDashboard() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { profile } = useProfile(user?.id);
+  const t = getTerminology(profile?.terminology);
   const [creatingGame, setCreatingGame] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
   const [gameId, setGameId] = useState<string | null>(null);
@@ -89,6 +228,11 @@ function TeacherDashboard() {
   );
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
+  const [landmarkIconChoice, setLandmarkIconChoice] = useState<string>(DEFAULT_LANDMARK_ICON);
+  const [landmarkAppearAfter, setLandmarkAppearAfter] = useState(0);
+  const [landmarkExpires, setLandmarkExpires] = useState(false);
+  const [landmarkDisappearAfter, setLandmarkDisappearAfter] = useState(30);
+  const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
   const [forbiddenPenalty, setForbiddenPenalty] = useState(DEFAULT_FORBIDDEN_PENALTY_M2);
   const [messageBody, setMessageBody] = useState("");
@@ -216,7 +360,7 @@ function TeacherDashboard() {
   async function stop() {
     if (!gameId || stoppedRef.current) return;
     if (!isOwner) {
-      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      toast.error(t.ownerOnlyError);
       return;
     }
     stoppedRef.current = true;
@@ -288,8 +432,10 @@ function TeacherDashboard() {
 
   const mapLandmarks = useMemo(
     () =>
-      landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
-    [landmarks],
+      landmarks
+        .filter((l) => isLandmarkActive(l, game?.started_at ?? null, now))
+        .map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, icon: l.icon })),
+    [landmarks, game?.started_at, now],
   );
 
   const mapForbiddenZones = useMemo(
@@ -311,7 +457,7 @@ function TeacherDashboard() {
   async function start() {
     if (!gameId) return;
     if (!isOwner) {
-      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      toast.error(t.ownerOnlyError);
       return;
     }
     const ends = new Date(Date.now() + durationMinutes * 60_000).toISOString();
@@ -327,7 +473,6 @@ function TeacherDashboard() {
     toast.success("Partie démarrée !");
   }
 
-
   async function placeZone(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     await supabase
@@ -341,7 +486,15 @@ function TeacherDashboard() {
   async function placeLandmark(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     try {
-      await addLandmark(gameId, lat, lng, landmarkBonus);
+      await addLandmark(
+        gameId,
+        lat,
+        lng,
+        landmarkBonus,
+        landmarkIconChoice,
+        landmarkAppearAfter,
+        landmarkExpires ? landmarkDisappearAfter : null,
+      );
       setPlacingMode("none");
       toast.success("Repère bonus placé !");
     } catch {
@@ -355,6 +508,31 @@ function TeacherDashboard() {
       await removeLandmark(id);
     } catch {
       toast.error("Impossible de supprimer le repère.");
+    }
+  }
+
+  function startEditLandmark(l: (typeof landmarks)[number]) {
+    setEditingLandmarkId(l.id);
+    setLandmarkIconChoice(l.icon);
+    setLandmarkBonus(l.bonus_m2);
+    setLandmarkAppearAfter(l.active_after_minutes);
+    setLandmarkExpires(l.active_until_minutes != null);
+    setLandmarkDisappearAfter(l.active_until_minutes ?? 30);
+  }
+
+  async function saveEditLandmark() {
+    if (!editingLandmarkId || !isOwner) return;
+    try {
+      await updateLandmark(editingLandmarkId, {
+        icon: landmarkIconChoice,
+        bonus_m2: landmarkBonus,
+        active_after_minutes: landmarkAppearAfter,
+        active_until_minutes: landmarkExpires ? landmarkDisappearAfter : null,
+      });
+      setEditingLandmarkId(null);
+      toast.success("Repère mis à jour.");
+    } catch {
+      toast.error("Impossible de mettre à jour le repère.");
     }
   }
 
@@ -384,12 +562,26 @@ function TeacherDashboard() {
     lng: number,
     radiusM: number,
     valueM2: number,
+    icon?: string,
+    appearAfterMinutes?: number,
+    disappearAfterMinutes?: number | null,
   ) {
     if (!user) return;
     const name = window.prompt("Nom du modèle à enregistrer :");
     if (!name || !name.trim()) return;
     try {
-      await saveSavedPoint(user.id, kind, name.trim(), lat, lng, radiusM, valueM2);
+      await saveSavedPoint(
+        user.id,
+        kind,
+        name.trim(),
+        lat,
+        lng,
+        radiusM,
+        valueM2,
+        icon,
+        appearAfterMinutes,
+        disappearAfterMinutes,
+      );
       toast.success("Modèle enregistré !");
       if (kind === "landmark") void refreshLandmarkTemplates();
       else void refreshForbiddenTemplates();
@@ -498,7 +690,6 @@ function TeacherDashboard() {
     );
   }
 
-
   return (
     <main className="flex min-h-screen flex-col">
       <div className="relative h-[45vh] min-h-[280px] w-full">
@@ -535,15 +726,11 @@ function TeacherDashboard() {
             </button>
           )}
           <div className="hud-badge px-3 py-2">
-            <div className="label-xs">
-              Code
-            </div>
+            <div className="label-xs">Code</div>
             <div className="display text-2xl tracking-[0.3em]">{code}</div>
           </div>
           <div className="hud-badge px-3 py-2">
-            <div className="label-xs">
-              Temps
-            </div>
+            <div className="label-xs">Temps</div>
             <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
           </div>
         </div>
@@ -569,11 +756,7 @@ function TeacherDashboard() {
                 Partie <em>{code}</em>
               </h1>
             </div>
-            <span
-              className={`chip ${
-                running ? "chip-accent" : finished ? "chip-muted" : ""
-              }`}
-            >
+            <span className={`chip ${running ? "chip-accent" : finished ? "chip-muted" : ""}`}>
               {running ? "En cours" : finished ? "Terminée" : "Lobby"}
             </span>
           </div>
@@ -595,17 +778,13 @@ function TeacherDashboard() {
 
         {!isOwner && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
-            Vous consultez cette partie en lecture seule : seul l'enseignant qui l'a créée peut la
-            piloter.
+            Vous consultez cette partie en lecture seule : {t.readOnlyNotice} piloter.
           </div>
         )}
 
-
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
-            <span className="section-title">
-              Durée
-            </span>
+            <span className="section-title">Durée</span>
             <div className="flex items-center gap-3">
               <button
                 aria-label="Réduire"
@@ -660,8 +839,6 @@ function TeacherDashboard() {
           </div>
         </section>
 
-
-
         <section className="panel flex flex-col items-center gap-3 p-4">
           <div className="flex w-full items-center justify-between">
             <div className="section-title">
@@ -699,11 +876,7 @@ function TeacherDashboard() {
               <MapPin className="h-4 w-4" /> Zone de retour
             </div>
             {returnZone && isOwner && (
-              <button
-                aria-label="Supprimer la zone"
-                className="icon-btn"
-                onClick={clearZone}
-              >
+              <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
                 <X className="h-4 w-4" />
               </button>
             )}
@@ -765,28 +938,19 @@ function TeacherDashboard() {
           </p>
           {isOwner && (
             <>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Bonus</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    aria-label="Réduire le bonus"
-                    className="icon-btn"
-                    onClick={() => setLandmarkBonus((b) => Math.max(10, b - 10))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="display w-24 text-center text-lg">
-                    {formatArea(landmarkBonus)}
-                  </span>
-                  <button
-                    aria-label="Augmenter le bonus"
-                    className="icon-btn"
-                    onClick={() => setLandmarkBonus((b) => Math.min(500, b + 10))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+              <LandmarkFields
+                icon={landmarkIconChoice}
+                onIcon={setLandmarkIconChoice}
+                bonus={landmarkBonus}
+                onBonus={setLandmarkBonus}
+                appearAfter={landmarkAppearAfter}
+                onAppearAfter={setLandmarkAppearAfter}
+                expires={landmarkExpires}
+                onExpires={setLandmarkExpires}
+                disappearAfter={landmarkDisappearAfter}
+                onDisappearAfter={setLandmarkDisappearAfter}
+              />
+
               <button
                 className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
                 onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
@@ -798,53 +962,106 @@ function TeacherDashboard() {
           )}
           {landmarks.length > 0 && (
             <div className="flex flex-col gap-1">
-              {landmarks.map((l) => (
-                <div
-                  key={l.id}
-                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
-                >
-                  <Star className="h-4 w-4 shrink-0 text-accent" />
-                  <span className="flex-1 text-sm">
-                    {l.claimed_by_team_id
-                      ? `Pris par ${teams.find((t) => t.id === l.claimed_by_team_id)?.name ?? "une équipe"}`
-                      : "Disponible"}
-                  </span>
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    {formatArea(l.bonus_m2)}
-                  </span>
-                  {isOwner && (
-                    <>
-                      <button
-                        aria-label="Enregistrer comme modèle"
-                        onClick={() => void saveTemplate("landmark", l.lat, l.lng, 0, l.bonus_m2)}
-                      >
-                        <Bookmark className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button
-                        aria-label="Supprimer le repère"
-                        onClick={() => void deleteLandmark(l.id)}
-                      >
-                        <X className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
+              {landmarks.map((l) => {
+                const elapsedMin = game?.started_at
+                  ? (now - new Date(game.started_at).getTime()) / 60000
+                  : 0;
+                const status = l.claimed_by_team_id
+                  ? `Pris par ${teams.find((t) => t.id === l.claimed_by_team_id)?.name ?? "une équipe"}`
+                  : elapsedMin < l.active_after_minutes
+                    ? `Apparaît dans ${Math.ceil(l.active_after_minutes - elapsedMin)} min`
+                    : l.active_until_minutes != null && elapsedMin > l.active_until_minutes
+                      ? "Expiré"
+                      : "Disponible";
+                return (
+                  <div key={l.id} className="border-b border-border py-2 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg shrink-0">{l.icon}</span>
+                      <span className="flex-1 text-sm">{status}</span>
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        {formatArea(l.bonus_m2)}
+                      </span>
+                      {isOwner && (
+                        <>
+                          <button
+                            aria-label="Modifier le repère"
+                            onClick={() =>
+                              editingLandmarkId === l.id
+                                ? setEditingLandmarkId(null)
+                                : startEditLandmark(l)
+                            }
+                          >
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                          <button
+                            aria-label="Enregistrer comme modèle"
+                            onClick={() =>
+                              void saveTemplate(
+                                "landmark",
+                                l.lat,
+                                l.lng,
+                                0,
+                                l.bonus_m2,
+                                l.icon,
+                                l.active_after_minutes,
+                                l.active_until_minutes,
+                              )
+                            }
+                          >
+                            <Bookmark className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                          <button
+                            aria-label="Supprimer le repère"
+                            onClick={() => void deleteLandmark(l.id)}
+                          >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {isOwner && editingLandmarkId === l.id && (
+                      <div className="mt-2 flex flex-col gap-3 rounded-xl bg-muted/40 p-3">
+                        <LandmarkFields
+                          icon={landmarkIconChoice}
+                          onIcon={setLandmarkIconChoice}
+                          bonus={landmarkBonus}
+                          onBonus={setLandmarkBonus}
+                          appearAfter={landmarkAppearAfter}
+                          onAppearAfter={setLandmarkAppearAfter}
+                          expires={landmarkExpires}
+                          onExpires={setLandmarkExpires}
+                          disappearAfter={landmarkDisappearAfter}
+                          onDisappearAfter={setLandmarkDisappearAfter}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            className="btn-huge-accent flex-1 rounded-xl py-2 text-sm font-bold"
+                            onClick={() => void saveEditLandmark()}
+                          >
+                            Enregistrer
+                          </button>
+                          <button
+                            className="flex-1 rounded-xl bg-muted py-2 text-sm font-semibold"
+                            onClick={() => setEditingLandmarkId(null)}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
           {isOwner && landmarkTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="label-xs">
-                Mes modèles
-              </span>
+              <span className="label-xs">Mes modèles</span>
               {landmarkTemplates.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 py-1">
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
-                  <button
-                    className="mini-btn"
-                    onClick={() => void useTemplate(p)}
-                  >
+                  <button className="mini-btn" onClick={() => void useTemplate(p)}>
                     Réutiliser
                   </button>
                   <button
@@ -955,17 +1172,12 @@ function TeacherDashboard() {
           )}
           {isOwner && forbiddenTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="label-xs">
-                Mes modèles
-              </span>
+              <span className="label-xs">Mes modèles</span>
               {forbiddenTemplates.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 py-1">
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
-                  <button
-                    className="mini-btn"
-                    onClick={() => void useTemplate(p)}
-                  >
+                  <button className="mini-btn" onClick={() => void useTemplate(p)}>
                     Réutiliser
                   </button>
                   <button
@@ -1098,9 +1310,7 @@ function TeacherDashboard() {
           ))}
           {finished && unvalidated.length > 0 && (
             <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
-              <span className="label-xs">
-                Hors classement — pas revenues dans la zone à temps
-              </span>
+              <span className="label-xs">Hors classement — pas revenues dans la zone à temps</span>
               {unvalidated.map((t) => (
                 <div key={t.id} className="flex items-center gap-3 py-2 opacity-60">
                   <span
@@ -1146,9 +1356,7 @@ function TeacherDashboard() {
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="section-title">
-            Messages
-          </div>
+          <div className="section-title">Messages</div>
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
             {messages.length === 0 && (
               <p className="py-2 text-center text-sm text-muted-foreground">Aucun message.</p>
@@ -1162,9 +1370,7 @@ function TeacherDashboard() {
                   : `${teams.find((t) => t.id === m.team_id)?.name ?? "Équipe"} →`;
               return (
                 <div key={m.id} className="rounded-xl bg-muted px-3 py-2 text-sm">
-                  <div className="label-xs">
-                    {label}
-                  </div>
+                  <div className="label-xs">{label}</div>
                   <div>{m.body}</div>
                 </div>
               );

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import type { Terminology } from "@/lib/terminology";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -30,6 +31,7 @@ function AuthPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [terminology, setTerminology] = useState<Terminology>("enseignant");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,12 +43,15 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
+        if (data.user) {
+          await supabase.from("profiles").update({ terminology }).eq("id", data.user.id);
+        }
         toast.success("Compte créé, bienvenue !");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -80,6 +85,36 @@ function AuthPage() {
         </header>
 
         <form className="panel flex flex-col gap-4 p-5" onSubmit={submit}>
+          {mode === "signup" && (
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Vous êtes...
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`flex-1 rounded-xl py-3 text-sm font-bold ${
+                    terminology === "enseignant" ? "bg-accent" : "bg-muted"
+                  }`}
+                  onClick={() => setTerminology("enseignant")}
+                >
+                  Enseignant
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 rounded-xl py-3 text-sm font-bold ${
+                    terminology === "organisateur" ? "bg-accent" : "bg-muted"
+                  }`}
+                  onClick={() => setTerminology("organisateur")}
+                >
+                  Organisateur
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Change juste le vocabulaire utilisé dans l'appli (modifiable plus tard).
+              </p>
+            </div>
+          )}
           <input
             className="field"
             type="email"

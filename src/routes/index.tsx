@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
+import { getTerminology } from "@/lib/terminology";
 import { formatArea, randomCode } from "@/lib/conquete";
 
 type MyGame = {
@@ -43,7 +44,22 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
-  const { profile } = useProfile(user?.id);
+  const { profile, refresh: refreshProfile } = useProfile(user?.id);
+  const t = getTerminology(profile?.terminology);
+
+  async function toggleTerminology() {
+    if (!profile) return;
+    const next = profile.terminology === "organisateur" ? "enseignant" : "organisateur";
+    const { error } = await supabase
+      .from("profiles")
+      .update({ terminology: next })
+      .eq("id", profile.id);
+    if (error) {
+      toast.error("Impossible de changer la terminologie.");
+      return;
+    }
+    await refreshProfile();
+  }
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
@@ -207,9 +223,7 @@ function Home() {
 
         {user && myGames.length > 0 && (
           <section className="panel flex flex-col gap-1 p-5">
-            <div className="section-title mb-2">
-              Mes parties
-            </div>
+            <div className="section-title mb-2">Mes parties</div>
             {myGames.map((g) => (
               <div
                 key={g.id}
@@ -295,16 +309,24 @@ function Home() {
                 </Link>
               )}
               {profile && !profile.approved && profile.role !== "admin" ? (
-                <p className="text-sm text-muted-foreground">
-                  Compte enseignant en attente de validation par l'administrateur.
-                </p>
+                <p className="text-sm text-muted-foreground">{t.pendingApproval}</p>
               ) : (
                 <button
                   className="text-sm font-semibold text-muted-foreground underline disabled:opacity-50"
                   disabled={creating || loading}
                   onClick={createGame}
                 >
-                  {creating ? "Création..." : "+ Créer une partie (enseignant)"}
+                  {creating ? "Création..." : t.createGameButton}
+                </button>
+              )}
+              {profile && (
+                <button
+                  className="text-sm text-muted-foreground underline"
+                  onClick={() => void toggleTerminology()}
+                >
+                  Utiliser le terme «{" "}
+                  {profile.terminology === "organisateur" ? "enseignant" : "organisateur"} » plutôt
+                  que « {t.roleNoun} »
                 </button>
               )}
               <button
