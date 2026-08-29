@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useGameState } from "@/lib/useGameState";
-import { MAP_STYLE_LIST, type MapStyleId } from "@/lib/mapStyles";
+
 import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
@@ -327,11 +327,6 @@ function TeacherDashboard() {
     toast.success("Partie démarrée !");
   }
 
-  async function setMapStyle(styleId: MapStyleId) {
-    if (!gameId || !isOwner) return;
-    await supabase.from("games").update({ map_style: styleId }).eq("id", gameId);
-    toast.success("Style de carte mis à jour.");
-  }
 
   async function placeZone(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
@@ -611,29 +606,6 @@ function TeacherDashboard() {
           </div>
         </section>
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            Style de carte
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            {MAP_STYLE_LIST.map((s) => {
-              const active = (game?.map_style ?? "classic") === s.id;
-              return (
-                <button
-                  key={s.id}
-                  disabled={!isOwner}
-                  onClick={() => void setMapStyle(s.id)}
-                  className={`rounded-xl px-3 py-3 text-left ${
-                    active ? "bg-primary text-primary-foreground" : "bg-muted"
-                  }`}
-                >
-                  <span className="block text-sm font-bold">{s.label}</span>
-                  <span className="block text-xs opacity-80">{s.description}</span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
 
 
         <section className="panel flex flex-col items-center gap-3 p-4">
