@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Minus, Plus, Send, Trophy, X } from "lucide-react";
+import { Camera, MapPin, Minus, Plus, Send, Trophy, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
+import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import { formatArea, formatClock, haversine } from "@/lib/conquete";
 
 export const Route = createFileRoute("/prof/$code")({
@@ -42,9 +44,23 @@ function TeacherDashboard() {
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
+  const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
+  const [photoDelay, setPhotoDelay] = useState(3);
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const seenMessageCount = useRef<number | null>(null);
+
+  useEffect(() => {
+    requestNotificationPermission();
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (p) => setSelfPos([p.coords.latitude, p.coords.longitude]),
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -69,6 +85,7 @@ function TeacherDashboard() {
 
   const { game, teams, territories } = useGameState(gameId);
   const { messages } = useMessages(gameId);
+  const { submissions } = usePhotoSubmissions(gameId);
 
   useEffect(() => {
     if (!radiusInitRef.current && game?.return_radius_m != null) {
@@ -85,12 +102,23 @@ function TeacherDashboard() {
     if (messages.length > seenMessageCount.current) {
       const latest = messages[messages.length - 1];
       if (latest?.sender !== "prof") {
-        const from = teams.find((t) => t.id === latest?.team_id);
-        toast(`💬 ${from?.name ?? "Équipe"} : ${latest?.body}`);
+        const teamName = teams.find((t) => t.id === latest?.team_id)?.name ?? "Équipe";
+        toast(`💬 ${teamName} : ${latest?.body}`);
+        notifyMessage(`💬 ${teamName}`, latest?.body ?? "");
       }
     }
     seenMessageCount.current = messages.length;
   }, [messages, teams]);
+
+  useEffect(() => {
+    for (const s of submissions) {
+      if (photoUrls[s.id]) continue;
+      void getPhotoUrl(s.storage_path).then((url) => {
+        if (url) setPhotoUrls((prev) => ({ ...prev, [s.id]: url }));
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissions]);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -141,6 +169,19 @@ function TeacherDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [remaining, game?.status, isOwner]);
 
+  const currentSubmissions = useMemo(() => {
+    if (!game?.photo_requested_at) return [];
+    const since = new Date(game.photo_requested_at).getTime();
+    return submissions.filter((s) => new Date(s.submitted_at).getTime() >= since);
+  }, [submissions, game?.photo_requested_at]);
+  const respondedTeamIds = useMemo(
+    () => new Set(currentSubmissions.map((s) => s.team_id)),
+    [currentSubmissions],
+  );
+  const photoDeadlineRemaining = game?.photo_deadline
+    ? (new Date(game.photo_deadline).getTime() - now) / 1000
+    : null;
+
   const ranked = useMemo(() => [...teams].sort((a, b) => b.score_m2 - a.score_m2), [teams]);
   const finished = game?.status === "finished";
   const validatedRanked = useMemo(() => ranked.filter((t) => t.validated), [ranked]);
@@ -150,11 +191,13 @@ function TeacherDashboard() {
     if (game?.return_lat != null && game.return_lng != null)
       return [game.return_lat, game.return_lng];
     const withPos = teams.filter((t) => t.lat != null && t.lng != null);
-    if (!withPos.length) return null;
-    const lat = withPos.reduce((s, t) => s + (t.lat ?? 0), 0) / withPos.length;
-    const lng = withPos.reduce((s, t) => s + (t.lng ?? 0), 0) / withPos.length;
-    return [lat, lng];
-  }, [teams, game?.return_lat, game?.return_lng]);
+    if (withPos.length) {
+      const lat = withPos.reduce((s, t) => s + (t.lat ?? 0), 0) / withPos.length;
+      const lng = withPos.reduce((s, t) => s + (t.lng ?? 0), 0) / withPos.length;
+      return [lat, lng];
+    }
+    return selfPos;
+  }, [teams, game?.return_lat, game?.return_lng, selfPos]);
 
   const mapTerritories = useMemo(
     () =>
@@ -212,6 +255,16 @@ function TeacherDashboard() {
   async function clearZone() {
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ return_lat: null, return_lng: null }).eq("id", gameId);
+  }
+
+  async function askForPhoto() {
+    if (!gameId || !isOwner) return;
+    try {
+      await requestPhotoCheck(gameId, photoDelay);
+      toast.success(`Photo demandée à toutes les équipes (${photoDelay} min).`);
+    } catch {
+      toast.error("Impossible d'envoyer la demande.");
+    }
   }
 
   async function sendMessage() {
@@ -364,6 +417,88 @@ function TeacherDashboard() {
                     : "Placer sur la carte"}
               </button>
             </>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <Camera className="h-4 w-4" /> Photo de contrôle
+          </div>
+          {game?.photo_requested_at ? (
+            <p className="text-sm text-muted-foreground">
+              {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
+                ? `Il reste ${formatClock(photoDeadlineRemaining)}`
+                : "Délai écoulé"}{" "}
+              — {currentSubmissions.length}/{teams.length} équipe(s) ont répondu.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Demandez une photo à toutes les équipes pour vérifier que chaque groupe est bien au
+              complet.
+            </p>
+          )}
+          {isOwner && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Délai</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire le délai"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setPhotoDelay((d) => Math.max(1, d - 1))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="display w-16 text-center text-lg">{photoDelay} min</span>
+                  <button
+                    aria-label="Augmenter le délai"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setPhotoDelay((d) => Math.min(30, d + 1))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <button
+                className="btn-huge btn-huge-dark"
+                disabled={teams.length === 0}
+                onClick={askForPhoto}
+              >
+                <Camera className="h-5 w-5" /> Demander une photo à toutes les équipes
+              </button>
+            </>
+          )}
+          {currentSubmissions.length > 0 && (
+            <div className="grid grid-cols-3 gap-2">
+              {currentSubmissions.map((s) => {
+                const team = teams.find((t) => t.id === s.team_id);
+                return (
+                  <div key={s.id} className="flex flex-col items-center gap-1">
+                    {photoUrls[s.id] ? (
+                      <img
+                        src={photoUrls[s.id]}
+                        alt={team?.name ?? "équipe"}
+                        className="h-20 w-20 rounded-xl object-cover"
+                      />
+                    ) : (
+                      <div className="h-20 w-20 rounded-xl bg-muted" />
+                    )}
+                    <span className="max-w-full truncate text-xs font-semibold">
+                      {team?.name ?? "Équipe"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {game?.photo_requested_at && teams.length > respondedTeamIds.size && (
+            <p className="text-sm text-muted-foreground">
+              En attente :{" "}
+              {teams
+                .filter((t) => !respondedTeamIds.has(t.id))
+                .map((t) => t.name)
+                .join(", ")}
+            </p>
           )}
         </section>
 

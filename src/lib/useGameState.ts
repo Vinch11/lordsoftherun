@@ -12,6 +12,8 @@ export type Game = {
   return_lat: number | null;
   return_lng: number | null;
   return_radius_m: number;
+  photo_requested_at: string | null;
+  photo_deadline: string | null;
 };
 
 export type Team = {

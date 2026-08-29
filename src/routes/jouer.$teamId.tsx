@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
+import { Camera, Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -14,6 +14,8 @@ import {
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
+import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import { uploadTeamPhoto } from "@/lib/photoCheck";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -55,6 +57,13 @@ function PlayView() {
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
   const [unread, setUnread] = useState(false);
+  const [photoSending, setPhotoSending] = useState(false);
+  const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -93,6 +102,7 @@ function PlayView() {
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
+        notifyMessage("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       }
     }
@@ -107,6 +117,31 @@ function PlayView() {
       await sendTeamMessage(gameId, teamId, body);
     } catch {
       toast.error("Message non envoyé.");
+    }
+  }
+
+  const photoStorageKey = game?.photo_requested_at
+    ? `conquete:photo:${teamId}:${game.photo_requested_at}`
+    : null;
+
+  useEffect(() => {
+    if (!photoStorageKey) return;
+    setPhotoSentAt(localStorage.getItem(photoStorageKey));
+  }, [photoStorageKey]);
+
+  async function sendPhoto(file: File) {
+    if (!gameId || !photoStorageKey) return;
+    setPhotoSending(true);
+    try {
+      await uploadTeamPhoto(gameId, teamId, file);
+      const sentAt = new Date().toISOString();
+      localStorage.setItem(photoStorageKey, sentAt);
+      setPhotoSentAt(sentAt);
+      toast.success("Photo envoyée au prof !");
+    } catch {
+      toast.error("Échec de l'envoi de la photo.");
+    } finally {
+      setPhotoSending(false);
     }
   }
 
@@ -213,6 +248,11 @@ function PlayView() {
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
+
+  const photoDeadlineRemaining = game?.photo_deadline
+    ? (new Date(game.photo_deadline).getTime() - now) / 1000
+    : null;
+  const photoRequestPending = !!game?.photo_requested_at && !photoSentAt;
 
   function startLoop() {
     if (!pos) {
@@ -371,6 +411,36 @@ function PlayView() {
             {pos
               ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
               : "Recherche du GPS…"}
+          </div>
+        )}
+
+        {photoRequestPending && (
+          <div className="panel flex flex-col gap-3 border-4 border-accent px-4 py-3">
+            <div className="text-sm font-bold">
+              📸 Le prof demande une photo de votre groupe
+              {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
+                ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
+                : " — délai dépassé, envoyez-la quand même"}
+            </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void sendPhoto(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              className="btn-huge btn-huge-accent"
+              disabled={photoSending}
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <Camera className="h-6 w-6" /> {photoSending ? "Envoi..." : "Prendre la photo"}
+            </button>
           </div>
         )}
 

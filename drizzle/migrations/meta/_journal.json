@@ -15,6 +15,13 @@
       "when": 1788007281031,
       "tag": "0001_teachers_return_zone_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788012000000,
+      "tag": "0002_photo_checkin",
+      "breakpoints": true
     }
   ]
 }
