@@ -345,6 +345,7 @@ function PlayView() {
           returnZone={returnZone}
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
+          mapStyle={game?.map_style}
           follow
         />
       </div>

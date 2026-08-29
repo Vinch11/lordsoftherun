@@ -488,6 +488,7 @@ function TeacherDashboard() {
           returnZone={returnZone}
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
+          mapStyle={game?.map_style}
           onMapClick={
             placingMode === "zone"
               ? placeZone
