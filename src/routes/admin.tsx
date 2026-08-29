@@ -71,9 +71,7 @@ function AdminPage() {
         </div>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="section-title mb-2">
-            En attente d'approbation ({pending.length})
-          </div>
+          <div className="section-title mb-2">En attente d'approbation ({pending.length})</div>
           {loadingTeachers && <p className="text-muted-foreground">Chargement…</p>}
           {!loadingTeachers && pending.length === 0 && (
             <p className="py-2 text-center text-muted-foreground">Aucune demande en attente.</p>
@@ -95,9 +93,7 @@ function AdminPage() {
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="section-title mb-2">
-            Enseignants approuvés ({approved.length})
-          </div>
+          <div className="section-title mb-2">Comptes approuvés ({approved.length})</div>
           {approved.length === 0 && (
             <p className="py-2 text-center text-muted-foreground">Aucun pour l'instant.</p>
           )}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { addLandmark } from "@/lib/landmarks";
 import { addForbiddenZone } from "@/lib/forbiddenZones";
+import { DEFAULT_LANDMARK_ICON } from "@/lib/conquete";
 
 export type SavedPoint = {
   id: string;
@@ -12,6 +13,9 @@ export type SavedPoint = {
   lng: number;
   radius_m: number;
   value_m2: number;
+  icon: string;
+  active_after_minutes: number;
+  active_until_minutes: number | null;
 };
 
 export async function saveSavedPoint(
@@ -22,6 +26,9 @@ export async function saveSavedPoint(
   lng: number,
   radiusM: number,
   valueM2: number,
+  icon: string = DEFAULT_LANDMARK_ICON,
+  activeAfterMinutes = 0,
+  activeUntilMinutes: number | null = null,
 ) {
   const { error } = await supabase.from("saved_points").insert({
     owner_id: ownerId,
@@ -31,6 +38,9 @@ export async function saveSavedPoint(
     lng,
     radius_m: radiusM,
     value_m2: valueM2,
+    icon,
+    active_after_minutes: activeAfterMinutes,
+    active_until_minutes: activeUntilMinutes,
   });
   if (error) throw error;
 }
@@ -43,7 +53,15 @@ export async function deleteSavedPoint(id: string) {
 /** Re-creates a saved point as a live landmark or forbidden zone in `gameId`. */
 export async function applySavedPoint(point: SavedPoint, gameId: string) {
   if (point.kind === "landmark") {
-    await addLandmark(gameId, point.lat, point.lng, point.value_m2);
+    await addLandmark(
+      gameId,
+      point.lat,
+      point.lng,
+      point.value_m2,
+      point.icon,
+      point.active_after_minutes,
+      point.active_until_minutes,
+    );
   } else {
     await addForbiddenZone(gameId, point.lat, point.lng, point.radius_m, point.value_m2);
   }
