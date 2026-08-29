@@ -22,6 +22,8 @@ export type Database = {
           ends_at: string | null
           id: string
           owner_id: string | null
+          photo_deadline: string | null
+          photo_requested_at: string | null
           return_lat: number | null
           return_lng: number | null
           return_radius_m: number
@@ -35,6 +37,8 @@ export type Database = {
           ends_at?: string | null
           id?: string
           owner_id?: string | null
+          photo_deadline?: string | null
+          photo_requested_at?: string | null
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
@@ -48,6 +52,8 @@ export type Database = {
           ends_at?: string | null
           id?: string
           owner_id?: string | null
+          photo_deadline?: string | null
+          photo_requested_at?: string | null
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
@@ -91,6 +97,45 @@ export type Database = {
           },
           {
             foreignKeyName: "messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photo_submissions: {
+        Row: {
+          game_id: string
+          id: string
+          storage_path: string
+          submitted_at: string
+          team_id: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          storage_path: string
+          submitted_at?: string
+          team_id: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          storage_path?: string
+          submitted_at?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "photo_submissions_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "photo_submissions_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
