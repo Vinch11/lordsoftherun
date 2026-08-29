@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as JouerTeamIdRouteImport } from './routes/jouer.$teamId'
+import { Route as ProfCodeRouteImport } from './routes/prof.$code'
+import { Route as RejoindreCodeRouteImport } from './routes/rejoindre.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JouerTeamIdRoute = JouerTeamIdRouteImport.update({
+  id: '/jouer/$teamId',
+  path: '/jouer/$teamId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfCodeRoute = ProfCodeRouteImport.update({
+  id: '/prof/$code',
+  path: '/prof/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RejoindreCodeRoute = RejoindreCodeRouteImport.update({
+  id: '/rejoindre/$code',
+  path: '/rejoindre/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/jouer/$teamId': typeof JouerTeamIdRoute
+  '/prof/$code': typeof ProfCodeRoute
+  '/rejoindre/$code': typeof RejoindreCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/jouer/$teamId': typeof JouerTeamIdRoute
+  '/prof/$code': typeof ProfCodeRoute
+  '/rejoindre/$code': typeof RejoindreCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/jouer/$teamId': typeof JouerTeamIdRoute
+  '/prof/$code': typeof ProfCodeRoute
+  '/rejoindre/$code': typeof RejoindreCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/jouer/$teamId' | '/prof/$code' | '/rejoindre/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/jouer/$teamId' | '/prof/$code' | '/rejoindre/$code'
+  id: '__root__' | '/' | '/jouer/$teamId' | '/prof/$code' | '/rejoindre/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  JouerTeamIdRoute: typeof JouerTeamIdRoute
+  ProfCodeRoute: typeof ProfCodeRoute
+  RejoindreCodeRoute: typeof RejoindreCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jouer/$teamId': {
+      id: '/jouer/$teamId'
+      path: '/jouer/$teamId'
+      fullPath: '/jouer/$teamId'
+      preLoaderRoute: typeof JouerTeamIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prof/$code': {
+      id: '/prof/$code'
+      path: '/prof/$code'
+      fullPath: '/prof/$code'
+      preLoaderRoute: typeof ProfCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rejoindre/$code': {
+      id: '/rejoindre/$code'
+      path: '/rejoindre/$code'
+      fullPath: '/rejoindre/$code'
+      preLoaderRoute: typeof RejoindreCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  JouerTeamIdRoute: JouerTeamIdRoute,
+  ProfCodeRoute: ProfCodeRoute,
+  RejoindreCodeRoute: RejoindreCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
