@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      forbidden_zones: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+          penalty_m2: number
+          radius_m: number
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+          penalty_m2?: number
+          radius_m?: number
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          penalty_m2?: number
+          radius_m?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forbidden_zones_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           code: string
@@ -61,6 +99,54 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      landmarks: {
+        Row: {
+          bonus_m2: number
+          claimed_at: string | null
+          claimed_by_team_id: string | null
+          created_at: string
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+        }
+        Insert: {
+          bonus_m2?: number
+          claimed_at?: string | null
+          claimed_by_team_id?: string | null
+          created_at?: string
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+        }
+        Update: {
+          bonus_m2?: number
+          claimed_at?: string | null
+          claimed_by_team_id?: string | null
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landmarks_claimed_by_team_id_fkey"
+            columns: ["claimed_by_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "landmarks_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -143,16 +229,55 @@ export type Database = {
           },
         ]
       }
+      saved_points: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          lat: number
+          lng: number
+          name: string
+          owner_id: string
+          radius_m: number
+          value_m2: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          lat: number
+          lng: number
+          name: string
+          owner_id: string
+          radius_m?: number
+          value_m2?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          lat?: number
+          lng?: number
+          name?: string
+          owner_id?: string
+          radius_m?: number
+          value_m2?: number
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           color: string
           created_at: string
           game_id: string
           id: string
+          landmark_bonus_m2: number
           lat: number | null
           lng: number | null
           name: string
+          penalty_m2: number
           score_m2: number
+          total_captured_m2: number
           updated_at: string
           validated: boolean
         }
@@ -161,10 +286,13 @@ export type Database = {
           created_at?: string
           game_id: string
           id?: string
+          landmark_bonus_m2?: number
           lat?: number | null
           lng?: number | null
           name: string
+          penalty_m2?: number
           score_m2?: number
+          total_captured_m2?: number
           updated_at?: string
           validated?: boolean
         }
@@ -173,10 +301,13 @@ export type Database = {
           created_at?: string
           game_id?: string
           id?: string
+          landmark_bonus_m2?: number
           lat?: number | null
           lng?: number | null
           name?: string
+          penalty_m2?: number
           score_m2?: number
+          total_captured_m2?: number
           updated_at?: string
           validated?: boolean
         }
@@ -197,6 +328,7 @@ export type Database = {
           game_id: string
           geometry: Json
           id: string
+          scored_m2: number
           team_id: string
         }
         Insert: {
@@ -205,6 +337,7 @@ export type Database = {
           game_id: string
           geometry: Json
           id?: string
+          scored_m2?: number
           team_id: string
         }
         Update: {
@@ -213,6 +346,7 @@ export type Database = {
           game_id?: string
           geometry?: Json
           id?: string
+          scored_m2?: number
           team_id?: string
         }
         Relationships: [
