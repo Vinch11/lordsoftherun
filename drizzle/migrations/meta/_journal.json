@@ -78,6 +78,13 @@
       "when": 1788060000000,
       "tag": "0010_landmark_config_terminology",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788040222785,
+      "tag": "0011_landmark_config_terminology",
+      "breakpoints": true
     }
   ]
 }

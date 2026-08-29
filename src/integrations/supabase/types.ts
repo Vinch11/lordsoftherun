@@ -105,31 +105,40 @@ export type Database = {
       }
       landmarks: {
         Row: {
+          active_after_minutes: number
+          active_until_minutes: number | null
           bonus_m2: number
           claimed_at: string | null
           claimed_by_team_id: string | null
           created_at: string
           game_id: string
+          icon: string
           id: string
           lat: number
           lng: number
         }
         Insert: {
+          active_after_minutes?: number
+          active_until_minutes?: number | null
           bonus_m2?: number
           claimed_at?: string | null
           claimed_by_team_id?: string | null
           created_at?: string
           game_id: string
+          icon?: string
           id?: string
           lat: number
           lng: number
         }
         Update: {
+          active_after_minutes?: number
+          active_until_minutes?: number | null
           bonus_m2?: number
           claimed_at?: string | null
           claimed_by_team_id?: string | null
           created_at?: string
           game_id?: string
+          icon?: string
           id?: string
           lat?: number
           lng?: number
@@ -239,6 +248,7 @@ export type Database = {
           email: string | null
           id: string
           role: string
+          terminology: string
         }
         Insert: {
           approved?: boolean
@@ -246,6 +256,7 @@ export type Database = {
           email?: string | null
           id: string
           role?: string
+          terminology?: string
         }
         Update: {
           approved?: boolean
@@ -253,12 +264,16 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string
+          terminology?: string
         }
         Relationships: []
       }
       saved_points: {
         Row: {
+          active_after_minutes: number
+          active_until_minutes: number | null
           created_at: string
+          icon: string
           id: string
           kind: string
           lat: number
@@ -269,7 +284,10 @@ export type Database = {
           value_m2: number
         }
         Insert: {
+          active_after_minutes?: number
+          active_until_minutes?: number | null
           created_at?: string
+          icon?: string
           id?: string
           kind: string
           lat: number
@@ -280,7 +298,10 @@ export type Database = {
           value_m2?: number
         }
         Update: {
+          active_after_minutes?: number
+          active_until_minutes?: number | null
           created_at?: string
+          icon?: string
           id?: string
           kind?: string
           lat?: number
