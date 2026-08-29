@@ -1,11 +1,13 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Play, ShieldCheck, Users } from "lucide-react";
+import { MapPin, Play, QrCode, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
 import { formatArea, randomCode } from "@/lib/conquete";
+
 
 type MyGame = {
   id: string;
@@ -47,6 +49,8 @@ function Home() {
   const [creating, setCreating] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
   const [resumeTeam, setResumeTeam] = useState<ResumeTeam | null>(null);
+  const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
+
 
   useEffect(() => {
     const raw = localStorage.getItem("conquete:last-team");
@@ -186,47 +190,70 @@ function Home() {
               Mes parties
             </div>
             {myGames.map((g) => (
-              <button
+              <div
                 key={g.id}
-                className="flex flex-col gap-1 border-b border-border py-3 text-left last:border-0"
-                onClick={() => navigate({ to: "/prof/$code", params: { code: g.code } })}
+                className="flex items-center gap-3 border-b border-border py-3 last:border-0"
               >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="display text-xl tracking-[0.2em]">{g.code}</span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                      g.status === "running"
-                        ? "bg-accent text-accent-foreground"
+                <button
+                  className="flex flex-1 flex-col gap-1 text-left"
+                  onClick={() => navigate({ to: "/prof/$code", params: { code: g.code } })}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="display text-xl tracking-[0.2em]">{g.code}</span>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                        g.status === "running"
+                          ? "bg-accent text-accent-foreground"
+                          : g.status === "finished"
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-secondary text-secondary-foreground"
+                      }`}
+                    >
+                      {g.status === "running"
+                        ? "En cours"
                         : g.status === "finished"
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-secondary text-secondary-foreground"
-                    }`}
-                  >
-                    {g.status === "running"
-                      ? "En cours"
-                      : g.status === "finished"
-                        ? "Terminée"
-                        : "Lobby"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {new Date(g.created_at).toLocaleDateString("fr-FR", {
-                      day: "numeric",
-                      month: "short",
-                    })}{" "}
-                    · {g.teamCount} équipe{g.teamCount > 1 ? "s" : ""}
-                  </span>
-                  {g.topTeam && (
-                    <span>
-                      🏆 {g.topTeam} · {formatArea(g.topScore)}
+                          ? "Terminée"
+                          : "Lobby"}
                     </span>
-                  )}
-                </div>
-              </button>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {new Date(g.created_at).toLocaleDateString("fr-FR", {
+                        day: "numeric",
+                        month: "short",
+                      })}{" "}
+                      · {g.teamCount} équipe{g.teamCount > 1 ? "s" : ""}
+                    </span>
+                    {g.topTeam && (
+                      <span>
+                        🏆 {g.topTeam} · {formatArea(g.topScore)}
+                      </span>
+                    )}
+                  </div>
+                </button>
+                <button
+                  aria-label={`Afficher le QR code de la partie ${g.code}`}
+                  className="rounded-xl bg-muted p-3"
+                  onClick={() => setQrCodeGame(g.code)}
+                >
+                  <QrCode className="h-5 w-5" />
+                </button>
+              </div>
             ))}
           </section>
         )}
+
+        {qrCodeGame && (
+          <div
+            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-6 bg-background p-6"
+            onClick={() => setQrCodeGame(null)}
+          >
+            <JoinQRCode url={`${window.location.origin}/rejoindre/${qrCodeGame}`} size={320} />
+            <div className="display text-5xl tracking-[0.3em]">{qrCodeGame}</div>
+            <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
+          </div>
+        )}
+
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
           {user ? (
