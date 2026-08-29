@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as JouerTeamIdRouteImport } from './routes/jouer.$teamId'
 import { Route as ProfCodeRouteImport } from './routes/prof.$code'
@@ -18,6 +19,11 @@ import { Route as RejoindreCodeRouteImport } from './routes/rejoindre.$code'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -43,6 +49,7 @@ const RejoindreCodeRoute = RejoindreCodeRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
@@ -66,12 +75,24 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/jouer/$teamId' | '/prof/$code' | '/rejoindre/$code'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/jouer/$teamId'
+    | '/prof/$code'
+    | '/rejoindre/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/jouer/$teamId' | '/prof/$code' | '/rejoindre/$code'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/jouer/$teamId'
+    | '/prof/$code'
+    | '/rejoindre/$code'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/auth'
     | '/jouer/$teamId'
     | '/prof/$code'
@@ -80,6 +101,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
   JouerTeamIdRoute: typeof JouerTeamIdRoute
   ProfCodeRoute: typeof ProfCodeRoute
@@ -93,6 +115,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -128,6 +157,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
   JouerTeamIdRoute: JouerTeamIdRoute,
   ProfCodeRoute: ProfCodeRoute,
