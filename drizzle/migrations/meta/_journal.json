@@ -92,6 +92,13 @@
       "when": 1788080000000,
       "tag": "0012_running_bonus_config_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788041542164,
+      "tag": "0013_running_bonus_config_overview",
+      "breakpoints": true
     }
   ]
 }
