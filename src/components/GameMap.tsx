@@ -33,7 +33,7 @@ type Props = {
   returnZone?: ReturnZone | null;
   landmarks?: MapLandmark[];
   forbiddenZones?: MapForbiddenZone[];
-  onMapClick?: (lat: number, lng: number) => void;
+  onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
 };
 
 const landmarkIcon = (claimed: boolean) =>
