@@ -21,7 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useGameState } from "@/lib/useGameState";
-import { MAP_STYLE_LIST, type MapStyleId } from "@/lib/mapStyles";
+
 import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
@@ -327,11 +327,6 @@ function TeacherDashboard() {
     toast.success("Partie démarrée !");
   }
 
-  async function setMapStyle(styleId: MapStyleId) {
-    if (!gameId || !isOwner) return;
-    await supabase.from("games").update({ map_style: styleId }).eq("id", gameId);
-    toast.success("Style de carte mis à jour.");
-  }
 
   async function placeZone(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
