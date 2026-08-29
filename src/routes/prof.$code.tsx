@@ -539,13 +539,48 @@ function TeacherDashboard() {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 p-4">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4">
+        <header className="panel flex flex-col gap-4 p-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="min-w-0">
+              <div className="pill">
+                <MapPin className="h-3.5 w-3.5" /> Tableau de bord
+              </div>
+              <h1 className="page-title mt-3 truncate">
+                Partie <em>{code}</em>
+              </h1>
+            </div>
+            <span
+              className={`chip ${
+                running ? "chip-accent" : finished ? "chip-muted" : ""
+              }`}
+            >
+              {running ? "En cours" : finished ? "Terminée" : "Lobby"}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="stat">
+              <span className="label-xs">Temps</span>
+              <span className="stat-value">{formatCountdown(remaining)}</span>
+            </div>
+            <div className="stat">
+              <span className="label-xs">Groupes</span>
+              <span className="stat-value">{teams.length}</span>
+            </div>
+            <div className="stat">
+              <span className="label-xs">Leader</span>
+              <span className="stat-value truncate">{ranked[0]?.name ?? "—"}</span>
+            </div>
+          </div>
+        </header>
+
         {!isOwner && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
             Vous consultez cette partie en lecture seule : seul l'enseignant qui l'a créée peut la
             piloter.
           </div>
         )}
+
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
