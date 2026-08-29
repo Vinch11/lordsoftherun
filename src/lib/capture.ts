@@ -36,6 +36,9 @@ export async function captureTerritory(
 ) {
   const { data: existing } = await supabase.from("territories").select("*").eq("game_id", gameId);
 
+  // Area stolen from each other team during this capture (victim team id -> m²).
+  const stolen = new Map<string, number>();
+
   for (const row of existing ?? []) {
     const geom = row.geometry as unknown as Polygon | MultiPolygon;
     // Only touch territories the new loop actually overlaps: an untouched row keeps
@@ -50,6 +53,10 @@ export async function captureTerritory(
           captured as Feature<Polygon | MultiPolygon>,
         ]),
       );
+      const lostArea = row.area_m2 - (rest ? area(rest) : 0);
+      if (row.team_id !== teamId && lostArea > 0) {
+        stolen.set(row.team_id, (stolen.get(row.team_id) ?? 0) + lostArea);
+      }
       if (!rest || area(rest) < 20) {
         await supabase.from("territories").delete().eq("id", row.id);
       } else {
@@ -82,7 +89,42 @@ export async function captureTerritory(
   });
 
   await recomputeScores(gameId);
-  return { area: capturedArea, ran: multiplier > 1 };
+  const victims = await notifyStolen(gameId, teamId, stolen);
+  return { area: capturedArea, ran: multiplier > 1, victims };
+}
+
+export type StolenFrom = { teamId: string; name: string; areaM2: number };
+
+/**
+ * Posts a "territory stolen" system message to each victim team so their device
+ * can alert them, and returns the list for the attacker's own recap.
+ */
+async function notifyStolen(
+  gameId: string,
+  attackerId: string,
+  stolen: Map<string, number>,
+): Promise<StolenFrom[]> {
+  const meaningful = [...stolen.entries()].filter(([, m2]) => m2 >= 20);
+  if (meaningful.length === 0) return [];
+  const { data: teamRows } = await supabase.from("teams").select("id, name").eq("game_id", gameId);
+  const nameOf = new Map((teamRows ?? []).map((t) => [t.id, t.name]));
+  const attacker = nameOf.get(attackerId) ?? "Une équipe";
+
+  const victims: StolenFrom[] = meaningful.map(([id, m2]) => ({
+    teamId: id,
+    name: nameOf.get(id) ?? "Équipe",
+    areaM2: m2,
+  }));
+
+  await supabase.from("messages").insert(
+    victims.map((v) => ({
+      game_id: gameId,
+      team_id: v.teamId,
+      sender: "system",
+      body: `⚠️ ${attacker} vient de vous prendre ${Math.round(v.areaM2).toLocaleString("fr-FR")} m² de territoire !`,
+    })),
+  );
+  return victims;
 }
 
 export async function recomputeScores(gameId: string) {

@@ -58,6 +58,7 @@ export type Database = {
           created_at: string
           duration_minutes: number
           ends_at: string | null
+          forbidden_zone_running_only: boolean
           id: string
           map_style: string
           owner_id: string | null
@@ -66,6 +67,8 @@ export type Database = {
           return_lat: number | null
           return_lng: number | null
           return_radius_m: number
+          running_bonus_enabled: boolean
+          running_bonus_speed_kmh: number
           started_at: string | null
           status: string
         }
@@ -74,6 +77,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number
           ends_at?: string | null
+          forbidden_zone_running_only?: boolean
           id?: string
           map_style?: string
           owner_id?: string | null
@@ -82,6 +86,8 @@ export type Database = {
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
+          running_bonus_enabled?: boolean
+          running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
         }
@@ -90,6 +96,7 @@ export type Database = {
           created_at?: string
           duration_minutes?: number
           ends_at?: string | null
+          forbidden_zone_running_only?: boolean
           id?: string
           map_style?: string
           owner_id?: string | null
@@ -98,6 +105,8 @@ export type Database = {
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
+          running_bonus_enabled?: boolean
+          running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
         }

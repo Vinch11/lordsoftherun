@@ -162,6 +162,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         toast(`💬 Prof : ${latest.body}`);
         notifyMessage("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
+      } else if (latest?.sender === "system") {
+        toast.error(latest.body, { duration: 8000 });
+        notifyMessage("⚠️ Territoire perdu !", latest.body);
       }
     }
     seenMessageCount.current = myMessages.length;
@@ -244,6 +247,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         toast.success(
           `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
         );
+        for (const v of result.victims) {
+          toast(`🏴 Vous avez pris ${formatArea(v.areaM2)} à ${v.name} !`);
+        }
       } catch {
         toast.error("La capture a échoué.");
       }
