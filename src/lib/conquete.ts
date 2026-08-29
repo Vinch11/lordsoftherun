@@ -14,6 +14,19 @@ export const TEAM_COLORS: TeamColor[] = [
 export const MIN_LOOP_DISTANCE_M = 100;
 export const CLOSE_RADIUS_M = 20;
 
+/** A loop closed at or above this average speed (~8 km/h, a brisk jog) counts as "run". */
+export const RUNNING_SPEED_MS = 2.2;
+/** Extra score credit multiplier applied to a loop closed while running. */
+export const RUNNING_BONUS_MULTIPLIER = 1.5;
+
+export const LANDMARK_CLAIM_RADIUS_M = 15;
+export const DEFAULT_LANDMARK_BONUS_M2 = 30;
+
+export const DEFAULT_FORBIDDEN_RADIUS_M = 15;
+export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
+/** Re-entering an already-penalized forbidden zone only counts again after this long. */
+export const FORBIDDEN_PENALTY_COOLDOWN_MS = 30_000;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
@@ -26,8 +39,7 @@ export function haversine(a: [number, number], b: [number, number]): number {
   const dLng = toRad(b[1] - a[1]);
   const lat1 = toRad(a[0]);
   const lat2 = toRad(b[0]);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
@@ -40,6 +52,22 @@ export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const m = Math.floor(s / 60);
   return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Like formatClock, but switches to "Xj HHh" / "Xh MMm" for a multi-day Challenge. */
+export function formatCountdown(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  if (s >= 86400) {
+    const days = Math.floor(s / 86400);
+    const hours = Math.floor((s % 86400) / 3600);
+    return `${days}j ${String(hours).padStart(2, "0")}h`;
+  }
+  if (s >= 3600) {
+    const hours = Math.floor(s / 3600);
+    const minutes = Math.floor((s % 3600) / 60);
+    return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+  }
+  return formatClock(s);
 }
 
 export const teamStorageKey = (code: string) => `conquete:team:${code}`;

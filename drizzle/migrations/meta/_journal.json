@@ -19,8 +19,22 @@
     {
       "idx": 2,
       "version": "7",
-      "when": 1788010361162,
+      "when": 1788012000000,
       "tag": "0002_photo_checkin",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788020000000,
+      "tag": "0003_speed_bonus_landmarks_challenge",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788030000000,
+      "tag": "0004_forbidden_zones_templates_history",
       "breakpoints": true
     }
   ]

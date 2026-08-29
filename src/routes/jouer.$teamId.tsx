@@ -1,18 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Crosshair, Flag, Square } from "lucide-react";
+import { Camera, Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
+  FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
   formatArea,
   formatClock,
+  formatCountdown,
   haversine,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
+import { sendTeamMessage, useMessages } from "@/lib/messages";
+import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import { uploadTeamPhoto } from "@/lib/photoCheck";
+import { checkLandmarkClaims, useLandmarks } from "@/lib/landmarks";
+import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -48,8 +55,20 @@ function PlayView() {
   const runningRef = useRef(false);
   const trackRef = useRef<[number, number][]>([]);
   const distRef = useRef(0);
+  const loopStartRef = useRef(0);
   const lastSync = useRef(0);
   const closing = useRef(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatBody, setChatBody] = useState("");
+  const seenMessageCount = useRef<number | null>(null);
+  const [unread, setUnread] = useState(false);
+  const [photoSending, setPhotoSending] = useState(false);
+  const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -69,8 +88,74 @@ function PlayView() {
   }, [teamId]);
 
   const { game, teams, territories } = useGameState(gameId);
+  const { messages } = useMessages(gameId);
+  const { landmarks } = useLandmarks(gameId);
+  const landmarksRef = useRef(landmarks);
+  landmarksRef.current = landmarks;
+  const { zones: forbiddenZones } = useForbiddenZones(gameId);
+  const forbiddenZonesRef = useRef(forbiddenZones);
+  forbiddenZonesRef.current = forbiddenZones;
+  const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
+
+  const myMessages = useMemo(
+    () =>
+      messages.filter((m) => (m.sender === "prof" && m.team_id === null) || m.team_id === teamId),
+    [messages, teamId],
+  );
+
+  useEffect(() => {
+    if (seenMessageCount.current === null) {
+      seenMessageCount.current = myMessages.length;
+      return;
+    }
+    if (myMessages.length > seenMessageCount.current) {
+      const latest = myMessages[myMessages.length - 1];
+      if (latest?.sender === "prof") {
+        toast(`💬 Prof : ${latest.body}`);
+        notifyMessage("💬 Message du prof", latest.body);
+        if (!chatOpen) setUnread(true);
+      }
+    }
+    seenMessageCount.current = myMessages.length;
+  }, [myMessages, chatOpen]);
+
+  async function sendChat() {
+    if (!gameId || !chatBody.trim()) return;
+    const body = chatBody.trim();
+    setChatBody("");
+    try {
+      await sendTeamMessage(gameId, teamId, body);
+    } catch {
+      toast.error("Message non envoyé.");
+    }
+  }
+
+  const photoStorageKey = game?.photo_requested_at
+    ? `conquete:photo:${teamId}:${game.photo_requested_at}`
+    : null;
+
+  useEffect(() => {
+    if (!photoStorageKey) return;
+    setPhotoSentAt(localStorage.getItem(photoStorageKey));
+  }, [photoStorageKey]);
+
+  async function sendPhoto(file: File) {
+    if (!gameId || !photoStorageKey) return;
+    setPhotoSending(true);
+    try {
+      await uploadTeamPhoto(gameId, teamId, file);
+      const sentAt = new Date().toISOString();
+      localStorage.setItem(photoStorageKey, sentAt);
+      setPhotoSentAt(sentAt);
+      toast.success("Photo envoyée au prof !");
+    } catch {
+      toast.error("Échec de l'envoi de la photo.");
+    } finally {
+      setPhotoSending(false);
+    }
+  }
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -87,8 +172,12 @@ function PlayView() {
       toast.error("Boucle invalide, réessayez.");
     } else {
       try {
-        const captured = await captureTerritory(gameId, teamId, poly);
-        toast.success(`Territoire capturé : ${formatArea(captured)} !`);
+        const elapsedS = (Date.now() - loopStartRef.current) / 1000;
+        const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
+        const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs);
+        toast.success(
+          `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
+        );
       } catch {
         toast.error("La capture a échoué.");
       }
@@ -113,6 +202,26 @@ function PlayView() {
           .from("teams")
           .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
           .eq("id", teamId);
+      }
+
+      if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
+        void checkLandmarkClaims(landmarksRef.current, teamId, point).then((won) => {
+          if (won) {
+            toast.success(`⭐ Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
+            notifyMessage("⭐ Repère bonus !", `+${formatArea(won.bonus_m2)}`);
+          }
+        });
+      }
+
+      for (const zone of forbiddenZonesRef.current) {
+        if (haversine(point, [zone.lat, zone.lng]) > zone.radius_m) continue;
+        const last = lastPenalizedRef.current.get(zone.id) ?? 0;
+        if (Date.now() - last < FORBIDDEN_PENALTY_COOLDOWN_MS) continue;
+        lastPenalizedRef.current.set(zone.id, Date.now());
+        void applyPenalty(zone, teamId).then(() => {
+          toast.error(`⚠️ Zone interdite ! -${formatArea(zone.penalty_m2)}`);
+          notifyMessage("⚠️ Zone interdite !", `-${formatArea(zone.penalty_m2)}`);
+        });
       }
 
       if (!runningRef.current) return;
@@ -162,10 +271,35 @@ function PlayView() {
     [territories, teams],
   );
 
+  const mapLandmarks = useMemo(
+    () =>
+      landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
+    [landmarks],
+  );
+
+  const mapForbiddenZones = useMemo(
+    () => forbiddenZones.map((z) => ({ id: z.id, lat: z.lat, lng: z.lng, radiusM: z.radius_m })),
+    [forbiddenZones],
+  );
+
+  const returnZone = useMemo(
+    () =>
+      game?.return_lat != null && game.return_lng != null
+        ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
+        : null,
+    [game?.return_lat, game?.return_lng, game?.return_radius_m],
+  );
+  const toZone = pos && returnZone ? haversine(pos, [returnZone.lat, returnZone.lng]) : null;
+
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
+
+  const photoDeadlineRemaining = game?.photo_deadline
+    ? (new Date(game.photo_deadline).getTime() - now) / 1000
+    : null;
+  const photoRequestPending = !!game?.photo_requested_at && !photoSentAt;
 
   function startLoop() {
     if (!pos) {
@@ -174,6 +308,7 @@ function PlayView() {
     }
     trackRef.current = [pos];
     distRef.current = 0;
+    loopStartRef.current = Date.now();
     runningRef.current = true;
     setTrack([pos]);
     setDistance(0);
@@ -207,6 +342,9 @@ function PlayView() {
           territories={mapTerritories}
           trail={track}
           trailColor={myColor}
+          returnZone={returnZone}
+          landmarks={mapLandmarks}
+          forbiddenZones={mapForbiddenZones}
           follow
         />
       </div>
@@ -221,22 +359,89 @@ function PlayView() {
             <span className="text-lg font-bold">{me?.name ?? "…"}</span>
           </div>
           <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
+          <div className="text-[10px] text-muted-foreground">
+            Total conquis : {formatArea(me?.total_captured_m2 ?? 0)}
+          </div>
+          {!!me?.penalty_m2 && (
+            <div className="text-[10px] font-semibold text-destructive">
+              Pénalités : -{formatArea(me.penalty_m2)}
+            </div>
+          )}
         </div>
         <div className="panel px-3 py-2 text-right">
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Temps
           </div>
           <div className="display text-2xl tabular-nums">
-            {remaining === null ? "--:--" : formatClock(remaining)}
+            {remaining === null ? "--:--" : formatCountdown(remaining)}
           </div>
         </div>
       </div>
 
+      <button
+        aria-label="Messages"
+        className="panel pointer-events-auto absolute right-3 top-24 z-[1000] flex h-12 w-12 items-center justify-center"
+        onClick={() => {
+          setChatOpen(true);
+          setUnread(false);
+        }}
+      >
+        <MessageCircle className="h-6 w-6" />
+        {unread && (
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
+        )}
+      </button>
+
+      {chatOpen && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Messages avec le prof
+            </span>
+            <button aria-label="Fermer" onClick={() => setChatOpen(false)}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+            {myMessages.length === 0 && (
+              <p className="py-2 text-center text-sm text-muted-foreground">Aucun message.</p>
+            )}
+            {myMessages.map((m) => (
+              <div
+                key={m.id}
+                className={`rounded-xl px-3 py-2 text-sm ${
+                  m.sender === "prof" ? "bg-muted" : "self-end bg-primary/15"
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {m.sender === "prof" ? "Prof" : "Vous"}
+                </div>
+                <div>{m.body}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="field"
+              placeholder="Votre message au prof..."
+              value={chatBody}
+              onChange={(e) => setChatBody(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void sendChat()}
+            />
+            <button
+              aria-label="Envoyer"
+              className="rounded-xl bg-primary p-3 text-primary-foreground"
+              onClick={sendChat}
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 p-3">
         {geoError && (
-          <div className="panel px-4 py-3 text-sm font-semibold text-destructive">
-            {geoError}
-          </div>
+          <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
         {running && (
@@ -267,8 +472,55 @@ function PlayView() {
           </div>
         )}
 
+        {photoRequestPending && (
+          <div className="panel flex flex-col gap-3 border-4 border-accent px-4 py-3">
+            <div className="text-sm font-bold">
+              📸 Le prof demande une photo de votre groupe
+              {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
+                ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
+                : " — délai dépassé, envoyez-la quand même"}
+            </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void sendPhoto(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              className="btn-huge btn-huge-accent"
+              disabled={photoSending}
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <Camera className="h-6 w-6" /> {photoSending ? "Envoi..." : "Prendre la photo"}
+            </button>
+          </div>
+        )}
+
+        {returnZone && !finished && (
+          <div className="panel flex items-center justify-between px-4 py-3">
+            <span className="text-sm font-semibold text-muted-foreground">
+              Distance à la zone de retour
+            </span>
+            <span className="display text-xl tabular-nums">
+              {toZone === null ? "—" : `${Math.round(toZone)} m`}
+            </span>
+          </div>
+        )}
+
         {finished ? (
-          <div className="btn-huge btn-huge-dark">Partie terminée</div>
+          <div className="btn-huge btn-huge-dark">
+            {returnZone
+              ? me?.validated
+                ? "Partie terminée — territoire validé !"
+                : "Partie terminée — territoire non comptabilisé (hors zone)"
+              : "Partie terminée"}
+          </div>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle

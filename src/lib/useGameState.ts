@@ -8,6 +8,12 @@ export type Game = {
   duration_minutes: number;
   started_at: string | null;
   ends_at: string | null;
+  owner_id: string | null;
+  return_lat: number | null;
+  return_lng: number | null;
+  return_radius_m: number;
+  photo_requested_at: string | null;
+  photo_deadline: string | null;
 };
 
 export type Team = {
@@ -18,6 +24,10 @@ export type Team = {
   lat: number | null;
   lng: number | null;
   score_m2: number;
+  total_captured_m2: number;
+  landmark_bonus_m2: number;
+  penalty_m2: number;
+  validated: boolean;
 };
 
 export type Territory = {
@@ -26,6 +36,7 @@ export type Territory = {
   team_id: string;
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
   area_m2: number;
+  scored_m2: number;
 };
 
 export function useGameState(gameId: string | null) {

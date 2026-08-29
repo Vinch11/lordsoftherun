@@ -17,6 +17,12 @@ export type MapTerritory = {
   geometry: Polygon | MultiPolygon;
 };
 
+export type ReturnZone = { lat: number; lng: number; radiusM: number };
+
+export type MapLandmark = { id: string; lat: number; lng: number; claimed: boolean };
+
+export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: number };
+
 type Props = {
   center: [number, number] | null;
   teams: MapTeam[];
@@ -24,7 +30,19 @@ type Props = {
   trail?: [number, number][];
   trailColor?: string;
   follow?: boolean;
+  returnZone?: ReturnZone | null;
+  landmarks?: MapLandmark[];
+  forbiddenZones?: MapForbiddenZone[];
+  onMapClick?: (lat: number, lng: number) => void;
 };
+
+const landmarkIcon = (claimed: boolean) =>
+  L.divIcon({
+    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));opacity:${claimed ? 0.4 : 1}">⭐</div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 
@@ -35,13 +53,22 @@ export default function GameMap({
   trail = [],
   trailColor = "#e63946",
   follow = false,
+  returnZone = null,
+  landmarks = [],
+  forbiddenZones = [],
+  onMapClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const territoryLayer = useRef<L.LayerGroup | null>(null);
   const teamLayer = useRef<L.LayerGroup | null>(null);
+  const zoneLayer = useRef<L.LayerGroup | null>(null);
+  const landmarkLayer = useRef<L.LayerGroup | null>(null);
+  const forbiddenLayer = useRef<L.LayerGroup | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const didInitialFit = useRef(false);
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -57,9 +84,13 @@ export default function GameMap({
     }).addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     territoryLayer.current = L.layerGroup().addTo(map);
+    zoneLayer.current = L.layerGroup().addTo(map);
+    forbiddenLayer.current = L.layerGroup().addTo(map);
+    landmarkLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
-    trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(
-      map,
+    trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
+    map.on("click", (e: L.LeafletMouseEvent) =>
+      onMapClickRef.current?.(e.latlng.lat, e.latlng.lng),
     );
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
@@ -96,6 +127,53 @@ export default function GameMap({
       }).addTo(layer);
     }
   }, [territories]);
+
+  useEffect(() => {
+    const layer = zoneLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (returnZone) {
+      L.circle([returnZone.lat, returnZone.lng], {
+        radius: returnZone.radiusM,
+        color: "#1d6fe0",
+        weight: 3,
+        dashArray: "8 8",
+        fillColor: "#1d6fe0",
+        fillOpacity: 0.08,
+      })
+        .bindTooltip("Zone de retour", { permanent: false })
+        .addTo(layer);
+    }
+  }, [returnZone]);
+
+  useEffect(() => {
+    const layer = forbiddenLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const z of forbiddenZones) {
+      L.circle([z.lat, z.lng], {
+        radius: z.radiusM,
+        color: "#e63946",
+        weight: 2,
+        dashArray: "4 6",
+        fillColor: "#e63946",
+        fillOpacity: 0.18,
+      })
+        .bindTooltip("⚠️ Zone interdite")
+        .addTo(layer);
+    }
+  }, [forbiddenZones]);
+
+  useEffect(() => {
+    const layer = landmarkLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const lm of landmarks) {
+      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.claimed) })
+        .bindTooltip(lm.claimed ? "Repère pris" : "Repère bonus")
+        .addTo(layer);
+    }
+  }, [landmarks]);
 
   useEffect(() => {
     const layer = teamLayer.current;
