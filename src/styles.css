@@ -376,3 +376,89 @@
   background: #eef2f6 !important;
 }
 
+
+@layer components {
+  /* Shared page furniture so every screen reads like the home screen:
+     pill eyebrows, accent-railed panels and consistent icon buttons. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    background-color: var(--color-secondary);
+    color: var(--color-secondary-foreground);
+    padding: 0.3rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .panel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-accent) 70%, transparent),
+      color-mix(in oklch, var(--color-primary) 70%, transparent),
+      transparent
+    );
+    opacity: 0.75;
+    pointer-events: none;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-foreground);
+  }
+
+  .section-title svg {
+    color: var(--color-accent);
+  }
+
+  .icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xl);
+    background-color: color-mix(in oklch, var(--color-secondary) 85%, transparent);
+    border: 1px solid var(--color-border);
+    color: var(--color-foreground);
+    padding: 0.5rem;
+    transition:
+      transform 120ms ease,
+      background-color 120ms ease;
+  }
+
+  .icon-btn:active {
+    transform: scale(0.94);
+  }
+
+  .icon-btn:disabled {
+    opacity: 0.5;
+  }
+
+  .page-title {
+    font-size: 2.75rem;
+    line-height: 0.92;
+  }
+
+  .page-title em {
+    font-style: normal;
+    color: var(--color-primary);
+  }
+}

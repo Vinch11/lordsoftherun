@@ -68,7 +68,7 @@ function AuthPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <header>
-          <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-secondary-foreground">
+          <div className="pill">
             <Flag className="h-3.5 w-3.5" /> Enseignant
           </div>
           <h1 className="mt-4 text-5xl leading-[0.9]">

@@ -549,13 +549,13 @@ function TeacherDashboard() {
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="section-title">
               Durée
             </span>
             <div className="flex items-center gap-3">
               <button
                 aria-label="Réduire"
-                className="rounded-xl bg-muted p-2"
+                className="icon-btn"
                 onClick={() => setDurationValue((v) => Math.max(1, v - UNIT_STEP[durationUnit]))}
               >
                 <Minus className="h-5 w-5" />
@@ -563,7 +563,7 @@ function TeacherDashboard() {
               <span className="display w-16 text-center text-2xl">{durationValue}</span>
               <button
                 aria-label="Augmenter"
-                className="rounded-xl bg-muted p-2"
+                className="icon-btn"
                 onClick={() =>
                   setDurationValue((v) =>
                     Math.min(UNIT_MAX[durationUnit], v + UNIT_STEP[durationUnit]),
@@ -610,12 +610,12 @@ function TeacherDashboard() {
 
         <section className="panel flex flex-col items-center gap-3 p-4">
           <div className="flex w-full items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title">
               <QrCode className="h-4 w-4" /> Rejoindre
             </div>
             <button
               aria-label="Agrandir le QR code"
-              className="rounded-xl bg-muted p-2"
+              className="icon-btn"
               onClick={() => setQrFullscreen(true)}
             >
               <Maximize2 className="h-4 w-4" />
@@ -641,13 +641,13 @@ function TeacherDashboard() {
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title">
               <MapPin className="h-4 w-4" /> Zone de retour
             </div>
             {returnZone && isOwner && (
               <button
                 aria-label="Supprimer la zone"
-                className="rounded-xl bg-muted p-2"
+                className="icon-btn"
                 onClick={clearZone}
               >
                 <X className="h-4 w-4" />
@@ -672,7 +672,7 @@ function TeacherDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     aria-label="Réduire le rayon"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
                   >
                     <Minus className="h-4 w-4" />
@@ -680,7 +680,7 @@ function TeacherDashboard() {
                   <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
                   <button
                     aria-label="Augmenter le rayon"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
                   >
                     <Plus className="h-4 w-4" />
@@ -702,7 +702,7 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             <Star className="h-4 w-4" /> Repères bonus
           </div>
           <p className="text-sm text-muted-foreground">
@@ -716,7 +716,7 @@ function TeacherDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     aria-label="Réduire le bonus"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setLandmarkBonus((b) => Math.max(10, b - 10))}
                   >
                     <Minus className="h-4 w-4" />
@@ -726,7 +726,7 @@ function TeacherDashboard() {
                   </span>
                   <button
                     aria-label="Augmenter le bonus"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setLandmarkBonus((b) => Math.min(500, b + 10))}
                   >
                     <Plus className="h-4 w-4" />
@@ -806,7 +806,7 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             <ShieldAlert className="h-4 w-4" /> Zones interdites
           </div>
           <p className="text-sm text-muted-foreground">
@@ -819,7 +819,7 @@ function TeacherDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     aria-label="Réduire le rayon"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setForbiddenRadius((r) => Math.max(5, r - 5))}
                   >
                     <Minus className="h-4 w-4" />
@@ -827,7 +827,7 @@ function TeacherDashboard() {
                   <span className="display w-16 text-center text-lg">{forbiddenRadius} m</span>
                   <button
                     aria-label="Augmenter le rayon"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setForbiddenRadius((r) => Math.min(200, r + 5))}
                   >
                     <Plus className="h-4 w-4" />
@@ -839,7 +839,7 @@ function TeacherDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     aria-label="Réduire la pénalité"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setForbiddenPenalty((p) => Math.max(10, p - 10))}
                   >
                     <Minus className="h-4 w-4" />
@@ -849,7 +849,7 @@ function TeacherDashboard() {
                   </span>
                   <button
                     aria-label="Augmenter la pénalité"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setForbiddenPenalty((p) => Math.min(500, p + 10))}
                   >
                     <Plus className="h-4 w-4" />
@@ -927,7 +927,7 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             <Camera className="h-4 w-4" /> Photo de contrôle
           </div>
           {game?.photo_requested_at ? (
@@ -950,7 +950,7 @@ function TeacherDashboard() {
                 <div className="flex items-center gap-3">
                   <button
                     aria-label="Réduire le délai"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setPhotoDelay((d) => Math.max(1, d - 1))}
                   >
                     <Minus className="h-4 w-4" />
@@ -958,7 +958,7 @@ function TeacherDashboard() {
                   <span className="display w-16 text-center text-lg">{photoDelay} min</span>
                   <button
                     aria-label="Augmenter le délai"
-                    className="rounded-xl bg-muted p-2"
+                    className="icon-btn"
                     onClick={() => setPhotoDelay((d) => Math.min(30, d + 1))}
                   >
                     <Plus className="h-4 w-4" />
@@ -1009,7 +1009,7 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
           {ranked.length === 0 && (
@@ -1065,7 +1065,7 @@ function TeacherDashboard() {
 
         {ranked.length > 0 && (
           <section className="panel flex flex-col gap-1 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title mb-2">
               <Medal className="h-4 w-4" /> Total conquis (indicatif)
             </div>
             <p className="mb-1 text-xs text-muted-foreground">
@@ -1092,7 +1092,7 @@ function TeacherDashboard() {
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             Messages
           </div>
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">

@@ -161,7 +161,7 @@ function Home() {
     <main className="min-h-screen px-5 py-8">
       <div className="mx-auto flex max-w-md flex-col gap-8">
         <header className="pt-6">
-          <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-secondary-foreground">
+          <div className="pill">
             <MapPin className="h-3.5 w-3.5" /> EPS · plein air
           </div>
           <h1 className="mt-4 text-6xl leading-[0.9]">
@@ -185,7 +185,7 @@ function Home() {
         )}
 
         <section className="panel flex flex-col gap-4 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             <Users className="h-4 w-4" /> Groupe d'élèves
           </div>
           <input
@@ -207,7 +207,7 @@ function Home() {
 
         {user && myGames.length > 0 && (
           <section className="panel flex flex-col gap-1 p-5">
-            <div className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title mb-2">
               Mes parties
             </div>
             {myGames.map((g) => (
@@ -254,14 +254,14 @@ function Home() {
                 </button>
                 <button
                   aria-label={`Afficher le QR code de la partie ${g.code}`}
-                  className="rounded-xl bg-muted p-3"
+                  className="icon-btn p-3"
                   onClick={() => setQrCodeGame(g.code)}
                 >
                   <QrCode className="h-5 w-5" />
                 </button>
                 <button
                   aria-label={`Supprimer la partie ${g.code}`}
-                  className="rounded-xl bg-muted p-3 text-destructive disabled:opacity-50"
+                  className="icon-btn p-3 text-destructive"
                   disabled={deletingGame === g.id}
                   onClick={() => void deleteGame(g)}
                 >

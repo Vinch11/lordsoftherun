@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
 
@@ -104,10 +105,22 @@ function Join() {
   return (
     <main className="min-h-screen px-5 py-8">
       <div className="mx-auto flex max-w-md flex-col gap-6">
-        <h1 className="pt-4 text-4xl">Rejoindre</h1>
+        <header className="pt-4">
+          <div className="pill">
+            <Users className="h-3.5 w-3.5" /> Groupe d'élèves
+          </div>
+          <h1 className="page-title mt-4">
+            Re<em>joindre</em>
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            Code, nom d'équipe, couleur : et le quartier est à vous.
+          </p>
+        </header>
 
+        <section className="panel flex flex-col gap-5 p-5">
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+
+          <span className="section-title">
             Code de la partie
           </span>
           <input
@@ -121,7 +134,7 @@ function Join() {
         </label>
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="section-title">
             Nom de l'équipe
           </span>
           <input
@@ -134,7 +147,7 @@ function Join() {
         </label>
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="section-title">
             Couleur
           </span>
           <div className="grid grid-cols-4 gap-3">
@@ -152,6 +165,11 @@ function Join() {
             ))}
           </div>
         </div>
+        </section>
+
+
+
+
 
         <button
           className="btn-huge"
