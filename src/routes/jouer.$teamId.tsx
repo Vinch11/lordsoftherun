@@ -587,6 +587,20 @@ function PlayView() {
           </button>
         )}
       </div>
+
+      {rulesOpen && (
+        <RulesIntro
+          teamName={me?.name}
+          teamColor={myColor}
+          hasReturnZone={!!returnZone}
+          onClose={closeRules}
+        />
+      )}
+
+      {summary && (
+        <LoopSummary data={summary} color={myColor} onClose={() => setSummary(null)} />
+      )}
     </main>
+
   );
 }
