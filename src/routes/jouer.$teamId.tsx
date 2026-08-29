@@ -396,7 +396,7 @@ function PlayView() {
       {chatOpen && (
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <span className="section-title">
               Messages avec le prof
             </span>
             <button aria-label="Fermer" onClick={() => setChatOpen(false)}>

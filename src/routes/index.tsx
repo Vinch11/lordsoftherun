@@ -185,7 +185,7 @@ function Home() {
         )}
 
         <section className="panel flex flex-col gap-4 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title">
             <Users className="h-4 w-4" /> Groupe d'élèves
           </div>
           <input
@@ -254,14 +254,14 @@ function Home() {
                 </button>
                 <button
                   aria-label={`Afficher le QR code de la partie ${g.code}`}
-                  className="rounded-xl bg-muted p-3"
+                  className="icon-btn p-3"
                   onClick={() => setQrCodeGame(g.code)}
                 >
                   <QrCode className="h-5 w-5" />
                 </button>
                 <button
                   aria-label={`Supprimer la partie ${g.code}`}
-                  className="rounded-xl bg-muted p-3 text-destructive disabled:opacity-50"
+                  className="icon-btn p-3 text-destructive"
                   disabled={deletingGame === g.id}
                   onClick={() => void deleteGame(g)}
                 >

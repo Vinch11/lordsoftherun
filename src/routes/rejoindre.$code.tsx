@@ -107,7 +107,7 @@ function Join() {
         <h1 className="pt-4 text-4xl">Rejoindre</h1>
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="section-title">
             Code de la partie
           </span>
           <input
@@ -121,7 +121,7 @@ function Join() {
         </label>
 
         <label className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="section-title">
             Nom de l'équipe
           </span>
           <input
@@ -134,7 +134,7 @@ function Join() {
         </label>
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span className="section-title">
             Couleur
           </span>
           <div className="grid grid-cols-4 gap-3">
