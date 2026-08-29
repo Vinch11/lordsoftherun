@@ -240,9 +240,20 @@ function Home() {
                 </button>
               </div>
             ))}
-
           </section>
         )}
+
+        {qrCodeGame && (
+          <div
+            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-6 bg-background p-6"
+            onClick={() => setQrCodeGame(null)}
+          >
+            <JoinQRCode url={`${window.location.origin}/rejoindre/${qrCodeGame}`} size={320} />
+            <div className="display text-5xl tracking-[0.3em]">{qrCodeGame}</div>
+            <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
+          </div>
+        )}
+
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
           {user ? (
