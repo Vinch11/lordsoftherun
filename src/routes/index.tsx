@@ -207,7 +207,7 @@ function Home() {
 
         {user && myGames.length > 0 && (
           <section className="panel flex flex-col gap-1 p-5">
-            <div className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title mb-2">
               Mes parties
             </div>
             {myGames.map((g) => (

@@ -1009,7 +1009,7 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
           {ranked.length === 0 && (
@@ -1065,7 +1065,7 @@ function TeacherDashboard() {
 
         {ranked.length > 0 && (
           <section className="panel flex flex-col gap-1 p-4">
-            <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="section-title mb-2">
               <Medal className="h-4 w-4" /> Total conquis (indicatif)
             </div>
             <p className="mb-1 text-xs text-muted-foreground">

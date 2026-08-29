@@ -71,7 +71,7 @@ function AdminPage() {
         </div>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title mb-2">
             En attente d'approbation ({pending.length})
           </div>
           {loadingTeachers && <p className="text-muted-foreground">Chargement…</p>}
@@ -95,7 +95,7 @@ function AdminPage() {
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
-          <div className="mb-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="section-title mb-2">
             Enseignants approuvés ({approved.length})
           </div>
           {approved.length === 0 && (
