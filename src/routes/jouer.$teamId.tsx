@@ -77,6 +77,19 @@ function PlayView() {
   const [photoSending, setPhotoSending] = useState(false);
   const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [summary, setSummary] = useState<LoopSummaryData | null>(null);
+
+  const rulesKey = `conquete:rules-seen:${teamId}`;
+  useEffect(() => {
+    if (!localStorage.getItem(rulesKey)) setRulesOpen(true);
+  }, [rulesKey]);
+
+  function closeRules() {
+    localStorage.setItem(rulesKey, "1");
+    setRulesOpen(false);
+  }
+
 
   useEffect(() => {
     requestNotificationPermission();
