@@ -80,12 +80,7 @@ function PlayView() {
 
   const myMessages = useMemo(
     () =>
-      messages.filter(
-        (m) =>
-          (m.from_role === "prof" && m.to_team_id === null) ||
-          m.to_team_id === teamId ||
-          m.from_team_id === teamId,
-      ),
+      messages.filter((m) => (m.sender === "prof" && m.team_id === null) || m.team_id === teamId),
     [messages, teamId],
   );
 
@@ -96,7 +91,7 @@ function PlayView() {
     }
     if (myMessages.length > seenMessageCount.current) {
       const latest = myMessages[myMessages.length - 1];
-      if (latest?.from_role === "prof") {
+      if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
         if (!chatOpen) setUnread(true);
       }
@@ -207,7 +202,7 @@ function PlayView() {
 
   const returnZone = useMemo(
     () =>
-      game?.return_lat != null && game.return_lng != null && game.return_radius_m != null
+      game?.return_lat != null && game.return_lng != null
         ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
         : null,
     [game?.return_lat, game?.return_lng, game?.return_radius_m],
@@ -317,11 +312,11 @@ function PlayView() {
               <div
                 key={m.id}
                 className={`rounded-xl px-3 py-2 text-sm ${
-                  m.from_role === "prof" ? "bg-muted" : "self-end bg-primary/15"
+                  m.sender === "prof" ? "bg-muted" : "self-end bg-primary/15"
                 }`}
               >
                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {m.from_role === "prof" ? "Prof" : "Vous"}
+                  {m.sender === "prof" ? "Prof" : "Vous"}
                 </div>
                 <div>{m.body}</div>
               </div>

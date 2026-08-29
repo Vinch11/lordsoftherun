@@ -11,7 +11,7 @@ export type Game = {
   owner_id: string | null;
   return_lat: number | null;
   return_lng: number | null;
-  return_radius_m: number | null;
+  return_radius_m: number;
 };
 
 export type Team = {

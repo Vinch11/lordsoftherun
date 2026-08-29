@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Flag, LogOut, MapPin, Users } from "lucide-react";
+import { Flag, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { randomCode } from "@/lib/conquete";
-import { useSession } from "@/lib/useSession";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,13 +28,13 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
-  const { session, loading } = useSession();
+  const { user, loading } = useAuth();
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function createGame() {
-    if (!session) {
-      await navigate({ to: "/connexion" });
+    if (!user) {
+      await navigate({ to: "/auth" });
       return;
     }
     setCreating(true);
@@ -43,7 +43,7 @@ function Home() {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c, owner_id: session.user.id })
+          .insert({ code: c, owner_id: user.id })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -55,11 +55,6 @@ function Home() {
     } finally {
       setCreating(false);
     }
-  }
-
-  async function signOut() {
-    await supabase.auth.signOut();
-    toast("Déconnecté.");
   }
 
   return (
@@ -100,31 +95,32 @@ function Home() {
         </section>
 
         <section className="panel flex flex-col gap-4 p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              <Flag className="h-4 w-4" /> Enseignant
-            </div>
-            {session && (
-              <button
-                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
-                onClick={signOut}
-              >
-                <LogOut className="h-3.5 w-3.5" /> Déconnexion
-              </button>
-            )}
+          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <Flag className="h-4 w-4" /> Enseignant
           </div>
           <button
             className="btn-huge btn-huge-dark"
             disabled={creating || loading}
             onClick={createGame}
           >
-            {creating ? "Création..." : session ? "Créer une partie" : "Se connecter"}
+            {creating ? "Création..." : user ? "Créer une partie" : "Se connecter pour créer"}
           </button>
           <p className="text-sm text-muted-foreground">
-            {session
+            {user
               ? "Vous obtiendrez un code à 4 chiffres à donner aux groupes."
-              : "Connectez-vous avec votre compte enseignant pour créer une partie."}
+              : "Créez votre compte enseignant (e-mail + mot de passe) pour lancer une partie."}
           </p>
+          {user && (
+            <button
+              className="text-left text-sm font-semibold underline text-muted-foreground"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toast("Déconnecté.");
+              }}
+            >
+              Se déconnecter ({user.email})
+            </button>
+          )}
         </section>
       </div>
     </main>

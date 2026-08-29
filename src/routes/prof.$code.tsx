@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { LogOut, MapPin, Minus, Plus, Send, Trophy, X } from "lucide-react";
+import { MapPin, Minus, Plus, Send, Trophy, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
-import { useSession } from "@/lib/useSession";
+import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import { formatArea, formatClock, haversine } from "@/lib/conquete";
 
@@ -28,13 +28,13 @@ export const Route = createFileRoute("/prof/$code")({
   component: TeacherDashboard,
 });
 
-const DEFAULT_ZONE_RADIUS = 30;
+const DEFAULT_ZONE_RADIUS = 25;
 
 function TeacherDashboard() {
   const { code } = Route.useParams();
-  const navigate = useNavigate();
-  const { session, loading: sessionLoading } = useSession();
+  const { user } = useAuth();
   const [gameId, setGameId] = useState<string | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [duration, setDuration] = useState(20);
   const [now, setNow] = useState(() => Date.now());
@@ -47,16 +47,10 @@ function TeacherDashboard() {
   const seenMessageCount = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!sessionLoading && !session) {
-      void navigate({ to: "/connexion" });
-    }
-  }, [sessionLoading, session, navigate]);
-
-  useEffect(() => {
     let active = true;
     void supabase
       .from("games")
-      .select("id, duration_minutes")
+      .select("id, duration_minutes, owner_id")
       .eq("code", code)
       .maybeSingle()
       .then(({ data }) => {
@@ -64,6 +58,7 @@ function TeacherDashboard() {
         if (!data) setNotFound(true);
         else {
           setGameId(data.id);
+          setOwnerId(data.owner_id);
           setDuration(data.duration_minutes);
         }
       });
@@ -89,9 +84,9 @@ function TeacherDashboard() {
     }
     if (messages.length > seenMessageCount.current) {
       const latest = messages[messages.length - 1];
-      if (latest?.from_role === "team") {
-        const from = teams.find((t) => t.id === latest.from_team_id);
-        toast(`💬 ${from?.name ?? "Équipe"} : ${latest.body}`);
+      if (latest?.sender !== "prof") {
+        const from = teams.find((t) => t.id === latest?.team_id);
+        toast(`💬 ${from?.name ?? "Équipe"} : ${latest?.body}`);
       }
     }
     seenMessageCount.current = messages.length;
@@ -102,16 +97,14 @@ function TeacherDashboard() {
     return () => clearInterval(t);
   }, []);
 
-  const isOwner = !game?.owner_id || (session && game.owner_id === session.user.id);
+  const isOwner = !!user && !!ownerId && user.id === ownerId;
 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : duration * 60;
   const running = game?.status === "running" && remaining > 0;
 
   const withinReturnZone = useMemo(() => {
     return (team: { lat: number | null; lng: number | null }) => {
-      if (game?.return_lat == null || game.return_lng == null || game.return_radius_m == null) {
-        return true;
-      }
+      if (game?.return_lat == null || game.return_lng == null) return true;
       if (team.lat == null || team.lng == null) return false;
       return (
         haversine([team.lat, team.lng], [game.return_lat, game.return_lng]) <= game.return_radius_m
@@ -121,6 +114,10 @@ function TeacherDashboard() {
 
   async function stop() {
     if (!gameId || stoppedRef.current) return;
+    if (!isOwner) {
+      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      return;
+    }
     stoppedRef.current = true;
     await Promise.all(
       teams.map((t) =>
@@ -135,14 +132,14 @@ function TeacherDashboard() {
   }
 
   useEffect(() => {
-    if (game?.status === "running" && remaining <= 0) {
+    if (game?.status === "running" && remaining <= 0 && isOwner) {
       void stop();
     }
     if (game?.status !== "running") {
       stoppedRef.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remaining, game?.status]);
+  }, [remaining, game?.status, isOwner]);
 
   const ranked = useMemo(() => [...teams].sort((a, b) => b.score_m2 - a.score_m2), [teams]);
   const finished = game?.status === "finished";
@@ -171,7 +168,7 @@ function TeacherDashboard() {
 
   const returnZone = useMemo(
     () =>
-      game?.return_lat != null && game.return_lng != null && game.return_radius_m != null
+      game?.return_lat != null && game.return_lng != null
         ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
         : null,
     [game?.return_lat, game?.return_lng, game?.return_radius_m],
@@ -179,6 +176,10 @@ function TeacherDashboard() {
 
   async function start() {
     if (!gameId) return;
+    if (!isOwner) {
+      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      return;
+    }
     const ends = new Date(Date.now() + duration * 60_000).toISOString();
     await supabase
       .from("games")
@@ -193,7 +194,7 @@ function TeacherDashboard() {
   }
 
   async function placeZone(lat: number, lng: number) {
-    if (!gameId) return;
+    if (!gameId || !isOwner) return;
     await supabase
       .from("games")
       .update({ return_lat: lat, return_lng: lng, return_radius_m: zoneRadius })
@@ -204,20 +205,17 @@ function TeacherDashboard() {
 
   async function updateZoneRadius(next: number) {
     setZoneRadius(next);
-    if (!gameId || game?.return_lat == null) return;
+    if (!gameId || !isOwner || game?.return_lat == null) return;
     await supabase.from("games").update({ return_radius_m: next }).eq("id", gameId);
   }
 
   async function clearZone() {
-    if (!gameId) return;
-    await supabase
-      .from("games")
-      .update({ return_lat: null, return_lng: null, return_radius_m: null })
-      .eq("id", gameId);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ return_lat: null, return_lng: null }).eq("id", gameId);
   }
 
   async function sendMessage() {
-    if (!gameId || !messageBody.trim()) return;
+    if (!gameId || !isOwner || !messageBody.trim()) return;
     const body = messageBody.trim();
     setMessageBody("");
     try {
@@ -227,23 +225,10 @@ function TeacherDashboard() {
     }
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    await navigate({ to: "/" });
-  }
-
   if (notFound) {
     return (
       <main className="flex min-h-screen items-center justify-center p-6 text-center">
         <p className="text-lg">Aucune partie avec le code {code}.</p>
-      </main>
-    );
-  }
-
-  if (!sessionLoading && session && !isOwner) {
-    return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <p className="text-lg">Cette partie ne vous appartient pas.</p>
       </main>
     );
   }
@@ -272,12 +257,6 @@ function TeacherDashboard() {
             <div className="display text-2xl tabular-nums">{formatClock(remaining)}</div>
           </div>
         </div>
-        <button
-          className="panel pointer-events-auto absolute right-3 top-3 z-[1000] flex items-center gap-1 px-3 py-2 text-sm font-semibold"
-          onClick={signOut}
-        >
-          <LogOut className="h-4 w-4" /> Déconnexion
-        </button>
         {placingZone && (
           <div className="panel pointer-events-none absolute inset-x-3 bottom-3 z-[1000] px-4 py-3 text-center text-sm font-semibold">
             Touchez la carte pour placer le centre de la zone de retour
@@ -286,6 +265,13 @@ function TeacherDashboard() {
       </div>
 
       <div className="flex flex-1 flex-col gap-5 p-4">
+        {!isOwner && (
+          <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
+            Vous consultez cette partie en lecture seule : seul l'enseignant qui l'a créée peut la
+            piloter.
+          </div>
+        )}
+
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
@@ -310,10 +296,10 @@ function TeacherDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="btn-huge btn-huge-accent" onClick={start}>
+            <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
               {running ? "Relancer" : "Démarrer"}
             </button>
-            <button className="btn-huge" onClick={stop}>
+            <button className="btn-huge" disabled={!isOwner} onClick={stop}>
               Terminer
             </button>
           </div>
@@ -324,7 +310,7 @@ function TeacherDashboard() {
             <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
               <MapPin className="h-4 w-4" /> Zone de retour
             </div>
-            {returnZone && (
+            {returnZone && isOwner && (
               <button
                 aria-label="Supprimer la zone"
                 className="rounded-xl bg-muted p-2"
@@ -345,36 +331,40 @@ function TeacherDashboard() {
               position finale des équipes.
             </p>
           )}
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold">Rayon</span>
-            <div className="flex items-center gap-3">
+          {isOwner && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Rayon</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire le rayon"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
+                  <button
+                    aria-label="Augmenter le rayon"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
               <button
-                aria-label="Réduire le rayon"
-                className="rounded-xl bg-muted p-2"
-                onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
+                className={`btn-huge ${placingZone ? "btn-huge-accent" : "btn-huge-dark"}`}
+                onClick={() => setPlacingZone((p) => !p)}
               >
-                <Minus className="h-4 w-4" />
+                {placingZone
+                  ? "Touchez la carte..."
+                  : returnZone
+                    ? "Déplacer la zone"
+                    : "Placer sur la carte"}
               </button>
-              <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
-              <button
-                aria-label="Augmenter le rayon"
-                className="rounded-xl bg-muted p-2"
-                onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <button
-            className={`btn-huge ${placingZone ? "btn-huge-accent" : "btn-huge-dark"}`}
-            onClick={() => setPlacingZone((p) => !p)}
-          >
-            {placingZone
-              ? "Touchez la carte..."
-              : returnZone
-                ? "Déplacer la zone"
-                : "Placer sur la carte"}
-          </button>
+            </>
+          )}
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
@@ -431,11 +421,11 @@ function TeacherDashboard() {
             )}
             {messages.map((m) => {
               const label =
-                m.from_role === "prof"
-                  ? m.to_team_id
-                    ? `→ ${teams.find((t) => t.id === m.to_team_id)?.name ?? "équipe"}`
+                m.sender === "prof"
+                  ? m.team_id
+                    ? `→ ${teams.find((t) => t.id === m.team_id)?.name ?? "équipe"}`
                     : "📢 À toutes les équipes"
-                  : `${teams.find((t) => t.id === m.from_team_id)?.name ?? "Équipe"} →`;
+                  : `${teams.find((t) => t.id === m.team_id)?.name ?? "Équipe"} →`;
               return (
                 <div key={m.id} className="rounded-xl bg-muted px-3 py-2 text-sm">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -446,36 +436,38 @@ function TeacherDashboard() {
               );
             })}
           </div>
-          <div className="flex flex-col gap-2">
-            <select
-              className="field"
-              value={messageTarget}
-              onChange={(e) => setMessageTarget(e.target.value)}
-            >
-              <option value="all">Toutes les équipes</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <input
+          {isOwner && (
+            <div className="flex flex-col gap-2">
+              <select
                 className="field"
-                placeholder="Votre message..."
-                value={messageBody}
-                onChange={(e) => setMessageBody(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
-              />
-              <button
-                aria-label="Envoyer"
-                className="rounded-xl bg-primary p-3 text-primary-foreground"
-                onClick={sendMessage}
+                value={messageTarget}
+                onChange={(e) => setMessageTarget(e.target.value)}
               >
-                <Send className="h-5 w-5" />
-              </button>
+                <option value="all">Toutes les équipes</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <input
+                  className="field"
+                  placeholder="Votre message..."
+                  value={messageBody}
+                  onChange={(e) => setMessageBody(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
+                />
+                <button
+                  aria-label="Envoyer"
+                  className="rounded-xl bg-primary p-3 text-primary-foreground"
+                  onClick={sendMessage}
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </section>
       </div>
     </main>
