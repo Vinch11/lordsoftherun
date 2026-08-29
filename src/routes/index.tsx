@@ -4,13 +4,16 @@ import { toast } from "sonner";
 import { Flag, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { randomCode } from "@/lib/conquete";
+import { formatArea, randomCode } from "@/lib/conquete";
 
 type MyGame = {
   id: string;
   code: string;
   status: string;
   created_at: string;
+  teamCount: number;
+  topTeam: string | null;
+  topScore: number;
 };
 
 export const Route = createFileRoute("/")({
@@ -51,9 +54,29 @@ function Home() {
       .select("id, code, status, created_at")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
-      .limit(10)
-      .then(({ data }) => {
-        if (active) setMyGames((data ?? []) as MyGame[]);
+      .limit(20)
+      .then(async ({ data: games }) => {
+        if (!active || !games) return;
+        const ids = games.map((g) => g.id);
+        const { data: teams } = ids.length
+          ? await supabase.from("teams").select("game_id, name, score_m2").in("game_id", ids)
+          : { data: [] };
+        if (!active) return;
+        setMyGames(
+          games.map((g) => {
+            const gameTeams = (teams ?? []).filter((t) => t.game_id === g.id);
+            const top = gameTeams.reduce<(typeof gameTeams)[number] | null>(
+              (best, t) => (!best || t.score_m2 > best.score_m2 ? t : best),
+              null,
+            );
+            return {
+              ...g,
+              teamCount: gameTeams.length,
+              topTeam: top?.name ?? null,
+              topScore: top?.score_m2 ?? 0,
+            };
+          }),
+        );
       });
     return () => {
       active = false;
@@ -159,25 +182,41 @@ function Home() {
             {myGames.map((g) => (
               <button
                 key={g.id}
-                className="flex items-center justify-between gap-3 border-b border-border py-3 text-left last:border-0"
+                className="flex flex-col gap-1 border-b border-border py-3 text-left last:border-0"
                 onClick={() => navigate({ to: "/prof/$code", params: { code: g.code } })}
               >
-                <span className="display text-xl tracking-[0.2em]">{g.code}</span>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                    g.status === "running"
-                      ? "bg-accent text-accent-foreground"
+                <div className="flex items-center justify-between gap-3">
+                  <span className="display text-xl tracking-[0.2em]">{g.code}</span>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                      g.status === "running"
+                        ? "bg-accent text-accent-foreground"
+                        : g.status === "finished"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-secondary text-secondary-foreground"
+                    }`}
+                  >
+                    {g.status === "running"
+                      ? "En cours"
                       : g.status === "finished"
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-secondary text-secondary-foreground"
-                  }`}
-                >
-                  {g.status === "running"
-                    ? "En cours"
-                    : g.status === "finished"
-                      ? "Terminée"
-                      : "Lobby"}
-                </span>
+                        ? "Terminée"
+                        : "Lobby"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>
+                    {new Date(g.created_at).toLocaleDateString("fr-FR", {
+                      day: "numeric",
+                      month: "short",
+                    })}{" "}
+                    · {g.teamCount} équipe{g.teamCount > 1 ? "s" : ""}
+                  </span>
+                  {g.topTeam && (
+                    <span>
+                      🏆 {g.topTeam} · {formatArea(g.topScore)}
+                    </span>
+                  )}
+                </div>
               </button>
             ))}
           </section>

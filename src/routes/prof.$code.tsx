@@ -1,7 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, MapPin, Medal, Minus, Plus, Send, Star, Trophy, X } from "lucide-react";
+import {
+  Bookmark,
+  Camera,
+  MapPin,
+  Medal,
+  Minus,
+  Plus,
+  Send,
+  ShieldAlert,
+  Star,
+  Trophy,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -10,7 +22,16 @@ import { sendProfMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import { addLandmark, removeLandmark, useLandmarks } from "@/lib/landmarks";
+import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import {
+  applySavedPoint,
+  deleteSavedPoint,
+  saveSavedPoint,
+  useSavedPoints,
+} from "@/lib/savedPoints";
+import {
+  DEFAULT_FORBIDDEN_PENALTY_M2,
+  DEFAULT_FORBIDDEN_RADIUS_M,
   DEFAULT_LANDMARK_BONUS_M2,
   formatArea,
   formatClock,
@@ -54,9 +75,13 @@ function TeacherDashboard() {
   const [durationUnit, setDurationUnit] = useState<DurationUnit>("minutes");
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
-  const [placingMode, setPlacingMode] = useState<"none" | "zone" | "landmark">("none");
+  const [placingMode, setPlacingMode] = useState<"none" | "zone" | "landmark" | "forbidden">(
+    "none",
+  );
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
+  const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
+  const [forbiddenPenalty, setForbiddenPenalty] = useState(DEFAULT_FORBIDDEN_PENALTY_M2);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
@@ -114,6 +139,15 @@ function TeacherDashboard() {
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
+  const { zones: forbiddenZones } = useForbiddenZones(gameId);
+  const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
+    user?.id ?? null,
+    "landmark",
+  );
+  const { points: forbiddenTemplates, refresh: refreshForbiddenTemplates } = useSavedPoints(
+    user?.id ?? null,
+    "forbidden",
+  );
 
   useEffect(() => {
     if (!radiusInitRef.current && game?.return_radius_m != null) {
@@ -249,6 +283,11 @@ function TeacherDashboard() {
     [landmarks],
   );
 
+  const mapForbiddenZones = useMemo(
+    () => forbiddenZones.map((z) => ({ id: z.id, lat: z.lat, lng: z.lng, radiusM: z.radius_m })),
+    [forbiddenZones],
+  );
+
   const returnZone = useMemo(
     () =>
       game?.return_lat != null && game.return_lng != null
@@ -306,6 +345,66 @@ function TeacherDashboard() {
     }
   }
 
+  async function placeForbidden(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    try {
+      await addForbiddenZone(gameId, lat, lng, forbiddenRadius, forbiddenPenalty);
+      setPlacingMode("none");
+      toast.success("Zone interdite placée.");
+    } catch {
+      toast.error("Impossible de placer la zone.");
+    }
+  }
+
+  async function deleteForbidden(id: string) {
+    if (!isOwner) return;
+    try {
+      await removeForbiddenZone(id);
+    } catch {
+      toast.error("Impossible de supprimer la zone.");
+    }
+  }
+
+  async function saveTemplate(
+    kind: "landmark" | "forbidden",
+    lat: number,
+    lng: number,
+    radiusM: number,
+    valueM2: number,
+  ) {
+    if (!user) return;
+    const name = window.prompt("Nom du modèle à enregistrer :");
+    if (!name || !name.trim()) return;
+    try {
+      await saveSavedPoint(user.id, kind, name.trim(), lat, lng, radiusM, valueM2);
+      toast.success("Modèle enregistré !");
+      if (kind === "landmark") void refreshLandmarkTemplates();
+      else void refreshForbiddenTemplates();
+    } catch {
+      toast.error("Impossible d'enregistrer le modèle.");
+    }
+  }
+
+  async function useTemplate(point: (typeof landmarkTemplates)[number]) {
+    if (!gameId) return;
+    try {
+      await applySavedPoint(point, gameId);
+      toast.success(`« ${point.name} » ajouté à la partie.`);
+    } catch {
+      toast.error("Impossible d'appliquer le modèle.");
+    }
+  }
+
+  async function deleteTemplate(id: string, kind: "landmark" | "forbidden") {
+    try {
+      await deleteSavedPoint(id);
+      if (kind === "landmark") void refreshLandmarkTemplates();
+      else void refreshForbiddenTemplates();
+    } catch {
+      toast.error("Impossible de supprimer le modèle.");
+    }
+  }
+
   async function updateZoneRadius(next: number) {
     setZoneRadius(next);
     if (!gameId || !isOwner || game?.return_lat == null) return;
@@ -355,12 +454,15 @@ function TeacherDashboard() {
           territories={mapTerritories}
           returnZone={returnZone}
           landmarks={mapLandmarks}
+          forbiddenZones={mapForbiddenZones}
           onMapClick={
             placingMode === "zone"
               ? placeZone
               : placingMode === "landmark"
                 ? placeLandmark
-                : undefined
+                : placingMode === "forbidden"
+                  ? placeForbidden
+                  : undefined
           }
         />
         <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2">
@@ -381,7 +483,9 @@ function TeacherDashboard() {
           <div className="panel pointer-events-none absolute inset-x-3 bottom-3 z-[1000] px-4 py-3 text-center text-sm font-semibold">
             {placingMode === "zone"
               ? "Touchez la carte pour placer le centre de la zone de retour"
-              : "Touchez la carte pour placer le repère bonus"}
+              : placingMode === "landmark"
+                ? "Touchez la carte pour placer le repère bonus"
+                : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
@@ -573,13 +677,167 @@ function TeacherDashboard() {
                     {formatArea(l.bonus_m2)}
                   </span>
                   {isOwner && (
-                    <button
-                      aria-label="Supprimer le repère"
-                      onClick={() => void deleteLandmark(l.id)}
-                    >
-                      <X className="h-4 w-4 text-muted-foreground" />
-                    </button>
+                    <>
+                      <button
+                        aria-label="Enregistrer comme modèle"
+                        onClick={() => void saveTemplate("landmark", l.lat, l.lng, 0, l.bonus_m2)}
+                      >
+                        <Bookmark className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        aria-label="Supprimer le repère"
+                        onClick={() => void deleteLandmark(l.id)}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+          {isOwner && landmarkTemplates.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Mes modèles
+              </span>
+              {landmarkTemplates.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 py-1">
+                  <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-sm">{p.name}</span>
+                  <button
+                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    onClick={() => void useTemplate(p)}
+                  >
+                    Réutiliser
+                  </button>
+                  <button
+                    aria-label="Supprimer le modèle"
+                    onClick={() => void deleteTemplate(p.id, "landmark")}
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <ShieldAlert className="h-4 w-4" /> Zones interdites
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Une équipe qui pénètre dans une zone interdite perd des points sur son score final.
+          </p>
+          {isOwner && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Rayon</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire le rayon"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setForbiddenRadius((r) => Math.max(5, r - 5))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="display w-16 text-center text-lg">{forbiddenRadius} m</span>
+                  <button
+                    aria-label="Augmenter le rayon"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setForbiddenRadius((r) => Math.min(200, r + 5))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Pénalité</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire la pénalité"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setForbiddenPenalty((p) => Math.max(10, p - 10))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="display w-24 text-center text-lg">
+                    -{formatArea(forbiddenPenalty)}
+                  </span>
+                  <button
+                    aria-label="Augmenter la pénalité"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setForbiddenPenalty((p) => Math.min(500, p + 10))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <button
+                className={`btn-huge ${placingMode === "forbidden" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                onClick={() => setPlacingMode((p) => (p === "forbidden" ? "none" : "forbidden"))}
+              >
+                <ShieldAlert className="h-5 w-5" />{" "}
+                {placingMode === "forbidden" ? "Touchez la carte..." : "Ajouter une zone interdite"}
+              </button>
+            </>
+          )}
+          {forbiddenZones.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {forbiddenZones.map((z) => (
+                <div
+                  key={z.id}
+                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                >
+                  <ShieldAlert className="h-4 w-4 shrink-0 text-destructive" />
+                  <span className="flex-1 text-sm">Rayon {z.radius_m} m</span>
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    -{formatArea(z.penalty_m2)}
+                  </span>
+                  {isOwner && (
+                    <>
+                      <button
+                        aria-label="Enregistrer comme modèle"
+                        onClick={() =>
+                          void saveTemplate("forbidden", z.lat, z.lng, z.radius_m, z.penalty_m2)
+                        }
+                      >
+                        <Bookmark className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        aria-label="Supprimer la zone"
+                        onClick={() => void deleteForbidden(z.id)}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          {isOwner && forbiddenTemplates.length > 0 && (
+            <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Mes modèles
+              </span>
+              {forbiddenTemplates.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 py-1">
+                  <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <span className="flex-1 text-sm">{p.name}</span>
+                  <button
+                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    onClick={() => void useTemplate(p)}
+                  >
+                    Réutiliser
+                  </button>
+                  <button
+                    aria-label="Supprimer le modèle"
+                    onClick={() => void deleteTemplate(p.id, "forbidden")}
+                  >
+                    <X className="h-4 w-4 text-muted-foreground" />
+                  </button>
                 </div>
               ))}
             </div>
@@ -691,7 +949,14 @@ function TeacherDashboard() {
                 className="h-6 w-6 shrink-0 rounded-full border-2 border-foreground"
                 style={{ backgroundColor: t.color }}
               />
-              <span className="flex-1 truncate text-lg font-semibold">{t.name}</span>
+              <span className="flex-1 truncate text-lg font-semibold">
+                {t.name}
+                {t.penalty_m2 > 0 && (
+                  <span className="ml-2 text-xs font-semibold text-destructive">
+                    -{formatArea(t.penalty_m2)}
+                  </span>
+                )}
+              </span>
               <span className="display text-xl tabular-nums">{formatArea(t.score_m2)}</span>
             </div>
           ))}

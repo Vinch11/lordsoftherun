@@ -7,6 +7,7 @@ import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
+  FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
   formatArea,
   formatClock,
@@ -18,6 +19,7 @@ import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, useLandmarks } from "@/lib/landmarks";
+import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -90,6 +92,10 @@ function PlayView() {
   const { landmarks } = useLandmarks(gameId);
   const landmarksRef = useRef(landmarks);
   landmarksRef.current = landmarks;
+  const { zones: forbiddenZones } = useForbiddenZones(gameId);
+  const forbiddenZonesRef = useRef(forbiddenZones);
+  forbiddenZonesRef.current = forbiddenZones;
+  const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
 
@@ -207,6 +213,17 @@ function PlayView() {
         });
       }
 
+      for (const zone of forbiddenZonesRef.current) {
+        if (haversine(point, [zone.lat, zone.lng]) > zone.radius_m) continue;
+        const last = lastPenalizedRef.current.get(zone.id) ?? 0;
+        if (Date.now() - last < FORBIDDEN_PENALTY_COOLDOWN_MS) continue;
+        lastPenalizedRef.current.set(zone.id, Date.now());
+        void applyPenalty(zone, teamId).then(() => {
+          toast.error(`⚠️ Zone interdite ! -${formatArea(zone.penalty_m2)}`);
+          notifyMessage("⚠️ Zone interdite !", `-${formatArea(zone.penalty_m2)}`);
+        });
+      }
+
       if (!runningRef.current) return;
       const trackNow = trackRef.current;
       const last = trackNow[trackNow.length - 1];
@@ -258,6 +275,11 @@ function PlayView() {
     () =>
       landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
     [landmarks],
+  );
+
+  const mapForbiddenZones = useMemo(
+    () => forbiddenZones.map((z) => ({ id: z.id, lat: z.lat, lng: z.lng, radiusM: z.radius_m })),
+    [forbiddenZones],
   );
 
   const returnZone = useMemo(
@@ -322,6 +344,7 @@ function PlayView() {
           trailColor={myColor}
           returnZone={returnZone}
           landmarks={mapLandmarks}
+          forbiddenZones={mapForbiddenZones}
           follow
         />
       </div>
@@ -339,6 +362,11 @@ function PlayView() {
           <div className="text-[10px] text-muted-foreground">
             Total conquis : {formatArea(me?.total_captured_m2 ?? 0)}
           </div>
+          {!!me?.penalty_m2 && (
+            <div className="text-[10px] font-semibold text-destructive">
+              Pénalités : -{formatArea(me.penalty_m2)}
+            </div>
+          )}
         </div>
         <div className="panel px-3 py-2 text-right">
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">

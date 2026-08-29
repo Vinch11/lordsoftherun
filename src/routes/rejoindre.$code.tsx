@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
@@ -30,6 +30,34 @@ function Join() {
   const [name, setName] = useState("");
   const [color, setColor] = useState(TEAM_COLORS[0]!.hex);
   const [busy, setBusy] = useState(false);
+  const [checkingResume, setCheckingResume] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const storedTeamId = localStorage.getItem(teamStorageKey(code));
+    if (!storedTeamId) {
+      setCheckingResume(false);
+      return;
+    }
+    void supabase
+      .from("teams")
+      .select("id")
+      .eq("id", storedTeamId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        if (data) {
+          void navigate({ to: "/jouer/$teamId", params: { teamId: data.id }, replace: true });
+        } else {
+          localStorage.removeItem(teamStorageKey(code));
+          setCheckingResume(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code]);
 
   async function join() {
     if (code.length !== 4 || !name.trim()) return;
@@ -58,6 +86,14 @@ function Join() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (checkingResume) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6 text-center">
+        <p className="text-lg text-muted-foreground">Reconnexion à votre équipe…</p>
+      </main>
+    );
   }
 
   return (
@@ -104,9 +140,7 @@ function Join() {
                 aria-label={c.name}
                 onClick={() => setColor(c.hex)}
                 className={`h-16 rounded-2xl border-4 transition-transform ${
-                  color === c.hex
-                    ? "scale-105 border-foreground"
-                    : "border-transparent opacity-80"
+                  color === c.hex ? "scale-105 border-foreground" : "border-transparent opacity-80"
                 }`}
                 style={{ backgroundColor: c.hex }}
               />

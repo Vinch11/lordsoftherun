@@ -26,6 +26,7 @@ export type Team = {
   score_m2: number;
   total_captured_m2: number;
   landmark_bonus_m2: number;
+  penalty_m2: number;
   validated: boolean;
 };
 

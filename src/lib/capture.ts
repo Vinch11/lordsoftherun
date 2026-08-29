@@ -83,7 +83,7 @@ export async function captureTerritory(
 
 export async function recomputeScores(gameId: string) {
   const [{ data: teams }, { data: territories }] = await Promise.all([
-    supabase.from("teams").select("id, landmark_bonus_m2").eq("game_id", gameId),
+    supabase.from("teams").select("id, landmark_bonus_m2, penalty_m2").eq("game_id", gameId),
     supabase.from("territories").select("team_id, scored_m2").eq("game_id", gameId),
   ]);
   const totals = new Map<string, number>();
@@ -94,7 +94,12 @@ export async function recomputeScores(gameId: string) {
     (teams ?? []).map((t) =>
       supabase
         .from("teams")
-        .update({ score_m2: (totals.get(t.id) ?? 0) + (t.landmark_bonus_m2 ?? 0) })
+        .update({
+          score_m2: Math.max(
+            0,
+            (totals.get(t.id) ?? 0) + (t.landmark_bonus_m2 ?? 0) - (t.penalty_m2 ?? 0),
+          ),
+        })
         .eq("id", t.id),
     ),
   );

@@ -147,6 +147,7 @@ export type Database = {
           lat: number | null;
           lng: number | null;
           name: string;
+          penalty_m2: number;
           score_m2: number;
           total_captured_m2: number;
           updated_at: string;
@@ -161,6 +162,7 @@ export type Database = {
           lat?: number | null;
           lng?: number | null;
           name: string;
+          penalty_m2?: number;
           score_m2?: number;
           total_captured_m2?: number;
           updated_at?: string;
@@ -175,6 +177,7 @@ export type Database = {
           lat?: number | null;
           lng?: number | null;
           name?: string;
+          penalty_m2?: number;
           score_m2?: number;
           total_captured_m2?: number;
           updated_at?: string;
@@ -282,6 +285,80 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      forbidden_zones: {
+        Row: {
+          created_at: string;
+          game_id: string;
+          id: string;
+          lat: number;
+          lng: number;
+          penalty_m2: number;
+          radius_m: number;
+        };
+        Insert: {
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          lat: number;
+          lng: number;
+          penalty_m2?: number;
+          radius_m?: number;
+        };
+        Update: {
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          lat?: number;
+          lng?: number;
+          penalty_m2?: number;
+          radius_m?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "forbidden_zones_game_id_fkey";
+            columns: ["game_id"];
+            isOneToOne: false;
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saved_points: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          name: string;
+          owner_id: string;
+          radius_m: number;
+          value_m2: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          name: string;
+          owner_id: string;
+          radius_m?: number;
+          value_m2?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          lat?: number;
+          lng?: number;
+          name?: string;
+          owner_id?: string;
+          radius_m?: number;
+          value_m2?: number;
+        };
+        Relationships: [];
       };
     };
     Views: {

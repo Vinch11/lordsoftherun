@@ -22,6 +22,11 @@ export const RUNNING_BONUS_MULTIPLIER = 1.5;
 export const LANDMARK_CLAIM_RADIUS_M = 15;
 export const DEFAULT_LANDMARK_BONUS_M2 = 30;
 
+export const DEFAULT_FORBIDDEN_RADIUS_M = 15;
+export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
+/** Re-entering an already-penalized forbidden zone only counts again after this long. */
+export const FORBIDDEN_PENALTY_COOLDOWN_MS = 30_000;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
