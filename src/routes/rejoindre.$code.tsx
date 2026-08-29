@@ -117,8 +117,9 @@ function Join() {
           </p>
         </header>
 
-
+        <section className="panel flex flex-col gap-5 p-5">
         <label className="flex flex-col gap-2">
+
           <span className="section-title">
             Code de la partie
           </span>
