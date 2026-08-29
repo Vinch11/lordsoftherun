@@ -163,8 +163,11 @@ function Join() {
                 style={{ backgroundColor: c.hex }}
               />
             ))}
+          </div>
         </div>
         </section>
+
+
 
 
 
