@@ -75,8 +75,20 @@ export function LoopSummary({
           <span className="label-xs">Aperçu du territoire</span>
           <div className="mt-2 aspect-square w-full rounded-xl bg-muted p-2">
             {path ? (
-              <svg viewBox="0 0 100 100" className="h-full w-full" role="img" aria-label="Aperçu du territoire capturé">
-                <path d={path} fill={color} fillOpacity={0.35} stroke={color} strokeWidth={2} strokeLinejoin="round" />
+              <svg
+                viewBox="0 0 100 100"
+                className="h-full w-full"
+                role="img"
+                aria-label="Aperçu du territoire capturé"
+              >
+                <path
+                  d={path}
+                  fill={color}
+                  fillOpacity={0.35}
+                  stroke={color}
+                  strokeWidth={2}
+                  strokeLinejoin="round"
+                />
               </svg>
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">

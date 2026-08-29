@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   Bookmark,
   Camera,
+  Eye,
+  Flag,
   Maximize2,
   MapPin,
   Medal,
@@ -48,6 +50,7 @@ import {
   DEFAULT_FORBIDDEN_RADIUS_M,
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
+  DEFAULT_RUNNING_BONUS_SPEED_KMH,
   LANDMARK_ICONS,
   formatArea,
   formatClock,
@@ -235,13 +238,18 @@ function TeacherDashboard() {
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
   const [forbiddenPenalty, setForbiddenPenalty] = useState(DEFAULT_FORBIDDEN_PENALTY_M2);
+  const [forbiddenRunningOnly, setForbiddenRunningOnly] = useState(false);
+  const [runningBonusEnabled, setRunningBonusEnabled] = useState(true);
+  const [runningBonusSpeedKmh, setRunningBonusSpeedKmh] = useState(DEFAULT_RUNNING_BONUS_SPEED_KMH);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
   const [photoDelay, setPhotoDelay] = useState(3);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
+  const [view, setView] = useState<"dashboard" | "overview">("dashboard");
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
+  const runningConfigInitRef = useRef(false);
   const seenMessageCount = useRef<number | null>(null);
 
   const durationMinutes = durationValue * UNIT_TO_MINUTES[durationUnit];
@@ -308,6 +316,15 @@ function TeacherDashboard() {
       radiusInitRef.current = true;
     }
   }, [game?.return_radius_m]);
+
+  useEffect(() => {
+    if (!runningConfigInitRef.current && game != null) {
+      setRunningBonusEnabled(game.running_bonus_enabled);
+      setRunningBonusSpeedKmh(game.running_bonus_speed_kmh);
+      setForbiddenRunningOnly(game.forbidden_zone_running_only);
+      runningConfigInitRef.current = true;
+    }
+  }, [game]);
 
   useEffect(() => {
     if (seenMessageCount.current === null) {
@@ -621,6 +638,24 @@ function TeacherDashboard() {
     await supabase.from("games").update({ return_lat: null, return_lng: null }).eq("id", gameId);
   }
 
+  async function updateRunningBonusEnabled(next: boolean) {
+    setRunningBonusEnabled(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ running_bonus_enabled: next }).eq("id", gameId);
+  }
+
+  async function updateRunningBonusSpeed(next: number) {
+    setRunningBonusSpeedKmh(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ running_bonus_speed_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateForbiddenRunningOnly(next: boolean) {
+    setForbiddenRunningOnly(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ forbidden_zone_running_only: next }).eq("id", gameId);
+  }
+
   async function askForPhoto() {
     if (!gameId || !isOwner) return;
     try {
@@ -690,6 +725,101 @@ function TeacherDashboard() {
     );
   }
 
+  if (view === "overview") {
+    return (
+      <main className="relative h-[100dvh] w-full overflow-hidden">
+        <div className="absolute inset-0">
+          <MapCanvas
+            center={center}
+            teams={teams}
+            territories={mapTerritories}
+            returnZone={returnZone}
+            landmarks={mapLandmarks}
+            forbiddenZones={mapForbiddenZones}
+            mapStyle={game?.map_style}
+          />
+        </div>
+
+        <div
+          className="pointer-events-none absolute inset-x-3 z-[1000] flex flex-wrap items-center gap-2"
+          style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
+          <button
+            className="nav-back pointer-events-auto"
+            aria-label="Retour au tableau de bord"
+            onClick={() => setView("dashboard")}
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="hud-badge px-3 py-2">
+            <div className="label-xs">Code</div>
+            <div className="display text-2xl tracking-[0.3em]">{code}</div>
+          </div>
+          <div className="hud-badge px-3 py-2">
+            <div className="label-xs">Temps</div>
+            <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
+          </div>
+        </div>
+
+        <div
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2 p-3"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        >
+          <div className="panel flex max-h-40 flex-col gap-1 overflow-y-auto p-3">
+            {ranked.length === 0 && (
+              <p className="py-2 text-center text-sm text-muted-foreground">
+                En attente des groupes…
+              </p>
+            )}
+            {ranked.map((team, i) => (
+              <div key={team.id} className="flex items-center gap-2 py-1">
+                <span className="w-5 text-center text-sm text-muted-foreground">{i + 1}</span>
+                <span
+                  className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                  style={{ backgroundColor: team.color }}
+                />
+                <span className="flex-1 truncate text-sm font-semibold">{team.name}</span>
+                <span className="display text-sm tabular-nums">{formatArea(team.score_m2)}</span>
+              </div>
+            ))}
+          </div>
+          {isOwner && (
+            <div className="panel flex flex-col gap-2 p-3">
+              <select
+                className="field"
+                value={messageTarget}
+                onChange={(e) => setMessageTarget(e.target.value)}
+              >
+                <option value="all">Toutes les équipes</option>
+                {teams.map((tm) => (
+                  <option key={tm.id} value={tm.id}>
+                    {tm.name}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <input
+                  className="field"
+                  placeholder="Votre message..."
+                  value={messageBody}
+                  onChange={(e) => setMessageBody(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
+                />
+                <button
+                  aria-label="Envoyer"
+                  className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
+                  onClick={sendMessage}
+                >
+                  <Send className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col">
       <div className="relative h-[45vh] min-h-[280px] w-full">
@@ -711,7 +841,10 @@ function TeacherDashboard() {
                   : undefined
           }
         />
-        <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2">
+        <div
+          className="pointer-events-none absolute inset-x-3 z-[1000] flex flex-wrap items-center gap-2"
+          style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
+        >
           <Link to="/" className="nav-back pointer-events-auto" aria-label="Retour à l'accueil">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -725,6 +858,15 @@ function TeacherDashboard() {
               <Plus className="h-5 w-5" />
             </button>
           )}
+          {running && (
+            <button
+              className="nav-back pointer-events-auto"
+              aria-label="Vue d'ensemble"
+              onClick={() => setView("overview")}
+            >
+              <Eye className="h-5 w-5" />
+            </button>
+          )}
           <div className="hud-badge px-3 py-2">
             <div className="label-xs">Code</div>
             <div className="display text-2xl tracking-[0.3em]">{code}</div>
@@ -735,7 +877,10 @@ function TeacherDashboard() {
           </div>
         </div>
         {placingMode !== "none" && (
-          <div className="panel pointer-events-none absolute inset-x-3 bottom-3 z-[1000] px-4 py-3 text-center text-sm font-semibold">
+          <div
+            className="panel pointer-events-none absolute inset-x-3 z-[1000] px-4 py-3 text-center text-sm font-semibold"
+            style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          >
             {placingMode === "zone"
               ? "Touchez la carte pour placer le centre de la zone de retour"
               : placingMode === "landmark"
@@ -930,6 +1075,62 @@ function TeacherDashboard() {
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="section-title">
+            <Flag className="h-4 w-4" /> Bonus course
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Une boucle fermée en courant rapporte plus de points qu'une boucle marchée.
+          </p>
+          {isOwner ? (
+            <>
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Activer le bonus course</span>
+                <input
+                  type="checkbox"
+                  className="h-5 w-5"
+                  checked={runningBonusEnabled}
+                  onChange={(e) => void updateRunningBonusEnabled(e.target.checked)}
+                />
+              </label>
+              {runningBonusEnabled && (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Vitesse minimale</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la vitesse"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateRunningBonusSpeed(Math.max(4, runningBonusSpeedKmh - 0.5))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-20 text-center text-lg">
+                      {runningBonusSpeedKmh} km/h
+                    </span>
+                    <button
+                      aria-label="Augmenter la vitesse"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateRunningBonusSpeed(Math.min(20, runningBonusSpeedKmh + 0.5))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {runningBonusEnabled
+                ? `Bonus actif à partir de ${runningBonusSpeedKmh} km/h.`
+                : "Bonus désactivé pour cette partie."}
+            </p>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
             <Star className="h-4 w-4" /> Repères bonus
           </div>
           <p className="text-sm text-muted-foreground">
@@ -1085,6 +1286,23 @@ function TeacherDashboard() {
           </p>
           {isOwner && (
             <>
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">
+                  Pénaliser seulement en cas de traversée en courant
+                </span>
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0"
+                  checked={forbiddenRunningOnly}
+                  onChange={(e) => void updateForbiddenRunningOnly(e.target.checked)}
+                />
+              </label>
+              {forbiddenRunningOnly && (
+                <p className="text-xs text-muted-foreground">
+                  Une équipe qui marche dans une zone interdite (ex. traverser une rue au pas) ne
+                  sera pas pénalisée ; seule une traversée en courant compte.
+                </p>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <span className="text-sm font-semibold">Rayon</span>
                 <div className="flex items-center gap-3">

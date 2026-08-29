@@ -3,6 +3,8 @@ import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { supabase } from "@/integrations/supabase/client";
 import { RUNNING_BONUS_MULTIPLIER, RUNNING_SPEED_MS } from "@/lib/conquete";
 
+export type RunningBonusConfig = { enabled: boolean; speedMs: number };
+
 /** Build a closed GeoJSON polygon from a list of [lat, lng] track points. */
 export function polygonFromTrack(track: [number, number][]): Feature<Polygon> | null {
   if (track.length < 4) return null;
@@ -30,6 +32,7 @@ export async function captureTerritory(
   teamId: string,
   captured: Feature<Polygon>,
   avgSpeedMs = 0,
+  runningBonus: RunningBonusConfig = { enabled: true, speedMs: RUNNING_SPEED_MS },
 ) {
   const { data: existing } = await supabase.from("territories").select("*").eq("game_id", gameId);
 
@@ -68,7 +71,8 @@ export async function captureTerritory(
   }
 
   const capturedArea = area(captured);
-  const multiplier = avgSpeedMs >= RUNNING_SPEED_MS ? RUNNING_BONUS_MULTIPLIER : 1;
+  const multiplier =
+    runningBonus.enabled && avgSpeedMs >= runningBonus.speedMs ? RUNNING_BONUS_MULTIPLIER : 1;
   await supabase.from("territories").insert({
     game_id: gameId,
     team_id: teamId,

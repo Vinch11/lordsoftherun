@@ -1,9 +1,5 @@
 import { Flag, MapPin, Shield, Star, Timer, X } from "lucide-react";
-import {
-  CLOSE_RADIUS_M,
-  LANDMARK_CLAIM_RADIUS_M,
-  MIN_LOOP_DISTANCE_M,
-} from "@/lib/conquete";
+import { CLOSE_RADIUS_M, LANDMARK_CLAIM_RADIUS_M, MIN_LOOP_DISTANCE_M } from "@/lib/conquete";
 
 type Props = {
   teamName?: string | null;
