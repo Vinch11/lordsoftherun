@@ -474,11 +474,30 @@ function TeacherDashboard() {
 
   if (notFound) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <p className="text-lg">Aucune partie avec le code {code}.</p>
+      <main className="min-h-screen px-5 py-10">
+        <div className="mx-auto flex max-w-md flex-col gap-6">
+          <Link to="/" className="nav-back" aria-label="Retour à l'accueil">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <header>
+            <div className="pill">
+              <MapPin className="h-3.5 w-3.5" /> Tableau de bord
+            </div>
+            <h1 className="page-title mt-4">
+              Partie <em>{code}</em> introuvable
+            </h1>
+            <p className="mt-3 text-muted-foreground">
+              Vérifiez le code à 4 chiffres ou créez une nouvelle partie depuis l'accueil.
+            </p>
+          </header>
+          <Link to="/" className="btn-huge btn-huge-accent">
+            Retour à l'accueil
+          </Link>
+        </div>
       </main>
     );
   }
+
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -516,13 +535,13 @@ function TeacherDashboard() {
             </button>
           )}
           <div className="hud-badge px-3 py-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="label-xs">
               Code
             </div>
             <div className="display text-2xl tracking-[0.3em]">{code}</div>
           </div>
           <div className="hud-badge px-3 py-2">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+            <div className="label-xs">
               Temps
             </div>
             <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
@@ -539,13 +558,48 @@ function TeacherDashboard() {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-5 p-4">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4">
+        <header className="panel flex flex-col gap-4 p-4">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="min-w-0">
+              <div className="pill">
+                <MapPin className="h-3.5 w-3.5" /> Tableau de bord
+              </div>
+              <h1 className="page-title mt-3 truncate">
+                Partie <em>{code}</em>
+              </h1>
+            </div>
+            <span
+              className={`chip ${
+                running ? "chip-accent" : finished ? "chip-muted" : ""
+              }`}
+            >
+              {running ? "En cours" : finished ? "Terminée" : "Lobby"}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="stat">
+              <span className="label-xs">Temps</span>
+              <span className="stat-value">{formatCountdown(remaining)}</span>
+            </div>
+            <div className="stat">
+              <span className="label-xs">Groupes</span>
+              <span className="stat-value">{teams.length}</span>
+            </div>
+            <div className="stat">
+              <span className="label-xs">Leader</span>
+              <span className="stat-value truncate">{ranked[0]?.name ?? "—"}</span>
+            </div>
+          </div>
+        </header>
+
         {!isOwner && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
             Vous consultez cette partie en lecture seule : seul l'enseignant qui l'a créée peut la
             piloter.
           </div>
         )}
+
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
@@ -578,9 +632,8 @@ function TeacherDashboard() {
             {(["minutes", "heures", "jours"] as DurationUnit[]).map((u) => (
               <button
                 key={u}
-                className={`rounded-xl py-2 text-sm font-bold uppercase ${
-                  durationUnit === u ? "bg-primary text-primary-foreground" : "bg-muted"
-                }`}
+                className="seg-btn"
+                data-active={durationUnit === u}
                 onClick={() => {
                   setDurationUnit(u);
                   setDurationValue(UNIT_DEFAULT[u]);
@@ -590,6 +643,7 @@ function TeacherDashboard() {
               </button>
             ))}
           </div>
+
           {durationUnit !== "minutes" && (
             <p className="text-xs text-muted-foreground">
               Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne pas
@@ -780,7 +834,7 @@ function TeacherDashboard() {
           )}
           {isOwner && landmarkTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Mes modèles
               </span>
               {landmarkTemplates.map((p) => (
@@ -788,7 +842,7 @@ function TeacherDashboard() {
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
                   <button
-                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    className="mini-btn"
                     onClick={() => void useTemplate(p)}
                   >
                     Réutiliser
@@ -901,7 +955,7 @@ function TeacherDashboard() {
           )}
           {isOwner && forbiddenTemplates.length > 0 && (
             <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Mes modèles
               </span>
               {forbiddenTemplates.map((p) => (
@@ -909,7 +963,7 @@ function TeacherDashboard() {
                   <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <span className="flex-1 text-sm">{p.name}</span>
                   <button
-                    className="rounded-lg bg-muted px-2 py-1 text-xs font-semibold"
+                    className="mini-btn"
                     onClick={() => void useTemplate(p)}
                   >
                     Réutiliser
@@ -1044,7 +1098,7 @@ function TeacherDashboard() {
           ))}
           {finished && unvalidated.length > 0 && (
             <div className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="label-xs">
                 Hors classement — pas revenues dans la zone à temps
               </span>
               {unvalidated.map((t) => (
@@ -1108,7 +1162,7 @@ function TeacherDashboard() {
                   : `${teams.find((t) => t.id === m.team_id)?.name ?? "Équipe"} →`;
               return (
                 <div key={m.id} className="rounded-xl bg-muted px-3 py-2 text-sm">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <div className="label-xs">
                     {label}
                   </div>
                   <div>{m.body}</div>

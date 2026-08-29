@@ -350,29 +350,27 @@ function PlayView() {
         />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start justify-between gap-2 p-3">
-        <div className="panel px-3 py-2">
-          <div className="flex items-center gap-2">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3">
+        <div className="hud-badge min-w-0 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
             <span
-              className="h-5 w-5 rounded-full border-2 border-foreground"
+              className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
               style={{ backgroundColor: myColor }}
             />
-            <span className="text-lg font-bold">{me?.name ?? "…"}</span>
+            <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
           </div>
           <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
-          <div className="text-[10px] text-muted-foreground">
-            Total conquis : {formatArea(me?.total_captured_m2 ?? 0)}
+          <div className="label-xs">
+            Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}
           </div>
           {!!me?.penalty_m2 && (
-            <div className="text-[10px] font-semibold text-destructive">
-              Pénalités : -{formatArea(me.penalty_m2)}
+            <div className="label-xs text-destructive">
+              Pénalités · -{formatArea(me.penalty_m2)}
             </div>
           )}
         </div>
-        <div className="panel px-3 py-2 text-right">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-            Temps
-          </div>
+        <div className="hud-badge shrink-0 px-3 py-2 text-right">
+          <div className="label-xs">Temps</div>
           <div className="display text-2xl tabular-nums">
             {remaining === null ? "--:--" : formatCountdown(remaining)}
           </div>
@@ -381,7 +379,7 @@ function PlayView() {
 
       <button
         aria-label="Messages"
-        className="panel pointer-events-auto absolute right-3 top-24 z-[1000] flex h-12 w-12 items-center justify-center"
+        className="hud-badge pointer-events-auto absolute right-3 top-28 z-[1000] flex h-12 w-12 items-center justify-center"
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -393,13 +391,15 @@ function PlayView() {
         )}
       </button>
 
+
+
       {chatOpen && (
-        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
+        <div className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <span className="section-title">
-              Messages avec le prof
+              <MessageCircle className="h-4 w-4" /> Messages avec le prof
             </span>
-            <button aria-label="Fermer" onClick={() => setChatOpen(false)}>
+            <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -410,18 +410,18 @@ function PlayView() {
             {myMessages.map((m) => (
               <div
                 key={m.id}
-                className={`rounded-xl px-3 py-2 text-sm ${
-                  m.sender === "prof" ? "bg-muted" : "self-end bg-primary/15"
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                  m.sender === "prof"
+                    ? "bg-secondary text-secondary-foreground"
+                    : "self-end bg-primary/20"
                 }`}
               >
-                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {m.sender === "prof" ? "Prof" : "Vous"}
-                </div>
+                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
                 <div>{m.body}</div>
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <input
               className="field"
               placeholder="Votre message au prof..."
@@ -431,7 +431,7 @@ function PlayView() {
             />
             <button
               aria-label="Envoyer"
-              className="rounded-xl bg-primary p-3 text-primary-foreground"
+              className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
               onClick={sendChat}
             >
               <Send className="h-5 w-5" />
@@ -440,43 +440,45 @@ function PlayView() {
         </div>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 p-3">
+
+      <div className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3">
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
         {running && (
-          <div className="panel flex items-center justify-between px-4 py-3">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Distance
-              </div>
-              <div className="display text-2xl tabular-nums">{Math.round(distance)} m</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="stat">
+              <span className="label-xs">Distance</span>
+              <span className="stat-value text-2xl">{Math.round(distance)} m</span>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Retour au départ
-              </div>
-              <div className="display text-2xl tabular-nums">
+            <div className="stat text-right">
+              <span className="label-xs">Retour au départ</span>
+              <span className="stat-value text-2xl">
                 {toStart === null ? "—" : `${Math.round(toStart)} m`}
-              </div>
+              </span>
             </div>
           </div>
         )}
 
         {!running && (
-          <div className="panel flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-            <Crosshair className="h-4 w-4" />
-            {pos
-              ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
-              : "Recherche du GPS…"}
+          <div className="panel flex items-center gap-2 px-4 py-2">
+            <Crosshair className="h-4 w-4 shrink-0 text-accent" />
+            <span className="label-xs">
+              {pos
+                ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
+                : "Recherche du GPS…"}
+            </span>
           </div>
         )}
 
         {photoRequestPending && (
-          <div className="panel flex flex-col gap-3 border-4 border-accent px-4 py-3">
-            <div className="text-sm font-bold">
-              📸 Le prof demande une photo de votre groupe
+          <div className="panel flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
+            <div className="section-title">
+              <Camera className="h-4 w-4" /> Photo demandée
+            </div>
+            <div className="text-sm font-semibold">
+              Le prof demande une photo de votre groupe
               {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
                 ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
                 : " — délai dépassé, envoyez-la quand même"}
@@ -504,15 +506,14 @@ function PlayView() {
         )}
 
         {returnZone && !finished && (
-          <div className="panel flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-semibold text-muted-foreground">
-              Distance à la zone de retour
-            </span>
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3">
+            <span className="label-xs">Zone de retour</span>
             <span className="display text-xl tabular-nums">
               {toZone === null ? "—" : `${Math.round(toZone)} m`}
             </span>
           </div>
         )}
+
 
         {finished ? (
           <div className="btn-huge btn-huge-dark">
