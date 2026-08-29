@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
 
-export const Route = createFileRoute("/rejoindre")({
+export const Route = createFileRoute("/rejoindre/$code")({
   validateSearch: (search: Record<string, unknown>) => {
     const raw = search["code"];
     const code =
