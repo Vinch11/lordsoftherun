@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Flag, MapPin, Users } from "lucide-react";
+import { Flag, LogOut, MapPin, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { randomCode } from "@/lib/conquete";
+import { useSession } from "@/lib/useSession";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,17 +28,22 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
+  const { session, loading } = useSession();
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function createGame() {
+    if (!session) {
+      await navigate({ to: "/connexion" });
+      return;
+    }
     setCreating(true);
     try {
       for (let i = 0; i < 6; i++) {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c })
+          .insert({ code: c, owner_id: session.user.id })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -49,6 +55,11 @@ function Home() {
     } finally {
       setCreating(false);
     }
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    toast("Déconnecté.");
   }
 
   return (
@@ -89,14 +100,30 @@ function Home() {
         </section>
 
         <section className="panel flex flex-col gap-4 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            <Flag className="h-4 w-4" /> Enseignant
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              <Flag className="h-4 w-4" /> Enseignant
+            </div>
+            {session && (
+              <button
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground"
+                onClick={signOut}
+              >
+                <LogOut className="h-3.5 w-3.5" /> Déconnexion
+              </button>
+            )}
           </div>
-          <button className="btn-huge btn-huge-dark" disabled={creating} onClick={createGame}>
-            {creating ? "Création..." : "Créer une partie"}
+          <button
+            className="btn-huge btn-huge-dark"
+            disabled={creating || loading}
+            onClick={createGame}
+          >
+            {creating ? "Création..." : session ? "Créer une partie" : "Se connecter"}
           </button>
           <p className="text-sm text-muted-foreground">
-            Vous obtiendrez un code à 4 chiffres à donner aux groupes.
+            {session
+              ? "Vous obtiendrez un code à 4 chiffres à donner aux groupes."
+              : "Connectez-vous avec votre compte enseignant pour créer une partie."}
           </p>
         </section>
       </div>

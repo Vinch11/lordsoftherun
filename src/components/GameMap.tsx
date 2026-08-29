@@ -17,6 +17,8 @@ export type MapTerritory = {
   geometry: Polygon | MultiPolygon;
 };
 
+export type ReturnZone = { lat: number; lng: number; radiusM: number };
+
 type Props = {
   center: [number, number] | null;
   teams: MapTeam[];
@@ -24,6 +26,8 @@ type Props = {
   trail?: [number, number][];
   trailColor?: string;
   follow?: boolean;
+  returnZone?: ReturnZone | null;
+  onMapClick?: (lat: number, lng: number) => void;
 };
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
@@ -35,13 +39,18 @@ export default function GameMap({
   trail = [],
   trailColor = "#e63946",
   follow = false,
+  returnZone = null,
+  onMapClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const territoryLayer = useRef<L.LayerGroup | null>(null);
   const teamLayer = useRef<L.LayerGroup | null>(null);
+  const zoneLayer = useRef<L.LayerGroup | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const didInitialFit = useRef(false);
+  const onMapClickRef = useRef(onMapClick);
+  onMapClickRef.current = onMapClick;
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -57,9 +66,11 @@ export default function GameMap({
     }).addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     territoryLayer.current = L.layerGroup().addTo(map);
+    zoneLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
-    trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(
-      map,
+    trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
+    map.on("click", (e: L.LeafletMouseEvent) =>
+      onMapClickRef.current?.(e.latlng.lat, e.latlng.lng),
     );
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
@@ -96,6 +107,24 @@ export default function GameMap({
       }).addTo(layer);
     }
   }, [territories]);
+
+  useEffect(() => {
+    const layer = zoneLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (returnZone) {
+      L.circle([returnZone.lat, returnZone.lng], {
+        radius: returnZone.radiusM,
+        color: "#1d6fe0",
+        weight: 3,
+        dashArray: "8 8",
+        fillColor: "#1d6fe0",
+        fillOpacity: 0.08,
+      })
+        .bindTooltip("Zone de retour", { permanent: false })
+        .addTo(layer);
+    }
+  }, [returnZone]);
 
   useEffect(() => {
     const layer = teamLayer.current;

@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Crosshair, Flag, Square } from "lucide-react";
+import { Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -13,6 +13,7 @@ import {
   haversine,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
+import { sendTeamMessage, useMessages } from "@/lib/messages";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -50,6 +51,10 @@ function PlayView() {
   const distRef = useRef(0);
   const lastSync = useRef(0);
   const closing = useRef(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatBody, setChatBody] = useState("");
+  const seenMessageCount = useRef<number | null>(null);
+  const [unread, setUnread] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -69,8 +74,46 @@ function PlayView() {
   }, [teamId]);
 
   const { game, teams, territories } = useGameState(gameId);
+  const { messages } = useMessages(gameId);
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
+
+  const myMessages = useMemo(
+    () =>
+      messages.filter(
+        (m) =>
+          (m.from_role === "prof" && m.to_team_id === null) ||
+          m.to_team_id === teamId ||
+          m.from_team_id === teamId,
+      ),
+    [messages, teamId],
+  );
+
+  useEffect(() => {
+    if (seenMessageCount.current === null) {
+      seenMessageCount.current = myMessages.length;
+      return;
+    }
+    if (myMessages.length > seenMessageCount.current) {
+      const latest = myMessages[myMessages.length - 1];
+      if (latest?.from_role === "prof") {
+        toast(`💬 Prof : ${latest.body}`);
+        if (!chatOpen) setUnread(true);
+      }
+    }
+    seenMessageCount.current = myMessages.length;
+  }, [myMessages, chatOpen]);
+
+  async function sendChat() {
+    if (!gameId || !chatBody.trim()) return;
+    const body = chatBody.trim();
+    setChatBody("");
+    try {
+      await sendTeamMessage(gameId, teamId, body);
+    } catch {
+      toast.error("Message non envoyé.");
+    }
+  }
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -162,6 +205,15 @@ function PlayView() {
     [territories, teams],
   );
 
+  const returnZone = useMemo(
+    () =>
+      game?.return_lat != null && game.return_lng != null && game.return_radius_m != null
+        ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
+        : null,
+    [game?.return_lat, game?.return_lng, game?.return_radius_m],
+  );
+  const toZone = pos && returnZone ? haversine(pos, [returnZone.lat, returnZone.lng]) : null;
+
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
@@ -207,6 +259,7 @@ function PlayView() {
           territories={mapTerritories}
           trail={track}
           trailColor={myColor}
+          returnZone={returnZone}
           follow
         />
       </div>
@@ -232,11 +285,70 @@ function PlayView() {
         </div>
       </div>
 
+      <button
+        aria-label="Messages"
+        className="panel pointer-events-auto absolute right-3 top-24 z-[1000] flex h-12 w-12 items-center justify-center"
+        onClick={() => {
+          setChatOpen(true);
+          setUnread(false);
+        }}
+      >
+        <MessageCircle className="h-6 w-6" />
+        {unread && (
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
+        )}
+      </button>
+
+      {chatOpen && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 rounded-t-3xl border-2 border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Messages avec le prof
+            </span>
+            <button aria-label="Fermer" onClick={() => setChatOpen(false)}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+            {myMessages.length === 0 && (
+              <p className="py-2 text-center text-sm text-muted-foreground">Aucun message.</p>
+            )}
+            {myMessages.map((m) => (
+              <div
+                key={m.id}
+                className={`rounded-xl px-3 py-2 text-sm ${
+                  m.from_role === "prof" ? "bg-muted" : "self-end bg-primary/15"
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {m.from_role === "prof" ? "Prof" : "Vous"}
+                </div>
+                <div>{m.body}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="field"
+              placeholder="Votre message au prof..."
+              value={chatBody}
+              onChange={(e) => setChatBody(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void sendChat()}
+            />
+            <button
+              aria-label="Envoyer"
+              className="rounded-xl bg-primary p-3 text-primary-foreground"
+              onClick={sendChat}
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 p-3">
         {geoError && (
-          <div className="panel px-4 py-3 text-sm font-semibold text-destructive">
-            {geoError}
-          </div>
+          <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
         {running && (
@@ -267,8 +379,25 @@ function PlayView() {
           </div>
         )}
 
+        {returnZone && !finished && (
+          <div className="panel flex items-center justify-between px-4 py-3">
+            <span className="text-sm font-semibold text-muted-foreground">
+              Distance à la zone de retour
+            </span>
+            <span className="display text-xl tabular-nums">
+              {toZone === null ? "—" : `${Math.round(toZone)} m`}
+            </span>
+          </div>
+        )}
+
         {finished ? (
-          <div className="btn-huge btn-huge-dark">Partie terminée</div>
+          <div className="btn-huge btn-huge-dark">
+            {returnZone
+              ? me?.validated
+                ? "Partie terminée — territoire validé !"
+                : "Partie terminée — territoire non comptabilisé (hors zone)"
+              : "Partie terminée"}
+          </div>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle

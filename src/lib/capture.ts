@@ -1,4 +1,4 @@
-import { area, difference, featureCollection, polygon } from "@turf/turf";
+import { area, booleanIntersects, difference, featureCollection, polygon } from "@turf/turf";
 import type { Feature, MultiPolygon, Polygon } from "geojson";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,24 +22,20 @@ export function polygonFromTrack(track: [number, number][]): Feature<Polygon> | 
  * Registers a new territory for a team: the captured surface is subtracted from
  * every existing territory (last one to enclose it wins), then scores are recomputed.
  */
-export async function captureTerritory(
-  gameId: string,
-  teamId: string,
-  captured: Feature<Polygon>,
-) {
-  const { data: existing } = await supabase
-    .from("territories")
-    .select("*")
-    .eq("game_id", gameId);
+export async function captureTerritory(gameId: string, teamId: string, captured: Feature<Polygon>) {
+  const { data: existing } = await supabase.from("territories").select("*").eq("game_id", gameId);
 
   for (const row of existing ?? []) {
     const geom = row.geometry as unknown as Polygon | MultiPolygon;
+    // Only touch territories the new loop actually overlaps: an untouched row keeps
+    // its full existing area instead of being reduced to what it geometrically shares
+    // with the capture (rule: a team only ever takes the overlapping portion it passes
+    // through, never the rest of another team's territory).
+    if (!booleanIntersects(geom, captured.geometry)) continue;
     try {
       const rest = difference(
         featureCollection([
-          { type: "Feature", properties: {}, geometry: geom } as Feature<
-            Polygon | MultiPolygon
-          >,
+          { type: "Feature", properties: {}, geometry: geom } as Feature<Polygon | MultiPolygon>,
           captured as Feature<Polygon | MultiPolygon>,
         ]),
       );

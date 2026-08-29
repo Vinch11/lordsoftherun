@@ -8,6 +8,10 @@ export type Game = {
   duration_minutes: number;
   started_at: string | null;
   ends_at: string | null;
+  owner_id: string | null;
+  return_lat: number | null;
+  return_lng: number | null;
+  return_radius_m: number | null;
 };
 
 export type Team = {
@@ -18,6 +22,7 @@ export type Team = {
   lat: number | null;
   lng: number | null;
   score_m2: number;
+  validated: boolean;
 };
 
 export type Territory = {
