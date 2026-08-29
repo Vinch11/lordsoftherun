@@ -24,6 +24,8 @@ export type Team = {
   lat: number | null;
   lng: number | null;
   score_m2: number;
+  total_captured_m2: number;
+  landmark_bonus_m2: number;
   validated: boolean;
 };
 
@@ -33,6 +35,7 @@ export type Territory = {
   team_id: string;
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
   area_m2: number;
+  scored_m2: number;
 };
 
 export function useGameState(gameId: string | null) {

@@ -143,10 +143,12 @@ export type Database = {
           created_at: string;
           game_id: string;
           id: string;
+          landmark_bonus_m2: number;
           lat: number | null;
           lng: number | null;
           name: string;
           score_m2: number;
+          total_captured_m2: number;
           updated_at: string;
           validated: boolean;
         };
@@ -155,10 +157,12 @@ export type Database = {
           created_at?: string;
           game_id: string;
           id?: string;
+          landmark_bonus_m2?: number;
           lat?: number | null;
           lng?: number | null;
           name: string;
           score_m2?: number;
+          total_captured_m2?: number;
           updated_at?: string;
           validated?: boolean;
         };
@@ -167,10 +171,12 @@ export type Database = {
           created_at?: string;
           game_id?: string;
           id?: string;
+          landmark_bonus_m2?: number;
           lat?: number | null;
           lng?: number | null;
           name?: string;
           score_m2?: number;
+          total_captured_m2?: number;
           updated_at?: string;
           validated?: boolean;
         };
@@ -191,6 +197,7 @@ export type Database = {
           game_id: string;
           geometry: Json;
           id: string;
+          scored_m2: number;
           team_id: string;
         };
         Insert: {
@@ -199,6 +206,7 @@ export type Database = {
           game_id: string;
           geometry: Json;
           id?: string;
+          scored_m2?: number;
           team_id: string;
         };
         Update: {
@@ -207,6 +215,7 @@ export type Database = {
           game_id?: string;
           geometry?: Json;
           id?: string;
+          scored_m2?: number;
           team_id?: string;
         };
         Relationships: [
@@ -220,6 +229,54 @@ export type Database = {
           {
             foreignKeyName: "territories_team_id_fkey";
             columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      landmarks: {
+        Row: {
+          bonus_m2: number;
+          claimed_at: string | null;
+          claimed_by_team_id: string | null;
+          created_at: string;
+          game_id: string;
+          id: string;
+          lat: number;
+          lng: number;
+        };
+        Insert: {
+          bonus_m2?: number;
+          claimed_at?: string | null;
+          claimed_by_team_id?: string | null;
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          lat: number;
+          lng: number;
+        };
+        Update: {
+          bonus_m2?: number;
+          claimed_at?: string | null;
+          claimed_by_team_id?: string | null;
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          lat?: number;
+          lng?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "landmarks_game_id_fkey";
+            columns: ["game_id"];
+            isOneToOne: false;
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "landmarks_claimed_by_team_id_fkey";
+            columns: ["claimed_by_team_id"];
             isOneToOne: false;
             referencedRelation: "teams";
             referencedColumns: ["id"];

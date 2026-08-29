@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, MapPin, Minus, Plus, Send, Trophy, X } from "lucide-react";
+import { Camera, MapPin, Medal, Minus, Plus, Send, Star, Trophy, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -9,7 +9,20 @@ import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
-import { formatArea, formatClock, haversine } from "@/lib/conquete";
+import { addLandmark, removeLandmark, useLandmarks } from "@/lib/landmarks";
+import {
+  DEFAULT_LANDMARK_BONUS_M2,
+  formatArea,
+  formatClock,
+  formatCountdown,
+  haversine,
+} from "@/lib/conquete";
+
+type DurationUnit = "minutes" | "heures" | "jours";
+const UNIT_TO_MINUTES: Record<DurationUnit, number> = { minutes: 1, heures: 60, jours: 1440 };
+const UNIT_STEP: Record<DurationUnit, number> = { minutes: 5, heures: 1, jours: 1 };
+const UNIT_MAX: Record<DurationUnit, number> = { minutes: 180, heures: 72, jours: 30 };
+const UNIT_DEFAULT: Record<DurationUnit, number> = { minutes: 20, heures: 1, jours: 1 };
 
 export const Route = createFileRoute("/prof/$code")({
   head: () => ({
@@ -38,10 +51,12 @@ function TeacherDashboard() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [duration, setDuration] = useState(20);
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>("minutes");
+  const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
-  const [placingZone, setPlacingZone] = useState(false);
+  const [placingMode, setPlacingMode] = useState<"none" | "zone" | "landmark">("none");
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
+  const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
@@ -50,6 +65,8 @@ function TeacherDashboard() {
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const seenMessageCount = useRef<number | null>(null);
+
+  const durationMinutes = durationValue * UNIT_TO_MINUTES[durationUnit];
 
   useEffect(() => {
     requestNotificationPermission();
@@ -75,7 +92,17 @@ function TeacherDashboard() {
         else {
           setGameId(data.id);
           setOwnerId(data.owner_id);
-          setDuration(data.duration_minutes);
+          const mins = data.duration_minutes;
+          if (mins >= 1440 && mins % 1440 === 0) {
+            setDurationUnit("jours");
+            setDurationValue(mins / 1440);
+          } else if (mins >= 60 && mins % 60 === 0) {
+            setDurationUnit("heures");
+            setDurationValue(mins / 60);
+          } else {
+            setDurationUnit("minutes");
+            setDurationValue(mins);
+          }
         }
       });
     return () => {
@@ -86,6 +113,7 @@ function TeacherDashboard() {
   const { game, teams, territories } = useGameState(gameId);
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
+  const { landmarks } = useLandmarks(gameId);
 
   useEffect(() => {
     if (!radiusInitRef.current && game?.return_radius_m != null) {
@@ -127,7 +155,9 @@ function TeacherDashboard() {
 
   const isOwner = !!user && !!ownerId && user.id === ownerId;
 
-  const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : duration * 60;
+  const remaining = game?.ends_at
+    ? (new Date(game.ends_at).getTime() - now) / 1000
+    : durationMinutes * 60;
   const running = game?.status === "running" && remaining > 0;
 
   const withinReturnZone = useMemo(() => {
@@ -186,6 +216,10 @@ function TeacherDashboard() {
   const finished = game?.status === "finished";
   const validatedRanked = useMemo(() => ranked.filter((t) => t.validated), [ranked]);
   const unvalidated = useMemo(() => ranked.filter((t) => !t.validated), [ranked]);
+  const totalCapturedRanked = useMemo(
+    () => [...teams].sort((a, b) => b.total_captured_m2 - a.total_captured_m2),
+    [teams],
+  );
 
   const center = useMemo<[number, number] | null>(() => {
     if (game?.return_lat != null && game.return_lng != null)
@@ -209,6 +243,12 @@ function TeacherDashboard() {
     [territories, teams],
   );
 
+  const mapLandmarks = useMemo(
+    () =>
+      landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
+    [landmarks],
+  );
+
   const returnZone = useMemo(
     () =>
       game?.return_lat != null && game.return_lng != null
@@ -223,12 +263,12 @@ function TeacherDashboard() {
       toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
       return;
     }
-    const ends = new Date(Date.now() + duration * 60_000).toISOString();
+    const ends = new Date(Date.now() + durationMinutes * 60_000).toISOString();
     await supabase
       .from("games")
       .update({
         status: "running",
-        duration_minutes: duration,
+        duration_minutes: durationMinutes,
         started_at: new Date().toISOString(),
         ends_at: ends,
       })
@@ -242,8 +282,28 @@ function TeacherDashboard() {
       .from("games")
       .update({ return_lat: lat, return_lng: lng, return_radius_m: zoneRadius })
       .eq("id", gameId);
-    setPlacingZone(false);
+    setPlacingMode("none");
     toast.success("Zone de retour placée.");
+  }
+
+  async function placeLandmark(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    try {
+      await addLandmark(gameId, lat, lng, landmarkBonus);
+      setPlacingMode("none");
+      toast.success("Repère bonus placé !");
+    } catch {
+      toast.error("Impossible de placer le repère.");
+    }
+  }
+
+  async function deleteLandmark(id: string) {
+    if (!isOwner) return;
+    try {
+      await removeLandmark(id);
+    } catch {
+      toast.error("Impossible de supprimer le repère.");
+    }
   }
 
   async function updateZoneRadius(next: number) {
@@ -294,7 +354,14 @@ function TeacherDashboard() {
           teams={teams}
           territories={mapTerritories}
           returnZone={returnZone}
-          onMapClick={placingZone ? placeZone : undefined}
+          landmarks={mapLandmarks}
+          onMapClick={
+            placingMode === "zone"
+              ? placeZone
+              : placingMode === "landmark"
+                ? placeLandmark
+                : undefined
+          }
         />
         <div className="pointer-events-none absolute left-3 top-3 z-[1000] flex items-center gap-2">
           <div className="panel px-3 py-2">
@@ -307,12 +374,14 @@ function TeacherDashboard() {
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Temps
             </div>
-            <div className="display text-2xl tabular-nums">{formatClock(remaining)}</div>
+            <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
           </div>
         </div>
-        {placingZone && (
+        {placingMode !== "none" && (
           <div className="panel pointer-events-none absolute inset-x-3 bottom-3 z-[1000] px-4 py-3 text-center text-sm font-semibold">
-            Touchez la carte pour placer le centre de la zone de retour
+            {placingMode === "zone"
+              ? "Touchez la carte pour placer le centre de la zone de retour"
+              : "Touchez la carte pour placer le repère bonus"}
           </div>
         )}
       </div>
@@ -328,26 +397,52 @@ function TeacherDashboard() {
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <span className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              Minuteur
+              Durée
             </span>
             <div className="flex items-center gap-3">
               <button
                 aria-label="Réduire"
                 className="rounded-xl bg-muted p-2"
-                onClick={() => setDuration((d) => Math.max(5, d - 5))}
+                onClick={() => setDurationValue((v) => Math.max(1, v - UNIT_STEP[durationUnit]))}
               >
                 <Minus className="h-5 w-5" />
               </button>
-              <span className="display w-20 text-center text-2xl">{duration} min</span>
+              <span className="display w-16 text-center text-2xl">{durationValue}</span>
               <button
                 aria-label="Augmenter"
                 className="rounded-xl bg-muted p-2"
-                onClick={() => setDuration((d) => Math.min(120, d + 5))}
+                onClick={() =>
+                  setDurationValue((v) =>
+                    Math.min(UNIT_MAX[durationUnit], v + UNIT_STEP[durationUnit]),
+                  )
+                }
               >
                 <Plus className="h-5 w-5" />
               </button>
             </div>
           </div>
+          <div className="grid grid-cols-3 gap-2">
+            {(["minutes", "heures", "jours"] as DurationUnit[]).map((u) => (
+              <button
+                key={u}
+                className={`rounded-xl py-2 text-sm font-bold uppercase ${
+                  durationUnit === u ? "bg-primary text-primary-foreground" : "bg-muted"
+                }`}
+                onClick={() => {
+                  setDurationUnit(u);
+                  setDurationValue(UNIT_DEFAULT[u]);
+                }}
+              >
+                {u}
+              </button>
+            ))}
+          </div>
+          {durationUnit !== "minutes" && (
+            <p className="text-xs text-muted-foreground">
+              Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne pas
+              définir de zone de retour (ci-dessous) pour ne pas bloquer les retardataires.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
               {running ? "Relancer" : "Démarrer"}
@@ -407,16 +502,87 @@ function TeacherDashboard() {
                 </div>
               </div>
               <button
-                className={`btn-huge ${placingZone ? "btn-huge-accent" : "btn-huge-dark"}`}
-                onClick={() => setPlacingZone((p) => !p)}
+                className={`btn-huge ${placingMode === "zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                onClick={() => setPlacingMode((p) => (p === "zone" ? "none" : "zone"))}
               >
-                {placingZone
+                {placingMode === "zone"
                   ? "Touchez la carte..."
                   : returnZone
                     ? "Déplacer la zone"
                     : "Placer sur la carte"}
               </button>
             </>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            <Star className="h-4 w-4" /> Repères bonus
+          </div>
+          <p className="text-sm text-muted-foreground">
+            La première équipe qui passe à proximité d'un repère gagne des points bonus au
+            classement final.
+          </p>
+          {isOwner && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Bonus</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire le bonus"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setLandmarkBonus((b) => Math.max(10, b - 10))}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
+                  <span className="display w-24 text-center text-lg">
+                    {formatArea(landmarkBonus)}
+                  </span>
+                  <button
+                    aria-label="Augmenter le bonus"
+                    className="rounded-xl bg-muted p-2"
+                    onClick={() => setLandmarkBonus((b) => Math.min(500, b + 10))}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+              <button
+                className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
+              >
+                <Star className="h-5 w-5" />{" "}
+                {placingMode === "landmark" ? "Touchez la carte..." : "Ajouter un repère"}
+              </button>
+            </>
+          )}
+          {landmarks.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {landmarks.map((l) => (
+                <div
+                  key={l.id}
+                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                >
+                  <Star className="h-4 w-4 shrink-0 text-accent" />
+                  <span className="flex-1 text-sm">
+                    {l.claimed_by_team_id
+                      ? `Pris par ${teams.find((t) => t.id === l.claimed_by_team_id)?.name ?? "une équipe"}`
+                      : "Disponible"}
+                  </span>
+                  <span className="text-sm font-semibold text-muted-foreground">
+                    {formatArea(l.bonus_m2)}
+                  </span>
+                  {isOwner && (
+                    <button
+                      aria-label="Supprimer le repère"
+                      onClick={() => void deleteLandmark(l.id)}
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </section>
 
@@ -504,7 +670,7 @@ function TeacherDashboard() {
 
         <section className="panel flex flex-col gap-1 p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            <Trophy className="h-4 w-4" /> Classement ({teams.length} groupes)
+            <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
           {ranked.length === 0 && (
             <p className="py-4 text-center text-muted-foreground">
@@ -514,9 +680,13 @@ function TeacherDashboard() {
           {(finished ? validatedRanked : ranked).map((t, i) => (
             <div
               key={t.id}
-              className="flex items-center gap-3 border-b border-border py-3 last:border-0"
+              className={`flex items-center gap-3 rounded-xl border-b border-border px-2 py-3 last:border-0 ${
+                i === 0 ? "rank-gold" : ""
+              }`}
             >
-              <span className="display w-6 text-xl text-muted-foreground">{i + 1}</span>
+              <span className="display w-6 text-xl text-muted-foreground">
+                {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
+              </span>
               <span
                 className="h-6 w-6 shrink-0 rounded-full border-2 border-foreground"
                 style={{ backgroundColor: t.color }}
@@ -545,6 +715,34 @@ function TeacherDashboard() {
             </div>
           )}
         </section>
+
+        {ranked.length > 0 && (
+          <section className="panel flex flex-col gap-1 p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              <Medal className="h-4 w-4" /> Total conquis (indicatif)
+            </div>
+            <p className="mb-1 text-xs text-muted-foreground">
+              Toute la surface jamais enfermée par chaque équipe, même reprise depuis. Ne compte pas
+              pour le classement final.
+            </p>
+            {totalCapturedRanked.map((t, i) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 border-b border-border py-2 last:border-0 opacity-80"
+              >
+                <span className="w-6 text-center text-sm text-muted-foreground">{i + 1}</span>
+                <span
+                  className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
+                  style={{ backgroundColor: t.color }}
+                />
+                <span className="flex-1 truncate font-semibold">{t.name}</span>
+                <span className="display text-base tabular-nums">
+                  {formatArea(t.total_captured_m2)}
+                </span>
+              </div>
+            ))}
+          </section>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">

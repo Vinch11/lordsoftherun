@@ -200,6 +200,23 @@
     box-shadow: 0 2px 0 0 color-mix(in oklch, var(--color-accent) 60%, black);
   }
 
+  .btn-huge-accent:not(:disabled) {
+    animation: glow-pulse 1.8s ease-in-out infinite;
+  }
+
+  .rank-gold {
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklch, var(--color-accent) 25%, transparent),
+      transparent
+    );
+  }
+
+  .medal-spin {
+    display: inline-block;
+    animation: medal-pop 500ms ease-out;
+  }
+
   .btn-huge-dark {
     background-color: var(--color-secondary);
     color: var(--color-secondary-foreground);
@@ -231,5 +248,29 @@
 
   .field:focus {
     border-color: var(--color-ring);
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: drop-shadow(0 0 14px color-mix(in oklch, var(--color-accent) 70%, transparent));
+  }
+}
+
+@keyframes medal-pop {
+  0% {
+    transform: scale(0.4) rotate(-15deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.15) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
   }
 }

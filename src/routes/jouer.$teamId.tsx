@@ -10,12 +10,14 @@ import {
   MIN_LOOP_DISTANCE_M,
   formatArea,
   formatClock,
+  formatCountdown,
   haversine,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
+import { checkLandmarkClaims, useLandmarks } from "@/lib/landmarks";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -51,6 +53,7 @@ function PlayView() {
   const runningRef = useRef(false);
   const trackRef = useRef<[number, number][]>([]);
   const distRef = useRef(0);
+  const loopStartRef = useRef(0);
   const lastSync = useRef(0);
   const closing = useRef(false);
   const [chatOpen, setChatOpen] = useState(false);
@@ -84,6 +87,9 @@ function PlayView() {
 
   const { game, teams, territories } = useGameState(gameId);
   const { messages } = useMessages(gameId);
+  const { landmarks } = useLandmarks(gameId);
+  const landmarksRef = useRef(landmarks);
+  landmarksRef.current = landmarks;
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
 
@@ -160,8 +166,12 @@ function PlayView() {
       toast.error("Boucle invalide, réessayez.");
     } else {
       try {
-        const captured = await captureTerritory(gameId, teamId, poly);
-        toast.success(`Territoire capturé : ${formatArea(captured)} !`);
+        const elapsedS = (Date.now() - loopStartRef.current) / 1000;
+        const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
+        const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs);
+        toast.success(
+          `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
+        );
       } catch {
         toast.error("La capture a échoué.");
       }
@@ -186,6 +196,15 @@ function PlayView() {
           .from("teams")
           .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
           .eq("id", teamId);
+      }
+
+      if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
+        void checkLandmarkClaims(landmarksRef.current, teamId, point).then((won) => {
+          if (won) {
+            toast.success(`⭐ Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
+            notifyMessage("⭐ Repère bonus !", `+${formatArea(won.bonus_m2)}`);
+          }
+        });
       }
 
       if (!runningRef.current) return;
@@ -235,6 +254,12 @@ function PlayView() {
     [territories, teams],
   );
 
+  const mapLandmarks = useMemo(
+    () =>
+      landmarks.map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, claimed: !!l.claimed_by_team_id })),
+    [landmarks],
+  );
+
   const returnZone = useMemo(
     () =>
       game?.return_lat != null && game.return_lng != null
@@ -261,6 +286,7 @@ function PlayView() {
     }
     trackRef.current = [pos];
     distRef.current = 0;
+    loopStartRef.current = Date.now();
     runningRef.current = true;
     setTrack([pos]);
     setDistance(0);
@@ -295,6 +321,7 @@ function PlayView() {
           trail={track}
           trailColor={myColor}
           returnZone={returnZone}
+          landmarks={mapLandmarks}
           follow
         />
       </div>
@@ -309,13 +336,16 @@ function PlayView() {
             <span className="text-lg font-bold">{me?.name ?? "…"}</span>
           </div>
           <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
+          <div className="text-[10px] text-muted-foreground">
+            Total conquis : {formatArea(me?.total_captured_m2 ?? 0)}
+          </div>
         </div>
         <div className="panel px-3 py-2 text-right">
           <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Temps
           </div>
           <div className="display text-2xl tabular-nums">
-            {remaining === null ? "--:--" : formatClock(remaining)}
+            {remaining === null ? "--:--" : formatCountdown(remaining)}
           </div>
         </div>
       </div>
