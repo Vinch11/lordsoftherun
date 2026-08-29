@@ -441,43 +441,44 @@ function PlayView() {
       )}
 
 
-      <div className="absolute inset-x-0 bottom-0 z-[1000] flex flex-col gap-3 p-3">
+      <div className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3">
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
         {running && (
-          <div className="panel flex items-center justify-between px-4 py-3">
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Distance
-              </div>
-              <div className="display text-2xl tabular-nums">{Math.round(distance)} m</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="stat">
+              <span className="label-xs">Distance</span>
+              <span className="stat-value text-2xl">{Math.round(distance)} m</span>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                Retour au départ
-              </div>
-              <div className="display text-2xl tabular-nums">
+            <div className="stat text-right">
+              <span className="label-xs">Retour au départ</span>
+              <span className="stat-value text-2xl">
                 {toStart === null ? "—" : `${Math.round(toStart)} m`}
-              </div>
+              </span>
             </div>
           </div>
         )}
 
         {!running && (
-          <div className="panel flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-            <Crosshair className="h-4 w-4" />
-            {pos
-              ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
-              : "Recherche du GPS…"}
+          <div className="panel flex items-center gap-2 px-4 py-2">
+            <Crosshair className="h-4 w-4 shrink-0 text-accent" />
+            <span className="label-xs">
+              {pos
+                ? `Signal GPS OK${accuracy ? ` · ±${Math.round(accuracy)} m` : ""}`
+                : "Recherche du GPS…"}
+            </span>
           </div>
         )}
 
         {photoRequestPending && (
-          <div className="panel flex flex-col gap-3 border-4 border-accent px-4 py-3">
-            <div className="text-sm font-bold">
-              📸 Le prof demande une photo de votre groupe
+          <div className="panel flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
+            <div className="section-title">
+              <Camera className="h-4 w-4" /> Photo demandée
+            </div>
+            <div className="text-sm font-semibold">
+              Le prof demande une photo de votre groupe
               {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
                 ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
                 : " — délai dépassé, envoyez-la quand même"}
@@ -505,15 +506,14 @@ function PlayView() {
         )}
 
         {returnZone && !finished && (
-          <div className="panel flex items-center justify-between px-4 py-3">
-            <span className="text-sm font-semibold text-muted-foreground">
-              Distance à la zone de retour
-            </span>
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3">
+            <span className="label-xs">Zone de retour</span>
             <span className="display text-xl tabular-nums">
               {toZone === null ? "—" : `${Math.round(toZone)} m`}
             </span>
           </div>
         )}
+
 
         {finished ? (
           <div className="btn-huge btn-huge-dark">
