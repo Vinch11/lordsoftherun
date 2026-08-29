@@ -1,7 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
+import { Camera, Crosshair, Flag, HelpCircle, MessageCircle, Send, Square, X } from "lucide-react";
+import { RulesIntro } from "@/components/RulesIntro";
+import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
+
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -69,6 +72,18 @@ function PlayView() {
   const [photoSending, setPhotoSending] = useState(false);
   const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [summary, setSummary] = useState<LoopSummaryData | null>(null);
+
+  const rulesKey = `conquete:rules-seen:${teamId}`;
+  useEffect(() => {
+    if (!localStorage.getItem(rulesKey)) setRulesOpen(true);
+  }, [rulesKey]);
+
+  function closeRules() {
+    localStorage.setItem(rulesKey, "1");
+    setRulesOpen(false);
+  }
 
   useEffect(() => {
     requestNotificationPermission();
@@ -180,11 +195,26 @@ function PlayView() {
       try {
         const elapsedS = (Date.now() - loopStartRef.current) / 1000;
         const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
+        const loopTrack = [...trackRef.current];
+        const loopDistance = distRef.current;
         const result = await captureTerritory(gameId, teamId, poly, avgSpeedMs, {
           enabled: gameRef.current?.running_bonus_enabled ?? true,
           speedMs: kmhToMs(
             gameRef.current?.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH,
           ),
+        });
+        const { data: teamRow } = await supabase
+          .from("teams")
+          .select("score_m2")
+          .eq("id", teamId)
+          .maybeSingle();
+        setSummary({
+          area: result.area,
+          durationS: elapsedS,
+          distanceM: loopDistance,
+          ran: result.ran,
+          track: loopTrack,
+          totalM2: teamRow?.score_m2 ?? 0,
         });
         toast.success(
           `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
@@ -432,6 +462,15 @@ function PlayView() {
         )}
       </button>
 
+      <button
+        aria-label="Règles et consignes"
+        className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+        style={{ top: "max(11rem, calc(env(safe-area-inset-top) + 8.5rem))" }}
+        onClick={() => setRulesOpen(true)}
+      >
+        <HelpCircle className="h-6 w-6" />
+      </button>
+
       {chatOpen && (
         <div
           className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4"
@@ -576,6 +615,17 @@ function PlayView() {
           </button>
         )}
       </div>
+
+      {rulesOpen && (
+        <RulesIntro
+          teamName={me?.name ?? null}
+          teamColor={myColor}
+          hasReturnZone={!!returnZone}
+          onClose={closeRules}
+        />
+      )}
+
+      {summary && <LoopSummary data={summary} color={myColor} onClose={() => setSummary(null)} />}
     </main>
   );
 }

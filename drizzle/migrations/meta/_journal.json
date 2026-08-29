@@ -82,8 +82,15 @@
     {
       "idx": 11,
       "version": "7",
-      "when": 1788070000000,
-      "tag": "0011_running_bonus_config_overview",
+      "when": 1788040222785,
+      "tag": "0011_landmark_config_terminology",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788080000000,
+      "tag": "0012_running_bonus_config_overview",
       "breakpoints": true
     }
   ]
