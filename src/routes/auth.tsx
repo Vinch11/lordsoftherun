@@ -1,7 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Flag } from "lucide-react";
+import { ArrowLeft, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -64,6 +64,9 @@ function AuthPage() {
   return (
     <main className="min-h-screen px-5 py-10">
       <div className="mx-auto flex max-w-md flex-col gap-6">
+        <Link to="/" className="nav-back" aria-label="Retour à l'accueil">
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
         <header>
           <div className="inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-semibold uppercase tracking-widest text-secondary-foreground">
             <Flag className="h-3.5 w-3.5" /> Enseignant
