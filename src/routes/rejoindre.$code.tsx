@@ -5,12 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
 
 export const Route = createFileRoute("/rejoindre/$code")({
-  validateSearch: (search: Record<string, unknown>) => {
-    const raw = search["code"];
-    const code =
-      typeof raw === "string" || typeof raw === "number" ? String(raw).slice(0, 4) : "";
-    return { code };
-  },
   head: () => ({
     meta: [
       { title: "Rejoindre une partie — Conquête" },
