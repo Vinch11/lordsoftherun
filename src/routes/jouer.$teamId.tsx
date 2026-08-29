@@ -218,9 +218,12 @@ function PlayView() {
           totalM2: teamRow?.score_m2 ?? 0,
         });
         toast.success(
-
+          `Territoire capturé : ${formatArea(result.area)} !${result.ran ? " 🏃 Bonus course !" : ""}`,
+        );
+      } catch {
         toast.error("La capture a échoué.");
       }
+
     }
     trackRef.current = [];
     distRef.current = 0;
