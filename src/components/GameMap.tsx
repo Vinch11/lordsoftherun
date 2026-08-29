@@ -91,9 +91,9 @@ export default function GameMap({
       zoomControl: false,
       attributionControl: true,
     });
-    // Dark "tactical radar" basemap instead of a plain road map, for a more
-    // game-like read at a glance (who owns what, at high outdoor brightness).
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    // Bright, colorful "arcade" basemap: readable in full sunlight outdoors,
+    // with saturated parks/roads/water so team territories still pop.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
       maxZoom: 20,
       subdomains: "abcd",
       attribution: "© OpenStreetMap contributors © CARTO",
@@ -152,11 +152,11 @@ export default function GameMap({
     if (returnZone) {
       L.circle([returnZone.lat, returnZone.lng], {
         radius: returnZone.radiusM,
-        color: "#35c9e8",
+        color: "#0891b2",
         weight: 3,
         dashArray: "8 8",
-        fillColor: "#35c9e8",
-        fillOpacity: 0.1,
+        fillColor: "#0891b2",
+        fillOpacity: 0.12,
         className: "zone-glow-cyan",
       })
         .bindTooltip("Zone de retour", { permanent: false })
@@ -171,10 +171,10 @@ export default function GameMap({
     for (const z of forbiddenZones) {
       L.circle([z.lat, z.lng], {
         radius: z.radiusM,
-        color: "#f2622e",
+        color: "#dc2626",
         weight: 2,
         dashArray: "4 6",
-        fillColor: "#f2622e",
+        fillColor: "#dc2626",
         fillOpacity: 0.18,
         className: "zone-glow-red",
       })

@@ -341,22 +341,23 @@
   }
 }
 
-/* GTA-radar-style map dressing: neon glow on territories, zones and team
-   blips over the dark basemap, plus a HUD look for team-name tooltips. */
+/* Bright arcade-style map dressing: territories, zones and team blips get a
+   dark contact shadow (for contrast on the light basemap) plus a colored
+   glow, and tooltips read as game HUD chips rather than plain map labels. */
 .territory-glow {
-  filter: drop-shadow(0 0 6px currentColor);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 9px currentColor);
 }
 
 .zone-glow-cyan {
-  filter: drop-shadow(0 0 8px #35c9e8);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #0891b2);
 }
 
 .zone-glow-red {
-  filter: drop-shadow(0 0 8px #f2622e);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #dc2626);
 }
 
 .leaflet-tooltip {
-  background: color-mix(in oklch, var(--color-background) 75%, transparent) !important;
+  background: color-mix(in oklch, var(--color-background) 92%, transparent) !important;
   color: var(--color-foreground) !important;
   border: 1px solid var(--color-border) !important;
   border-radius: var(--radius-md) !important;
@@ -372,5 +373,5 @@
 }
 
 .leaflet-container {
-  background: #0a0e18 !important;
+  background: #eef2f6 !important;
 }
