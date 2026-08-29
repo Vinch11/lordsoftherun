@@ -590,7 +590,7 @@ function PlayView() {
 
       {rulesOpen && (
         <RulesIntro
-          teamName={me?.name}
+          teamName={me?.name ?? null}
           teamColor={myColor}
           hasReturnZone={!!returnZone}
           onClose={closeRules}
