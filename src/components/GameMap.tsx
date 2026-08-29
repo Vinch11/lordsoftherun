@@ -91,12 +91,13 @@ export default function GameMap({
       zoomControl: false,
       attributionControl: true,
     });
-    // Bright, colorful "arcade" basemap: readable in full sunlight outdoors,
-    // with saturated parks/roads/water so team territories still pop.
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      maxZoom: 20,
-      subdomains: "abcd",
-      attribution: "© OpenStreetMap contributors © CARTO",
+    // Bright, colorful basemap, readable in full sunlight outdoors. CARTO's
+    // free anonymous tiles now require an API key, so use standard OSM tiles
+    // instead (no key needed, still colorful with green parks/blue water).
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      subdomains: "abc",
+      attribution: "© OpenStreetMap contributors",
     }).addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     territoryLayer.current = L.layerGroup().addTo(map);

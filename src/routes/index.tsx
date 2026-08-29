@@ -1,13 +1,12 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Play, QrCode, ShieldCheck, Users } from "lucide-react";
+import { MapPin, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
 import { formatArea, randomCode } from "@/lib/conquete";
-
 
 type MyGame = {
   id: string;
@@ -50,7 +49,7 @@ function Home() {
   const [myGames, setMyGames] = useState<MyGame[]>([]);
   const [resumeTeam, setResumeTeam] = useState<ResumeTeam | null>(null);
   const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
-
+  const [deletingGame, setDeletingGame] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = localStorage.getItem("conquete:last-team");
@@ -110,6 +109,28 @@ function Home() {
       active = false;
     };
   }, [user]);
+
+  async function deleteGame(game: MyGame) {
+    if (
+      !window.confirm(
+        `Supprimer définitivement la partie ${game.code} et toutes ses données (équipes, territoires, classement) ?`,
+      )
+    ) {
+      return;
+    }
+    setDeletingGame(game.id);
+    try {
+      const { error } = await supabase.from("games").delete().eq("id", game.id);
+      if (error) {
+        toast.error("Impossible de supprimer cette partie.");
+        return;
+      }
+      setMyGames((prev) => prev.filter((g) => g.id !== game.id));
+      toast("Partie supprimée.");
+    } finally {
+      setDeletingGame(null);
+    }
+  }
 
   async function createGame() {
     if (!user) {
@@ -238,6 +259,14 @@ function Home() {
                 >
                   <QrCode className="h-5 w-5" />
                 </button>
+                <button
+                  aria-label={`Supprimer la partie ${g.code}`}
+                  className="rounded-xl bg-muted p-3 text-destructive disabled:opacity-50"
+                  disabled={deletingGame === g.id}
+                  onClick={() => void deleteGame(g)}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </div>
             ))}
           </section>
@@ -253,7 +282,6 @@ function Home() {
             <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
           </div>
         )}
-
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
           {user ? (
