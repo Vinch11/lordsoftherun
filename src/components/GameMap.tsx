@@ -35,7 +35,7 @@ type Props = {
   landmarks?: MapLandmark[];
   forbiddenZones?: MapForbiddenZone[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
-  mapStyle?: MapStyleId | string | null;
+  mapStyle?: MapStyleId | string | null | undefined;
 };
 
 const landmarkIcon = (claimed: boolean, spec: MapStyleSpec) =>
