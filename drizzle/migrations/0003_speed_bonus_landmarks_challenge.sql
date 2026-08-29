@@ -43,12 +43,15 @@ GRANT ALL ON public.landmarks TO service_role;
 
 ALTER TABLE public.landmarks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "landmarks readable" ON public.landmarks;
 CREATE POLICY "landmarks readable" ON public.landmarks FOR SELECT USING (true);
+DROP POLICY IF EXISTS "landmarks insertable by game owner" ON public.landmarks;
 CREATE POLICY "landmarks insertable by game owner" ON public.landmarks
   FOR INSERT TO authenticated
   WITH CHECK (
     EXISTS (SELECT 1 FROM public.games g WHERE g.id = landmarks.game_id AND g.owner_id = auth.uid())
   );
+DROP POLICY IF EXISTS "landmarks deletable by game owner" ON public.landmarks;
 CREATE POLICY "landmarks deletable by game owner" ON public.landmarks
   FOR DELETE TO authenticated
   USING (
@@ -56,9 +59,14 @@ CREATE POLICY "landmarks deletable by game owner" ON public.landmarks
   );
 -- Anonymous teams claim landmarks by racing an UPDATE ... WHERE claimed_by_team_id IS NULL;
 -- same open-write trust model already used for teams/territories.
+DROP POLICY IF EXISTS "landmarks claimable" ON public.landmarks;
 CREATE POLICY "landmarks claimable" ON public.landmarks FOR UPDATE USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS landmarks_game_idx ON public.landmarks(game_id);
 
 ALTER TABLE public.landmarks REPLICA IDENTITY FULL;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.landmarks;
+DO $pub$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='landmarks') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.landmarks;
+  END IF;
+END $pub$;

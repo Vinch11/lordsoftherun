@@ -8,6 +8,44 @@ export type Database = {
   };
   public: {
     Tables: {
+      forbidden_zones: {
+        Row: {
+          created_at: string;
+          game_id: string;
+          id: string;
+          lat: number;
+          lng: number;
+          penalty_m2: number;
+          radius_m: number;
+        };
+        Insert: {
+          created_at?: string;
+          game_id: string;
+          id?: string;
+          lat: number;
+          lng: number;
+          penalty_m2?: number;
+          radius_m?: number;
+        };
+        Update: {
+          created_at?: string;
+          game_id?: string;
+          id?: string;
+          lat?: number;
+          lng?: number;
+          penalty_m2?: number;
+          radius_m?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "forbidden_zones_game_id_fkey";
+            columns: ["game_id"];
+            isOneToOne: false;
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       games: {
         Row: {
           code: string;
@@ -56,41 +94,50 @@ export type Database = {
         };
         Relationships: [];
       };
-      photo_submissions: {
+      landmarks: {
         Row: {
+          bonus_m2: number;
+          claimed_at: string | null;
+          claimed_by_team_id: string | null;
+          created_at: string;
           game_id: string;
           id: string;
-          storage_path: string;
-          submitted_at: string;
-          team_id: string;
+          lat: number;
+          lng: number;
         };
         Insert: {
+          bonus_m2?: number;
+          claimed_at?: string | null;
+          claimed_by_team_id?: string | null;
+          created_at?: string;
           game_id: string;
           id?: string;
-          storage_path: string;
-          submitted_at?: string;
-          team_id: string;
+          lat: number;
+          lng: number;
         };
         Update: {
+          bonus_m2?: number;
+          claimed_at?: string | null;
+          claimed_by_team_id?: string | null;
+          created_at?: string;
           game_id?: string;
           id?: string;
-          storage_path?: string;
-          submitted_at?: string;
-          team_id?: string;
+          lat?: number;
+          lng?: number;
         };
         Relationships: [
           {
-            foreignKeyName: "photo_submissions_game_id_fkey";
-            columns: ["game_id"];
+            foreignKeyName: "landmarks_claimed_by_team_id_fkey";
+            columns: ["claimed_by_team_id"];
             isOneToOne: false;
-            referencedRelation: "games";
+            referencedRelation: "teams";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "photo_submissions_team_id_fkey";
-            columns: ["team_id"];
+            foreignKeyName: "landmarks_game_id_fkey";
+            columns: ["game_id"];
             isOneToOne: false;
-            referencedRelation: "teams";
+            referencedRelation: "games";
             referencedColumns: ["id"];
           },
         ];
@@ -136,6 +183,81 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      photo_submissions: {
+        Row: {
+          game_id: string;
+          id: string;
+          storage_path: string;
+          submitted_at: string;
+          team_id: string;
+        };
+        Insert: {
+          game_id: string;
+          id?: string;
+          storage_path: string;
+          submitted_at?: string;
+          team_id: string;
+        };
+        Update: {
+          game_id?: string;
+          id?: string;
+          storage_path?: string;
+          submitted_at?: string;
+          team_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "photo_submissions_game_id_fkey";
+            columns: ["game_id"];
+            isOneToOne: false;
+            referencedRelation: "games";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "photo_submissions_team_id_fkey";
+            columns: ["team_id"];
+            isOneToOne: false;
+            referencedRelation: "teams";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      saved_points: {
+        Row: {
+          created_at: string;
+          id: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          name: string;
+          owner_id: string;
+          radius_m: number;
+          value_m2: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          kind: string;
+          lat: number;
+          lng: number;
+          name: string;
+          owner_id: string;
+          radius_m?: number;
+          value_m2?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          kind?: string;
+          lat?: number;
+          lng?: number;
+          name?: string;
+          owner_id?: string;
+          radius_m?: number;
+          value_m2?: number;
+        };
+        Relationships: [];
       };
       teams: {
         Row: {
@@ -237,128 +359,6 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
-      };
-      landmarks: {
-        Row: {
-          bonus_m2: number;
-          claimed_at: string | null;
-          claimed_by_team_id: string | null;
-          created_at: string;
-          game_id: string;
-          id: string;
-          lat: number;
-          lng: number;
-        };
-        Insert: {
-          bonus_m2?: number;
-          claimed_at?: string | null;
-          claimed_by_team_id?: string | null;
-          created_at?: string;
-          game_id: string;
-          id?: string;
-          lat: number;
-          lng: number;
-        };
-        Update: {
-          bonus_m2?: number;
-          claimed_at?: string | null;
-          claimed_by_team_id?: string | null;
-          created_at?: string;
-          game_id?: string;
-          id?: string;
-          lat?: number;
-          lng?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "landmarks_game_id_fkey";
-            columns: ["game_id"];
-            isOneToOne: false;
-            referencedRelation: "games";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "landmarks_claimed_by_team_id_fkey";
-            columns: ["claimed_by_team_id"];
-            isOneToOne: false;
-            referencedRelation: "teams";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      forbidden_zones: {
-        Row: {
-          created_at: string;
-          game_id: string;
-          id: string;
-          lat: number;
-          lng: number;
-          penalty_m2: number;
-          radius_m: number;
-        };
-        Insert: {
-          created_at?: string;
-          game_id: string;
-          id?: string;
-          lat: number;
-          lng: number;
-          penalty_m2?: number;
-          radius_m?: number;
-        };
-        Update: {
-          created_at?: string;
-          game_id?: string;
-          id?: string;
-          lat?: number;
-          lng?: number;
-          penalty_m2?: number;
-          radius_m?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "forbidden_zones_game_id_fkey";
-            columns: ["game_id"];
-            isOneToOne: false;
-            referencedRelation: "games";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      saved_points: {
-        Row: {
-          created_at: string;
-          id: string;
-          kind: string;
-          lat: number;
-          lng: number;
-          name: string;
-          owner_id: string;
-          radius_m: number;
-          value_m2: number;
-        };
-        Insert: {
-          created_at?: string;
-          id?: string;
-          kind: string;
-          lat: number;
-          lng: number;
-          name: string;
-          owner_id: string;
-          radius_m?: number;
-          value_m2?: number;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          kind?: string;
-          lat?: number;
-          lng?: number;
-          name?: string;
-          owner_id?: string;
-          radius_m?: number;
-          value_m2?: number;
-        };
-        Relationships: [];
       };
     };
     Views: {
