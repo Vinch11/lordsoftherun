@@ -48,11 +48,13 @@ const OSM_TILES = {
   maxZoom: 19,
 };
 
+// Tuiles Humanitarian OSM (OSM France) : gratuites, sans clé API, rendu
+// coloré et lisible proche d'un plan de ville type Waze.
 const CARTOON_TILES = {
-  url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  attribution: "© OpenStreetMap contributors © CARTO",
-  subdomains: "abcd",
-  maxZoom: 20,
+  url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png",
+  attribution: "© OpenStreetMap contributors, Humanitarian OSM Team",
+  subdomains: "ab",
+  maxZoom: 19,
 };
 
 const blipCartoon = (color: string) => `<div style="
