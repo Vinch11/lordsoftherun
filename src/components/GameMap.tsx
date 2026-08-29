@@ -44,6 +44,19 @@ const landmarkIcon = (claimed: boolean) =>
     iconAnchor: [13, 13],
   });
 
+const blipIcon = (color: string) =>
+  L.divIcon({
+    html: `<div style="
+      width:16px;height:16px;border-radius:50%;
+      background:${color};
+      border:2px solid #ffffff;
+      box-shadow:0 0 4px 2px rgba(0,0,0,.6), 0 0 14px 4px ${color};
+    "></div>`,
+    className: "",
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+  });
+
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 
 export default function GameMap({
@@ -78,9 +91,12 @@ export default function GameMap({
       zoomControl: false,
       attributionControl: true,
     });
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "© OpenStreetMap",
+    // Dark "tactical radar" basemap instead of a plain road map, for a more
+    // game-like read at a glance (who owns what, at high outdoor brightness).
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20,
+      subdomains: "abcd",
+      attribution: "© OpenStreetMap contributors © CARTO",
     }).addTo(map);
     L.control.zoom({ position: "bottomleft" }).addTo(map);
     territoryLayer.current = L.layerGroup().addTo(map);
@@ -122,7 +138,8 @@ export default function GameMap({
           color: t.color,
           weight: 3,
           fillColor: t.color,
-          fillOpacity: 0.35,
+          fillOpacity: 0.4,
+          className: "territory-glow",
         },
       }).addTo(layer);
     }
@@ -135,11 +152,12 @@ export default function GameMap({
     if (returnZone) {
       L.circle([returnZone.lat, returnZone.lng], {
         radius: returnZone.radiusM,
-        color: "#1d6fe0",
+        color: "#35c9e8",
         weight: 3,
         dashArray: "8 8",
-        fillColor: "#1d6fe0",
-        fillOpacity: 0.08,
+        fillColor: "#35c9e8",
+        fillOpacity: 0.1,
+        className: "zone-glow-cyan",
       })
         .bindTooltip("Zone de retour", { permanent: false })
         .addTo(layer);
@@ -153,11 +171,12 @@ export default function GameMap({
     for (const z of forbiddenZones) {
       L.circle([z.lat, z.lng], {
         radius: z.radiusM,
-        color: "#e63946",
+        color: "#f2622e",
         weight: 2,
         dashArray: "4 6",
-        fillColor: "#e63946",
+        fillColor: "#f2622e",
         fillOpacity: 0.18,
+        className: "zone-glow-red",
       })
         .bindTooltip("⚠️ Zone interdite")
         .addTo(layer);
@@ -181,14 +200,8 @@ export default function GameMap({
     layer.clearLayers();
     for (const t of teams) {
       if (t.lat == null || t.lng == null) continue;
-      L.circleMarker([t.lat, t.lng], {
-        radius: 10,
-        color: "#ffffff",
-        weight: 3,
-        fillColor: t.color,
-        fillOpacity: 1,
-      })
-        .bindTooltip(t.name, { permanent: true, direction: "top", offset: [0, -10] })
+      L.marker([t.lat, t.lng], { icon: blipIcon(t.color) })
+        .bindTooltip(t.name, { permanent: true, direction: "top", offset: [0, -12] })
         .addTo(layer);
     }
   }, [teams]);

@@ -1,9 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Flag, MapPin, Users } from "lucide-react";
+import { MapPin, Play, ShieldCheck, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useProfile } from "@/lib/profile";
 import { formatArea, randomCode } from "@/lib/conquete";
 
 type MyGame = {
@@ -15,6 +16,8 @@ type MyGame = {
   topTeam: string | null;
   topScore: number;
 };
+
+type ResumeTeam = { teamId: string; teamName: string; code: string };
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -39,9 +42,30 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
+  const { profile } = useProfile(user?.id);
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
+  const [resumeTeam, setResumeTeam] = useState<ResumeTeam | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem("conquete:last-team");
+    if (!raw) return;
+    try {
+      const last = JSON.parse(raw) as { teamId: string; code: string };
+      void supabase
+        .from("teams")
+        .select("id, name")
+        .eq("id", last.teamId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setResumeTeam({ teamId: data.id, teamName: data.name, code: last.code });
+          else localStorage.removeItem("conquete:last-team");
+        });
+    } catch {
+      localStorage.removeItem("conquete:last-team");
+    }
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -124,6 +148,17 @@ function Home() {
           </p>
         </header>
 
+        {resumeTeam && (
+          <button
+            className="btn-huge btn-huge-accent"
+            onClick={() =>
+              navigate({ to: "/jouer/$teamId", params: { teamId: resumeTeam.teamId } })
+            }
+          >
+            <Play className="h-5 w-5" /> Reprendre ma partie — {resumeTeam.teamName}
+          </button>
+        )}
+
         <section className="panel flex flex-col gap-4 p-5">
           <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
             <Users className="h-4 w-4" /> Groupe d'élèves
@@ -143,35 +178,6 @@ function Home() {
           >
             Rejoindre la partie
           </button>
-        </section>
-
-        <section className="panel flex flex-col gap-4 p-5">
-          <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-            <Flag className="h-4 w-4" /> Enseignant
-          </div>
-          <button
-            className="btn-huge btn-huge-dark"
-            disabled={creating || loading}
-            onClick={createGame}
-          >
-            {creating ? "Création..." : user ? "Créer une partie" : "Se connecter pour créer"}
-          </button>
-          <p className="text-sm text-muted-foreground">
-            {user
-              ? "Vous obtiendrez un code à 4 chiffres à donner aux groupes."
-              : "Créez votre compte enseignant (e-mail + mot de passe) pour lancer une partie."}
-          </p>
-          {user && (
-            <button
-              className="text-left text-sm font-semibold underline text-muted-foreground"
-              onClick={async () => {
-                await supabase.auth.signOut();
-                toast("Déconnecté.");
-              }}
-            >
-              Se déconnecter ({user.email})
-            </button>
-          )}
         </section>
 
         {user && myGames.length > 0 && (
@@ -221,6 +227,47 @@ function Home() {
             ))}
           </section>
         )}
+
+        <div className="flex flex-col items-center gap-2 pt-4 text-center">
+          {user ? (
+            <>
+              {profile?.role === "admin" && (
+                <Link
+                  to="/admin"
+                  className="flex items-center gap-1 text-sm font-semibold text-muted-foreground underline"
+                >
+                  <ShieldCheck className="h-4 w-4" /> Administration
+                </Link>
+              )}
+              {profile && !profile.approved && profile.role !== "admin" ? (
+                <p className="text-sm text-muted-foreground">
+                  Compte enseignant en attente de validation par l'administrateur.
+                </p>
+              ) : (
+                <button
+                  className="text-sm font-semibold text-muted-foreground underline disabled:opacity-50"
+                  disabled={creating || loading}
+                  onClick={createGame}
+                >
+                  {creating ? "Création..." : "+ Créer une partie (enseignant)"}
+                </button>
+              )}
+              <button
+                className="text-sm text-muted-foreground underline"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  toast("Déconnecté.");
+                }}
+              >
+                Se déconnecter ({user.email})
+              </button>
+            </>
+          ) : (
+            <Link to="/auth" className="text-sm text-muted-foreground underline">
+              Espace enseignant
+            </Link>
+          )}
+        </div>
       </div>
     </main>
   );

@@ -46,6 +46,30 @@ export type Database = {
           },
         ];
       };
+      profiles: {
+        Row: {
+          approved: boolean;
+          created_at: string;
+          email: string | null;
+          id: string;
+          role: string;
+        };
+        Insert: {
+          approved?: boolean;
+          created_at?: string;
+          email?: string | null;
+          id: string;
+          role?: string;
+        };
+        Update: {
+          approved?: boolean;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          role?: string;
+        };
+        Relationships: [];
+      };
       games: {
         Row: {
           code: string;

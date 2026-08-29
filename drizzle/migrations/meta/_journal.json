@@ -43,6 +43,13 @@
       "when": 1788015120704,
       "tag": "0005_apply_pending_landmarks_zones",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788040000000,
+      "tag": "0006_admin_approval",
+      "breakpoints": true
     }
   ]
 }

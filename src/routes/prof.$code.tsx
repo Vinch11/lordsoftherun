@@ -5,10 +5,12 @@ import {
   ArrowLeft,
   Bookmark,
   Camera,
+  Maximize2,
   MapPin,
   Medal,
   Minus,
   Plus,
+  QrCode,
   Send,
   ShieldAlert,
   Star,
@@ -17,6 +19,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { JoinQRCode } from "@/components/JoinQRCode";
 import { useGameState } from "@/lib/useGameState";
 import { useAuth } from "@/hooks/useAuth";
 import { sendProfMessage, useMessages } from "@/lib/messages";
@@ -73,6 +76,7 @@ function TeacherDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [creatingGame, setCreatingGame] = useState(false);
+  const [qrFullscreen, setQrFullscreen] = useState(false);
   const [gameId, setGameId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -299,6 +303,9 @@ function TeacherDashboard() {
         : null,
     [game?.return_lat, game?.return_lng, game?.return_radius_m],
   );
+
+  const joinUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/rejoindre/${code}` : "";
 
   async function start() {
     if (!gameId) return;
@@ -595,6 +602,37 @@ function TeacherDashboard() {
             </button>
           </div>
         </section>
+
+        <section className="panel flex flex-col items-center gap-3 p-4">
+          <div className="flex w-full items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              <QrCode className="h-4 w-4" /> Rejoindre
+            </div>
+            <button
+              aria-label="Agrandir le QR code"
+              className="rounded-xl bg-muted p-2"
+              onClick={() => setQrFullscreen(true)}
+            >
+              <Maximize2 className="h-4 w-4" />
+            </button>
+          </div>
+          {joinUrl && <JoinQRCode url={joinUrl} />}
+          <p className="text-sm text-muted-foreground">
+            Ou tapez le code <span className="font-bold text-foreground">{code}</span> sur{" "}
+            {typeof window !== "undefined" ? window.location.host : ""}
+          </p>
+        </section>
+
+        {qrFullscreen && (
+          <div
+            className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-6 bg-background p-6"
+            onClick={() => setQrFullscreen(false)}
+          >
+            {joinUrl && <JoinQRCode url={joinUrl} size={320} />}
+            <div className="display text-5xl tracking-[0.3em]">{code}</div>
+            <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
+          </div>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
