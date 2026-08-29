@@ -49,6 +49,8 @@ function Home() {
   const [creating, setCreating] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
   const [resumeTeam, setResumeTeam] = useState<ResumeTeam | null>(null);
+  const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
+
 
   useEffect(() => {
     const raw = localStorage.getItem("conquete:last-team");
