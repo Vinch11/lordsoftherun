@@ -7,6 +7,7 @@ import {
   Camera,
   Eye,
   Flag,
+  Gamepad2,
   Maximize2,
   MapPin,
   Medal,
@@ -15,6 +16,7 @@ import {
   Plus,
   QrCode,
   Send,
+  Shield,
   ShieldAlert,
   Star,
   Trophy,
@@ -37,8 +39,10 @@ import {
   removeLandmark,
   updateLandmark,
   useLandmarks,
+  type LandmarkKind,
 } from "@/lib/landmarks";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
+import { placeFlag, useFlags } from "@/lib/flags";
 import {
   applySavedPoint,
   deleteSavedPoint,
@@ -46,6 +50,9 @@ import {
   useSavedPoints,
 } from "@/lib/savedPoints";
 import {
+  CAPTURE_CONSEQUENCE_LABELS,
+  DEFAULT_CTF_CAPTURE_RADIUS_M,
+  DEFAULT_CTF_TIME_PENALTY_M2,
   DEFAULT_FORBIDDEN_PENALTY_M2,
   DEFAULT_FORBIDDEN_RADIUS_M,
   DEFAULT_LANDMARK_BONUS_M2,
@@ -57,6 +64,8 @@ import {
   formatCountdown,
   haversine,
   randomCode,
+  type CaptureConsequence,
+  type GameMode,
 } from "@/lib/conquete";
 
 type DurationUnit = "minutes" | "heures" | "jours";
@@ -89,8 +98,12 @@ const DEFAULT_ZONE_RADIUS = 25;
 type LandmarkFieldsProps = {
   icon: string;
   onIcon: (icon: string) => void;
+  kind: LandmarkKind;
+  onKind: (kind: LandmarkKind) => void;
   bonus: number;
   onBonus: (updater: (b: number) => number) => void;
+  shieldDuration: number;
+  onShieldDuration: (updater: (s: number) => number) => void;
   appearAfter: number;
   onAppearAfter: (updater: (m: number) => number) => void;
   expires: boolean;
@@ -102,8 +115,12 @@ type LandmarkFieldsProps = {
 function LandmarkFields({
   icon,
   onIcon,
+  kind,
+  onKind,
   bonus,
   onBonus,
+  shieldDuration,
+  onShieldDuration,
   appearAfter,
   onAppearAfter,
   expires,
@@ -127,28 +144,71 @@ function LandmarkFields({
           </button>
         ))}
       </div>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-semibold">Bonus</span>
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            aria-label="Réduire le bonus"
-            className="icon-btn"
-            onClick={() => onBonus((b) => Math.max(10, b - 10))}
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="display w-24 text-center text-lg">{formatArea(bonus)}</span>
-          <button
-            type="button"
-            aria-label="Augmenter le bonus"
-            className="icon-btn"
-            onClick={() => onBonus((b) => Math.min(500, b + 10))}
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          className="seg-btn"
+          data-active={kind === "points"}
+          onClick={() => onKind("points")}
+        >
+          Points bonus
+        </button>
+        <button
+          type="button"
+          className="seg-btn"
+          data-active={kind === "shield"}
+          onClick={() => onKind("shield")}
+        >
+          Bouclier
+        </button>
       </div>
+      {kind === "points" ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">Bonus</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Réduire le bonus"
+              className="icon-btn"
+              onClick={() => onBonus((b) => Math.max(10, b - 10))}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="display w-24 text-center text-lg">{formatArea(bonus)}</span>
+            <button
+              type="button"
+              aria-label="Augmenter le bonus"
+              className="icon-btn"
+              onClick={() => onBonus((b) => Math.min(500, b + 10))}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">Durée d'immunité</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Réduire la durée"
+              className="icon-btn"
+              onClick={() => onShieldDuration((s) => Math.max(5, s - 5))}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="display w-16 text-center text-lg">{shieldDuration}s</span>
+            <button
+              type="button"
+              aria-label="Augmenter la durée"
+              className="icon-btn"
+              onClick={() => onShieldDuration((s) => Math.min(120, s + 5))}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold">Apparaît après</span>
         <div className="flex items-center gap-3">
@@ -232,9 +292,16 @@ function TeacherDashboard() {
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
   const [landmarkIconChoice, setLandmarkIconChoice] = useState<string>(DEFAULT_LANDMARK_ICON);
+  const [landmarkKind, setLandmarkKind] = useState<LandmarkKind>("points");
+  const [landmarkShieldDuration, setLandmarkShieldDuration] = useState(30);
   const [landmarkAppearAfter, setLandmarkAppearAfter] = useState(0);
   const [landmarkExpires, setLandmarkExpires] = useState(false);
   const [landmarkDisappearAfter, setLandmarkDisappearAfter] = useState(30);
+  const [gameMode, setGameModeState] = useState<GameMode>("territoire");
+  const [ctfConsequence, setCtfConsequence] = useState<CaptureConsequence>("return_to_base");
+  const [ctfTimePenalty, setCtfTimePenalty] = useState(DEFAULT_CTF_TIME_PENALTY_M2);
+  const [ctfCaptureRadius, setCtfCaptureRadius] = useState(DEFAULT_CTF_CAPTURE_RADIUS_M);
+  const [placingFlagForTeam, setPlacingFlagForTeam] = useState<string | null>(null);
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
   const [forbiddenPenalty, setForbiddenPenalty] = useState(DEFAULT_FORBIDDEN_PENALTY_M2);
@@ -250,6 +317,7 @@ function TeacherDashboard() {
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
+  const ctfConfigInitRef = useRef(false);
   const seenMessageCount = useRef<number | null>(null);
 
   const durationMinutes = durationValue * UNIT_TO_MINUTES[durationUnit];
@@ -301,6 +369,7 @@ function TeacherDashboard() {
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
+  const { flags } = useFlags(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
     "landmark",
@@ -323,6 +392,16 @@ function TeacherDashboard() {
       setRunningBonusSpeedKmh(game.running_bonus_speed_kmh);
       setForbiddenRunningOnly(game.forbidden_zone_running_only);
       runningConfigInitRef.current = true;
+    }
+  }, [game]);
+
+  useEffect(() => {
+    if (!ctfConfigInitRef.current && game != null) {
+      setGameModeState(game.mode);
+      setCtfConsequence(game.ctf_capture_consequence);
+      setCtfTimePenalty(game.ctf_time_penalty_m2);
+      setCtfCaptureRadius(game.ctf_capture_radius_m);
+      ctfConfigInitRef.current = true;
     }
   }, [game]);
 
@@ -381,11 +460,14 @@ function TeacherDashboard() {
       return;
     }
     stoppedRef.current = true;
+    // The return-zone-at-the-final-whistle rule is a territory-mode concept;
+    // in capture-the-flag every team's score already reflects the flags it
+    // actually delivered, so nobody gets excluded from the ranking here.
     await Promise.all(
       teams.map((t) =>
         supabase
           .from("teams")
-          .update({ validated: withinReturnZone(t) })
+          .update({ validated: gameMode === "capture_drapeau" ? true : withinReturnZone(t) })
           .eq("id", t.id),
       ),
     );
@@ -460,6 +542,34 @@ function TeacherDashboard() {
     [forbiddenZones],
   );
 
+  const mapFlags = useMemo(
+    () =>
+      flags
+        .filter((f) => f.status !== "awaiting_placement")
+        .map((f) => {
+          const owner = teams.find((tm) => tm.id === f.team_id);
+          const carrier = f.carried_by_team_id
+            ? teams.find((tm) => tm.id === f.carried_by_team_id)
+            : null;
+          const position: [number, number] =
+            f.status === "carried" && carrier?.lat != null && carrier.lng != null
+              ? [carrier.lat, carrier.lng]
+              : [f.lat, f.lng];
+          const label =
+            f.status === "carried"
+              ? `Drapeau ${owner?.name ?? ""} — porté par ${carrier?.name ?? "?"}`
+              : `Drapeau ${owner?.name ?? ""}`;
+          return {
+            id: f.id,
+            lat: position[0],
+            lng: position[1],
+            color: owner?.color ?? "#888",
+            label,
+          };
+        }),
+    [flags, teams],
+  );
+
   const returnZone = useMemo(
     () =>
       game?.return_lat != null && game.return_lng != null
@@ -511,9 +621,11 @@ function TeacherDashboard() {
         landmarkIconChoice,
         landmarkAppearAfter,
         landmarkExpires ? landmarkDisappearAfter : null,
+        landmarkKind,
+        landmarkShieldDuration,
       );
       setPlacingMode("none");
-      toast.success("Repère bonus placé !");
+      toast.success(landmarkKind === "shield" ? "Bouclier placé !" : "Repère bonus placé !");
     } catch {
       toast.error("Impossible de placer le repère.");
     }
@@ -531,7 +643,9 @@ function TeacherDashboard() {
   function startEditLandmark(l: (typeof landmarks)[number]) {
     setEditingLandmarkId(l.id);
     setLandmarkIconChoice(l.icon);
+    setLandmarkKind(l.kind);
     setLandmarkBonus(l.bonus_m2);
+    setLandmarkShieldDuration(l.shield_duration_s);
     setLandmarkAppearAfter(l.active_after_minutes);
     setLandmarkExpires(l.active_until_minutes != null);
     setLandmarkDisappearAfter(l.active_until_minutes ?? 30);
@@ -542,7 +656,9 @@ function TeacherDashboard() {
     try {
       await updateLandmark(editingLandmarkId, {
         icon: landmarkIconChoice,
+        kind: landmarkKind,
         bonus_m2: landmarkBonus,
+        shield_duration_s: landmarkShieldDuration,
         active_after_minutes: landmarkAppearAfter,
         active_until_minutes: landmarkExpires ? landmarkDisappearAfter : null,
       });
@@ -656,6 +772,41 @@ function TeacherDashboard() {
     await supabase.from("games").update({ forbidden_zone_running_only: next }).eq("id", gameId);
   }
 
+  async function updateMode(next: GameMode) {
+    setGameModeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ mode: next }).eq("id", gameId);
+  }
+
+  async function updateCtfConsequence(next: CaptureConsequence) {
+    setCtfConsequence(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ ctf_capture_consequence: next }).eq("id", gameId);
+  }
+
+  async function updateCtfTimePenalty(next: number) {
+    setCtfTimePenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ ctf_time_penalty_m2: next }).eq("id", gameId);
+  }
+
+  async function updateCtfCaptureRadius(next: number) {
+    setCtfCaptureRadius(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ ctf_capture_radius_m: next }).eq("id", gameId);
+  }
+
+  async function placeTeamFlag(lat: number, lng: number) {
+    if (!gameId || !isOwner || !placingFlagForTeam) return;
+    try {
+      await placeFlag(gameId, placingFlagForTeam, lat, lng);
+      setPlacingFlagForTeam(null);
+      toast.success("Drapeau placé !");
+    } catch {
+      toast.error("Impossible de placer le drapeau.");
+    }
+  }
+
   async function askForPhoto() {
     if (!gameId || !isOwner) return;
     try {
@@ -736,6 +887,7 @@ function TeacherDashboard() {
             returnZone={returnZone}
             landmarks={mapLandmarks}
             forbiddenZones={mapForbiddenZones}
+            flags={mapFlags}
             mapStyle={game?.map_style}
           />
         </div>
@@ -779,7 +931,11 @@ function TeacherDashboard() {
                   style={{ backgroundColor: team.color }}
                 />
                 <span className="flex-1 truncate text-sm font-semibold">{team.name}</span>
-                <span className="display text-sm tabular-nums">{formatArea(team.score_m2)}</span>
+                <span className="display text-sm tabular-nums">
+                  {gameMode === "capture_drapeau"
+                    ? `🚩 ${team.flags_captured}`
+                    : formatArea(team.score_m2)}
+                </span>
               </div>
             ))}
           </div>
@@ -830,15 +986,18 @@ function TeacherDashboard() {
           returnZone={returnZone}
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
+          flags={mapFlags}
           mapStyle={game?.map_style}
           onMapClick={
-            placingMode === "zone"
-              ? placeZone
-              : placingMode === "landmark"
-                ? placeLandmark
-                : placingMode === "forbidden"
-                  ? placeForbidden
-                  : undefined
+            placingFlagForTeam
+              ? placeTeamFlag
+              : placingMode === "zone"
+                ? placeZone
+                : placingMode === "landmark"
+                  ? placeLandmark
+                  : placingMode === "forbidden"
+                    ? placeForbidden
+                    : undefined
           }
         />
         <div
@@ -876,16 +1035,18 @@ function TeacherDashboard() {
             <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
           </div>
         </div>
-        {placingMode !== "none" && (
+        {(placingMode !== "none" || placingFlagForTeam) && (
           <div
             className="panel pointer-events-none absolute inset-x-3 z-[1000] px-4 py-3 text-center text-sm font-semibold"
             style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
           >
-            {placingMode === "zone"
-              ? "Touchez la carte pour placer le centre de la zone de retour"
-              : placingMode === "landmark"
-                ? "Touchez la carte pour placer le repère bonus"
-                : "Touchez la carte pour placer la zone interdite"}
+            {placingFlagForTeam
+              ? "Touchez la carte pour placer le drapeau de cette équipe"
+              : placingMode === "zone"
+                ? "Touchez la carte pour placer le centre de la zone de retour"
+                : placingMode === "landmark"
+                  ? "Touchez la carte pour placer le repère bonus"
+                  : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
@@ -926,6 +1087,40 @@ function TeacherDashboard() {
             Vous consultez cette partie en lecture seule : {t.readOnlyNotice} piloter.
           </div>
         )}
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Gamepad2 className="h-4 w-4" /> Mode de jeu
+          </div>
+          {isOwner && game?.status === "lobby" ? (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                className="seg-btn"
+                data-active={gameMode === "territoire"}
+                onClick={() => void updateMode("territoire")}
+              >
+                Territoire
+              </button>
+              <button
+                className="seg-btn"
+                data-active={gameMode === "capture_drapeau"}
+                onClick={() => void updateMode("capture_drapeau")}
+              >
+                Capture du drapeau
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm font-semibold">
+              {gameMode === "capture_drapeau" ? "Capture du drapeau" : "Territoire"}
+              {game?.status !== "lobby" && isOwner && " (verrouillé après le lancement)"}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {gameMode === "capture_drapeau"
+              ? "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt."
+              : "Les équipes ferment des boucles GPS pour capturer du territoire."}
+          </p>
+        </section>
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
@@ -1018,7 +1213,8 @@ function TeacherDashboard() {
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <div className="section-title">
-              <MapPin className="h-4 w-4" /> Zone de retour
+              <MapPin className="h-4 w-4" />{" "}
+              {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
             </div>
             {returnZone && isOwner && (
               <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
@@ -1026,7 +1222,13 @@ function TeacherDashboard() {
               </button>
             )}
           </div>
-          {returnZone ? (
+          {gameMode === "capture_drapeau" ? (
+            <p className="text-sm text-muted-foreground">
+              {returnZone
+                ? "Les équipes doivent ramener un drapeau capturé dans cette zone pour marquer un point."
+                : "Aucune zone définie : chaque équipe doit ramener un drapeau capturé jusqu'à sa propre base."}
+            </p>
+          ) : returnZone ? (
             <p className="text-sm text-muted-foreground">
               Les équipes doivent être revenues dans cette zone quand le temps s'écoule pour que
               leur territoire compte au classement.
@@ -1073,61 +1275,187 @@ function TeacherDashboard() {
           )}
         </section>
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="section-title">
-            <Flag className="h-4 w-4" /> Bonus course
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Une boucle fermée en courant rapporte plus de points qu'une boucle marchée.
-          </p>
-          {isOwner ? (
-            <>
-              <label className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Activer le bonus course</span>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5"
-                  checked={runningBonusEnabled}
-                  onChange={(e) => void updateRunningBonusEnabled(e.target.checked)}
-                />
-              </label>
-              {runningBonusEnabled && (
+        {gameMode === "capture_drapeau" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Flag className="h-4 w-4" /> Drapeaux
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Chaque équipe défend un drapeau. Les autres doivent le capturer et le ramener à la
+              zone de dépôt sans se faire toucher.
+            </p>
+            {isOwner && (
+              <div className="flex flex-col gap-3">
+                <label className="flex flex-col gap-1">
+                  <span className="text-sm font-semibold">Si l'équipe porteuse est touchée</span>
+                  <select
+                    className="field"
+                    value={ctfConsequence}
+                    onChange={(e) =>
+                      void updateCtfConsequence(e.target.value as CaptureConsequence)
+                    }
+                  >
+                    {Object.entries(CAPTURE_CONSEQUENCE_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {ctfConsequence === "time_penalty" && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Pénalité</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire la pénalité"
+                        className="icon-btn"
+                        onClick={() => void updateCtfTimePenalty(Math.max(10, ctfTimePenalty - 10))}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-24 text-center text-lg">
+                        -{formatArea(ctfTimePenalty)}
+                      </span>
+                      <button
+                        aria-label="Augmenter la pénalité"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateCtfTimePenalty(Math.min(500, ctfTimePenalty + 10))
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Vitesse minimale</span>
+                  <span className="text-sm font-semibold">Distance de capture</span>
                   <div className="flex items-center gap-3">
                     <button
-                      aria-label="Réduire la vitesse"
+                      aria-label="Réduire la distance"
                       className="icon-btn"
-                      onClick={() =>
-                        void updateRunningBonusSpeed(Math.max(4, runningBonusSpeedKmh - 0.5))
-                      }
+                      onClick={() => void updateCtfCaptureRadius(Math.max(3, ctfCaptureRadius - 1))}
                     >
                       <Minus className="h-4 w-4" />
                     </button>
-                    <span className="display w-20 text-center text-lg">
-                      {runningBonusSpeedKmh} km/h
-                    </span>
+                    <span className="display w-16 text-center text-lg">{ctfCaptureRadius} m</span>
                     <button
-                      aria-label="Augmenter la vitesse"
+                      aria-label="Augmenter la distance"
                       className="icon-btn"
                       onClick={() =>
-                        void updateRunningBonusSpeed(Math.min(20, runningBonusSpeedKmh + 0.5))
+                        void updateCtfCaptureRadius(Math.min(30, ctfCaptureRadius + 1))
                       }
                     >
                       <Plus className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+            <div className="flex flex-col gap-1">
+              {teams.length === 0 && (
+                <p className="py-2 text-center text-sm text-muted-foreground">
+                  En attente des groupes…
+                </p>
               )}
-            </>
-          ) : (
+              {teams.map((tm) => {
+                const flag = flags.find((f) => f.team_id === tm.id);
+                const label = !flag
+                  ? "Pas encore placé"
+                  : flag.status === "home"
+                    ? "À la base"
+                    : flag.status === "carried"
+                      ? `Porté par ${teams.find((x) => x.id === flag.carried_by_team_id)?.name ?? "?"}`
+                      : flag.status === "dropped"
+                        ? "Au sol"
+                        : "En attente de replacement";
+                return (
+                  <div
+                    key={tm.id}
+                    className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                  >
+                    <span
+                      className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                      style={{ backgroundColor: tm.color }}
+                    />
+                    <span className="flex-1 text-sm font-semibold">{tm.name}</span>
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                    {isOwner && (
+                      <button
+                        className="mini-btn"
+                        onClick={() => setPlacingFlagForTeam((p) => (p === tm.id ? null : tm.id))}
+                      >
+                        {placingFlagForTeam === tm.id
+                          ? "Touchez la carte…"
+                          : flag
+                            ? "Replacer"
+                            : "Placer"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {gameMode === "territoire" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Flag className="h-4 w-4" /> Bonus course
+            </div>
             <p className="text-sm text-muted-foreground">
-              {runningBonusEnabled
-                ? `Bonus actif à partir de ${runningBonusSpeedKmh} km/h.`
-                : "Bonus désactivé pour cette partie."}
+              Une boucle fermée en courant rapporte plus de points qu'une boucle marchée.
             </p>
-          )}
-        </section>
+            {isOwner ? (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Activer le bonus course</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={runningBonusEnabled}
+                    onChange={(e) => void updateRunningBonusEnabled(e.target.checked)}
+                  />
+                </label>
+                {runningBonusEnabled && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Vitesse minimale</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire la vitesse"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateRunningBonusSpeed(Math.max(4, runningBonusSpeedKmh - 0.5))
+                        }
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-20 text-center text-lg">
+                        {runningBonusSpeedKmh} km/h
+                      </span>
+                      <button
+                        aria-label="Augmenter la vitesse"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateRunningBonusSpeed(Math.min(20, runningBonusSpeedKmh + 0.5))
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {runningBonusEnabled
+                  ? `Bonus actif à partir de ${runningBonusSpeedKmh} km/h.`
+                  : "Bonus désactivé pour cette partie."}
+              </p>
+            )}
+          </section>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="section-title">
@@ -1142,8 +1470,12 @@ function TeacherDashboard() {
               <LandmarkFields
                 icon={landmarkIconChoice}
                 onIcon={setLandmarkIconChoice}
+                kind={landmarkKind}
+                onKind={setLandmarkKind}
                 bonus={landmarkBonus}
                 onBonus={setLandmarkBonus}
+                shieldDuration={landmarkShieldDuration}
+                onShieldDuration={setLandmarkShieldDuration}
                 appearAfter={landmarkAppearAfter}
                 onAppearAfter={setLandmarkAppearAfter}
                 expires={landmarkExpires}
@@ -1179,8 +1511,14 @@ function TeacherDashboard() {
                     <div className="flex items-center gap-3">
                       <span className="text-lg shrink-0">{l.icon}</span>
                       <span className="flex-1 text-sm">{status}</span>
-                      <span className="text-sm font-semibold text-muted-foreground">
-                        {formatArea(l.bonus_m2)}
+                      <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
+                        {l.kind === "shield" ? (
+                          <>
+                            <Shield className="h-3.5 w-3.5" /> {l.shield_duration_s}s
+                          </>
+                        ) : (
+                          formatArea(l.bonus_m2)
+                        )}
                       </span>
                       {isOwner && (
                         <>
@@ -1225,8 +1563,12 @@ function TeacherDashboard() {
                         <LandmarkFields
                           icon={landmarkIconChoice}
                           onIcon={setLandmarkIconChoice}
+                          kind={landmarkKind}
+                          onKind={setLandmarkKind}
                           bonus={landmarkBonus}
                           onBonus={setLandmarkBonus}
+                          shieldDuration={landmarkShieldDuration}
+                          onShieldDuration={setLandmarkShieldDuration}
                           appearAfter={landmarkAppearAfter}
                           onAppearAfter={setLandmarkAppearAfter}
                           expires={landmarkExpires}
@@ -1523,7 +1865,9 @@ function TeacherDashboard() {
                   </span>
                 )}
               </span>
-              <span className="display text-xl tabular-nums">{formatArea(t.score_m2)}</span>
+              <span className="display text-xl tabular-nums">
+                {gameMode === "capture_drapeau" ? `🚩 ${t.flags_captured}` : formatArea(t.score_m2)}
+              </span>
             </div>
           ))}
           {finished && unvalidated.length > 0 && (
@@ -1545,7 +1889,7 @@ function TeacherDashboard() {
           )}
         </section>
 
-        {ranked.length > 0 && (
+        {ranked.length > 0 && gameMode === "territoire" && (
           <section className="panel flex flex-col gap-1 p-4">
             <div className="section-title mb-2">
               <Medal className="h-4 w-4" /> Total conquis (indicatif)

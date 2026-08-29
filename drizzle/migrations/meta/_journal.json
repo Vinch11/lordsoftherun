@@ -92,6 +92,13 @@
       "when": 1788080000000,
       "tag": "0012_running_bonus_config_overview",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788090000000,
+      "tag": "0013_capture_flag_mode",
+      "breakpoints": true
     }
   ]
 }

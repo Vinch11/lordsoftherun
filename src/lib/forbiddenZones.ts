@@ -30,18 +30,26 @@ export async function removeForbiddenZone(id: string) {
   if (error) throw error;
 }
 
-/** Applies a penalty to a team for straying into a forbidden zone. */
-export async function applyPenalty(zone: ForbiddenZone, teamId: string) {
+/**
+ * Applies a penalty to a team for straying into a forbidden zone. `ctfMode`
+ * skips the territory-oriented recomputeScores (a capture-the-flag team has
+ * no territories, so it would just zero out its score) and docks score_m2
+ * directly instead.
+ */
+export async function applyPenalty(zone: ForbiddenZone, teamId: string, ctfMode = false) {
   const { data: team } = await supabase
     .from("teams")
-    .select("penalty_m2")
+    .select("penalty_m2, score_m2")
     .eq("id", teamId)
     .maybeSingle();
   await supabase
     .from("teams")
-    .update({ penalty_m2: (team?.penalty_m2 ?? 0) + zone.penalty_m2 })
+    .update({
+      penalty_m2: (team?.penalty_m2 ?? 0) + zone.penalty_m2,
+      ...(ctfMode ? { score_m2: Math.max(0, (team?.score_m2 ?? 0) - zone.penalty_m2) } : {}),
+    })
     .eq("id", teamId);
-  await recomputeScores(zone.game_id);
+  if (!ctfMode) await recomputeScores(zone.game_id);
 }
 
 export function useForbiddenZones(gameId: string | null) {

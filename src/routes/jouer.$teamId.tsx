@@ -25,6 +25,7 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
+import { CtfPlayView } from "@/components/CtfPlayView";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -49,6 +50,47 @@ function PlayView() {
   const { teamId } = Route.useParams();
   const [gameId, setGameId] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void supabase
+      .from("teams")
+      .select("game_id")
+      .eq("id", teamId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!active) return;
+        if (!data) setMissing(true);
+        else setGameId(data.game_id);
+      });
+    return () => {
+      active = false;
+    };
+  }, [teamId]);
+
+  const { game } = useGameState(gameId);
+
+  if (missing) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6 text-center">
+        <p className="text-lg">Équipe introuvable. Rejoignez à nouveau la partie.</p>
+      </main>
+    );
+  }
+  if (!gameId || !game) {
+    return (
+      <main className="flex min-h-screen items-center justify-center p-6 text-center">
+        <p className="text-lg text-muted-foreground">Chargement…</p>
+      </main>
+    );
+  }
+  if (game.mode === "capture_drapeau") {
+    return <CtfPlayView gameId={gameId} teamId={teamId} />;
+  }
+  return <TerritoryPlayView gameId={gameId} teamId={teamId} />;
+}
+
+function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
@@ -88,23 +130,6 @@ function PlayView() {
   useEffect(() => {
     requestNotificationPermission();
   }, []);
-
-  useEffect(() => {
-    let active = true;
-    void supabase
-      .from("teams")
-      .select("game_id")
-      .eq("id", teamId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active) return;
-        if (!data) setMissing(true);
-        else setGameId(data.game_id);
-      });
-    return () => {
-      active = false;
-    };
-  }, [teamId]);
 
   const { game, teams, territories } = useGameState(gameId);
   const gameRef = useRef(game);
@@ -392,14 +417,6 @@ function PlayView() {
     setRunning(false);
     setTrack([]);
     setDistance(0);
-  }
-
-  if (missing) {
-    return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center">
-        <p className="text-lg">Équipe introuvable. Rejoignez à nouveau la partie.</p>
-      </main>
-    );
   }
 
   return (
