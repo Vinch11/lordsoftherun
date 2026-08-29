@@ -387,15 +387,14 @@
   background: #04060f !important;
 }
 .map-style-neon .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(190deg) saturate(2.4) brightness(0.62) contrast(1.7);
-  mix-blend-mode: screen;
+  filter: invert(1) hue-rotate(190deg) saturate(1.5) brightness(0.95) contrast(1.15);
 }
 .map-style-neon .leaflet-tile-pane::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(150deg, rgb(56 189 248 / 22%), rgb(217 70 239 / 18%));
+  background: linear-gradient(150deg, rgb(56 189 248 / 10%), rgb(217 70 239 / 8%));
   mix-blend-mode: overlay;
 }
 
@@ -408,8 +407,8 @@
   background: #050b07 !important;
 }
 .map-style-tactical .leaflet-tile-pane {
-  filter: grayscale(1) invert(1) brightness(0.42) contrast(2) sepia(1) hue-rotate(58deg)
-    saturate(3.2);
+  filter: grayscale(1) invert(1) brightness(0.8) contrast(1.25) sepia(0.8) hue-rotate(58deg)
+    saturate(1.6);
 }
 
 /* ARCADE : couleurs poster, gros aplats lumineux */
@@ -441,21 +440,21 @@
 .map-style-tactical::before {
   background-image: repeating-linear-gradient(
     to bottom,
-    rgb(255 255 255 / 5%) 0 1px,
-    transparent 1px 3px
+    rgb(255 255 255 / 4%) 0 1px,
+    transparent 1px 4px
   );
-  opacity: 0.55;
+  opacity: 0.22;
 }
 .map-style-neon::after {
   background:
-    radial-gradient(ellipse at center, transparent 38%, rgb(2 4 12 / 82%) 100%),
-    linear-gradient(180deg, rgb(56 189 248 / 8%), transparent 40%);
+    radial-gradient(ellipse at center, transparent 62%, rgb(2 4 12 / 45%) 100%),
+    linear-gradient(180deg, rgb(56 189 248 / 4%), transparent 40%);
 }
 .map-style-tactical::after {
   background-image:
-    linear-gradient(rgb(134 239 172 / 14%) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(134 239 172 / 14%) 1px, transparent 1px),
-    radial-gradient(ellipse at center, transparent 40%, rgb(2 10 5 / 85%) 100%);
+    linear-gradient(rgb(134 239 172 / 7%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(134 239 172 / 7%) 1px, transparent 1px),
+    radial-gradient(ellipse at center, transparent 62%, rgb(2 10 5 / 45%) 100%);
   background-size:
     40px 40px,
     40px 40px,
