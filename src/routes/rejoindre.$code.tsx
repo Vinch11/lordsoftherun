@@ -47,6 +47,7 @@ function Join() {
       .then(({ data }) => {
         if (!active) return;
         if (data) {
+          localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: data.id, code }));
           void navigate({ to: "/jouer/$teamId", params: { teamId: data.id }, replace: true });
         } else {
           localStorage.removeItem(teamStorageKey(code));
@@ -82,6 +83,10 @@ function Join() {
         return;
       }
       localStorage.setItem(teamStorageKey(game.code), team.id);
+      localStorage.setItem(
+        "conquete:last-team",
+        JSON.stringify({ teamId: team.id, code: game.code }),
+      );
       await navigate({ to: "/jouer/$teamId", params: { teamId: team.id } });
     } finally {
       setBusy(false);

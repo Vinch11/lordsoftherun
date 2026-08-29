@@ -340,3 +340,37 @@
     transform: scale(1) rotate(0deg);
   }
 }
+
+/* GTA-radar-style map dressing: neon glow on territories, zones and team
+   blips over the dark basemap, plus a HUD look for team-name tooltips. */
+.territory-glow {
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.zone-glow-cyan {
+  filter: drop-shadow(0 0 8px #35c9e8);
+}
+
+.zone-glow-red {
+  filter: drop-shadow(0 0 8px #f2622e);
+}
+
+.leaflet-tooltip {
+  background: color-mix(in oklch, var(--color-background) 75%, transparent) !important;
+  color: var(--color-foreground) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-md) !important;
+  font-family: var(--font-display) !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: none !important;
+}
+
+.leaflet-tooltip-top::before {
+  border-top-color: var(--color-border) !important;
+}
+
+.leaflet-container {
+  background: #0a0e18 !important;
+}
