@@ -104,7 +104,18 @@ function Join() {
   return (
     <main className="min-h-screen px-5 py-8">
       <div className="mx-auto flex max-w-md flex-col gap-6">
-        <h1 className="pt-4 text-4xl">Rejoindre</h1>
+        <header className="pt-4">
+          <div className="pill">
+            <Users className="h-3.5 w-3.5" /> Groupe d'élèves
+          </div>
+          <h1 className="page-title mt-4">
+            Re<em>joindre</em>
+          </h1>
+          <p className="mt-3 text-muted-foreground">
+            Code, nom d'équipe, couleur : et le quartier est à vous.
+          </p>
+        </header>
+
 
         <label className="flex flex-col gap-2">
           <span className="section-title">
