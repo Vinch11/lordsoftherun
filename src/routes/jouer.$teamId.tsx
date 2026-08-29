@@ -1,7 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Crosshair, Flag, MessageCircle, Send, Square, X } from "lucide-react";
+import {
+  Camera,
+  Crosshair,
+  Flag,
+  HelpCircle,
+  MessageCircle,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
+import { RulesIntro } from "@/components/RulesIntro";
+import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
+
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
