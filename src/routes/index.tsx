@@ -28,17 +28,22 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function createGame() {
+    if (!user) {
+      await navigate({ to: "/auth" });
+      return;
+    }
     setCreating(true);
     try {
       for (let i = 0; i < 6; i++) {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c })
+          .insert({ code: c, owner_id: user.id })
           .select()
           .maybeSingle();
         if (!error && data) {
