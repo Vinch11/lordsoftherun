@@ -21,6 +21,10 @@ export type Database = {
           duration_minutes: number
           ends_at: string | null
           id: string
+          owner_id: string | null
+          return_lat: number | null
+          return_lng: number | null
+          return_radius_m: number
           started_at: string | null
           status: string
         }
@@ -30,6 +34,10 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           id?: string
+          owner_id?: string | null
+          return_lat?: number | null
+          return_lng?: number | null
+          return_radius_m?: number
           started_at?: string | null
           status?: string
         }
@@ -39,10 +47,56 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           id?: string
+          owner_id?: string | null
+          return_lat?: number | null
+          return_lng?: number | null
+          return_radius_m?: number
           started_at?: string | null
           status?: string
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          body: string
+          created_at: string
+          game_id: string
+          id: string
+          sender: string
+          team_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          game_id: string
+          id?: string
+          sender?: string
+          team_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          sender?: string
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       teams: {
         Row: {
@@ -55,6 +109,7 @@ export type Database = {
           name: string
           score_m2: number
           updated_at: string
+          validated: boolean
         }
         Insert: {
           color: string
@@ -66,6 +121,7 @@ export type Database = {
           name: string
           score_m2?: number
           updated_at?: string
+          validated?: boolean
         }
         Update: {
           color?: string
@@ -77,6 +133,7 @@ export type Database = {
           name?: string
           score_m2?: number
           updated_at?: string
+          validated?: boolean
         }
         Relationships: [
           {
