@@ -5,6 +5,7 @@ import { Minus, Plus, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
+import { useAuth } from "@/hooks/useAuth";
 import { formatArea, formatClock } from "@/lib/conquete";
 
 export const Route = createFileRoute("/prof/$code")({
@@ -28,7 +29,9 @@ export const Route = createFileRoute("/prof/$code")({
 
 function TeacherDashboard() {
   const { code } = Route.useParams();
+  const { user } = useAuth();
   const [gameId, setGameId] = useState<string | null>(null);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [duration, setDuration] = useState(20);
   const [now, setNow] = useState(() => Date.now());
@@ -37,7 +40,7 @@ function TeacherDashboard() {
     let active = true;
     void supabase
       .from("games")
-      .select("id, duration_minutes")
+      .select("id, duration_minutes, owner_id")
       .eq("code", code)
       .maybeSingle()
       .then(({ data }) => {
@@ -45,6 +48,7 @@ function TeacherDashboard() {
         if (!data) setNotFound(true);
         else {
           setGameId(data.id);
+          setOwnerId(data.owner_id);
           setDuration(data.duration_minutes);
         }
       });
@@ -87,8 +91,14 @@ function TeacherDashboard() {
     ? (new Date(game.ends_at).getTime() - now) / 1000
     : duration * 60;
 
+  const isOwner = !!user && !!ownerId && user.id === ownerId;
+
   async function start() {
     if (!gameId) return;
+    if (!isOwner) {
+      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      return;
+    }
     const ends = new Date(Date.now() + duration * 60_000).toISOString();
     await supabase
       .from("games")
@@ -104,6 +114,10 @@ function TeacherDashboard() {
 
   async function stop() {
     if (!gameId) return;
+    if (!isOwner) {
+      toast.error("Seul l'enseignant propriétaire peut piloter cette partie.");
+      return;
+    }
     await supabase.from("games").update({ status: "finished" }).eq("id", gameId);
     toast("Partie terminée.");
   }
@@ -163,10 +177,10 @@ function TeacherDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <button className="btn-huge btn-huge-accent" onClick={start}>
+            <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
               {running ? "Relancer" : "Démarrer"}
             </button>
-            <button className="btn-huge" onClick={stop}>
+            <button className="btn-huge" disabled={!isOwner} onClick={stop}>
               Terminer
             </button>
           </div>
