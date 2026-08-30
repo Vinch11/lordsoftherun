@@ -6,6 +6,8 @@ import {
   Bookmark,
   Camera,
   Eye,
+  EyeOff,
+
   Flag,
   Gamepad2,
   Grid3x3,
