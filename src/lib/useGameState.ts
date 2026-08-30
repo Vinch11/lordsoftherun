@@ -33,6 +33,9 @@ export type Game = {
   grace_penalty_mode: GracePenaltyMode;
   grace_penalty_per_second_m2: number;
   grace_ends_at: string | null;
+  vehicle_allowed: boolean;
+  vehicle_speed_threshold_kmh: number;
+  vehicle_penalty_m2: number;
 };
 
 export type Team = {

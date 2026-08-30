@@ -11,8 +11,11 @@ import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
+  DEFAULT_VEHICLE_PENALTY_M2,
+  DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
+  VEHICLE_SUSTAINED_MS,
   formatArea,
   formatClock,
   formatCountdown,
@@ -115,6 +118,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
   const [chatOpen, setChatOpen] = useState(false);
@@ -342,6 +346,28 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           toast.error(`⚠️ Zone interdite ! -${formatArea(zone.penalty_m2)}`);
           notifyMessage("⚠️ Zone interdite !", `-${formatArea(zone.penalty_m2)}`);
         });
+      }
+
+      if (gameRef.current && !gameRef.current.vehicle_allowed) {
+        const thresholdKmh =
+          gameRef.current.vehicle_speed_threshold_kmh ?? DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH;
+        if (instSpeedRef.current >= kmhToMs(thresholdKmh)) {
+          vehicleAboveSinceRef.current ??= Date.now();
+          const lastVehiclePenalty = lastPenalizedRef.current.get("__vehicle__") ?? 0;
+          if (
+            Date.now() - vehicleAboveSinceRef.current >= VEHICLE_SUSTAINED_MS &&
+            Date.now() - lastVehiclePenalty >= FORBIDDEN_PENALTY_COOLDOWN_MS
+          ) {
+            lastPenalizedRef.current.set("__vehicle__", Date.now());
+            const penaltyM2 = gameRef.current.vehicle_penalty_m2 ?? DEFAULT_VEHICLE_PENALTY_M2;
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId).then(() => {
+              toast.error(`🚴 Vitesse suspecte détectée ! -${formatArea(penaltyM2)}`);
+              notifyMessage("🚴 Vitesse suspecte !", `-${formatArea(penaltyM2)}`);
+            });
+          }
+        } else {
+          vehicleAboveSinceRef.current = null;
+        }
       }
 
       if (gameRef.current) {

@@ -6,11 +6,15 @@ import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CTF_CAPTURE_POINTS,
+  DEFAULT_VEHICLE_PENALTY_M2,
+  DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FLAG_PICKUP_RADIUS_M,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
+  VEHICLE_SUSTAINED_MS,
   formatArea,
   formatCountdown,
   haversine,
+  kmhToMs,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
@@ -34,6 +38,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  const instSpeedRef = useRef(0);
+  const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
@@ -147,12 +154,49 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
+      const prevPos = lastPosRef.current;
+      const nowMs = Date.now();
+      if (prevPos) {
+        const dt = (nowMs - prevPos.t) / 1000;
+        const dist = haversine(prevPos.point, point);
+        // Ignore samples too close together in time/space: GPS jitter would
+        // otherwise produce wildly inflated instantaneous speed readings.
+        if (dt > 0.5 && dist > 2) {
+          instSpeedRef.current = dist / dt;
+          lastPosRef.current = { point, t: nowMs };
+        }
+      } else {
+        lastPosRef.current = { point, t: nowMs };
+      }
+
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
         void supabase
           .from("teams")
           .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
           .eq("id", teamId);
+      }
+
+      if (gameRef.current && !gameRef.current.vehicle_allowed) {
+        const thresholdKmh =
+          gameRef.current.vehicle_speed_threshold_kmh ?? DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH;
+        if (instSpeedRef.current >= kmhToMs(thresholdKmh)) {
+          vehicleAboveSinceRef.current ??= Date.now();
+          const lastVehiclePenalty = lastPenalizedRef.current.get("__vehicle__") ?? 0;
+          if (
+            Date.now() - vehicleAboveSinceRef.current >= VEHICLE_SUSTAINED_MS &&
+            Date.now() - lastVehiclePenalty >= FORBIDDEN_PENALTY_COOLDOWN_MS
+          ) {
+            lastPenalizedRef.current.set("__vehicle__", Date.now());
+            const penaltyM2 = gameRef.current.vehicle_penalty_m2 ?? DEFAULT_VEHICLE_PENALTY_M2;
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId, true).then(() => {
+              toast.error(`🚴 Vitesse suspecte détectée ! -${formatArea(penaltyM2)}`);
+              notifyMessage("🚴 Vitesse suspecte !", `-${formatArea(penaltyM2)}`);
+            });
+          }
+        } else {
+          vehicleAboveSinceRef.current = null;
+        }
       }
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
