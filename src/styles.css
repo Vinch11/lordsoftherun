@@ -219,8 +219,8 @@
   }
 
   .btn-huge:active {
-    transform: translateY(4px);
-    box-shadow: 0 2px 0 0 color-mix(in oklch, var(--color-primary) 65%, black);
+    transform: translateY(1px);
+    box-shadow: 0 1px 4px color-mix(in oklch, black 40%, transparent);
   }
 
   .btn-huge:disabled {
