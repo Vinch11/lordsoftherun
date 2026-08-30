@@ -1295,6 +1295,18 @@ function TeacherDashboard() {
           <Link to="/" className="nav-back pointer-events-auto" aria-label="Retour à l'accueil">
             <ArrowLeft className="h-5 w-5" />
           </Link>
+          <button
+            className="nav-back pointer-events-auto hidden lg:inline-flex"
+            aria-label={panelOpen ? "Masquer le menu" : "Afficher le menu"}
+            aria-pressed={!panelOpen}
+            onClick={() => setPanelOpen((o) => !o)}
+          >
+            {panelOpen ? (
+              <PanelRightClose className="h-5 w-5" />
+            ) : (
+              <PanelRightOpen className="h-5 w-5" />
+            )}
+          </button>
           {isOwner && (
             <button
               className="nav-back pointer-events-auto"
