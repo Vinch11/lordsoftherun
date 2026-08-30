@@ -24,6 +24,8 @@ export type MapLandmark = { id: string; lat: number; lng: number; icon: string }
 
 export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: number };
 
+export type MapFlag = { id: string; lat: number; lng: number; color: string; label: string };
+
 type Props = {
   center: [number, number] | null;
   teams: MapTeam[];
@@ -34,6 +36,7 @@ type Props = {
   returnZone?: ReturnZone | null;
   landmarks?: MapLandmark[];
   forbiddenZones?: MapForbiddenZone[];
+  flags?: MapFlag[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
 };
@@ -44,6 +47,21 @@ const landmarkIcon = (icon: string) =>
     className: "",
     iconSize: [26, 26],
     iconAnchor: [13, 13],
+  });
+
+const flagIcon = (color: string) =>
+  L.divIcon({
+    html: `<div style="
+      display:flex; align-items:center; justify-content:center;
+      width:34px;height:34px;border-radius:50%;
+      background:${color};
+      border:3px solid #ffffff;
+      box-shadow:0 0 4px 2px rgba(0,0,0,.6), 0 0 14px 4px ${color};
+      font-size:18px;line-height:1;
+    ">🚩</div>`,
+    className: "",
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
   });
 
 const blipIcon = (color: string, spec: MapStyleSpec) =>
@@ -66,6 +84,7 @@ export default function GameMap({
   returnZone = null,
   landmarks = [],
   forbiddenZones = [],
+  flags = [],
   onMapClick,
   mapStyle = "classic",
 }: Props) {
@@ -79,6 +98,7 @@ export default function GameMap({
   const zoneLayer = useRef<L.LayerGroup | null>(null);
   const landmarkLayer = useRef<L.LayerGroup | null>(null);
   const forbiddenLayer = useRef<L.LayerGroup | null>(null);
+  const flagLayer = useRef<L.LayerGroup | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const didInitialFit = useRef(false);
@@ -104,6 +124,7 @@ export default function GameMap({
     zoneLayer.current = L.layerGroup().addTo(map);
     forbiddenLayer.current = L.layerGroup().addTo(map);
     landmarkLayer.current = L.layerGroup().addTo(map);
+    flagLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
     map.on("click", (e: L.LeafletMouseEvent) =>
@@ -217,6 +238,17 @@ export default function GameMap({
         .addTo(layer);
     }
   }, [landmarks]);
+
+  useEffect(() => {
+    const layer = flagLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const f of flags) {
+      L.marker([f.lat, f.lng], { icon: flagIcon(f.color) })
+        .bindTooltip(f.label)
+        .addTo(layer);
+    }
+  }, [flags]);
 
   useEffect(() => {
     const layer = teamLayer.current;

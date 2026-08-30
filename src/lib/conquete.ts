@@ -35,6 +35,25 @@ export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
 /** Re-entering an already-penalized forbidden zone only counts again after this long. */
 export const FORBIDDEN_PENALTY_COOLDOWN_MS = 30_000;
 
+export type GameMode = "territoire" | "capture_drapeau";
+
+export type CaptureConsequence =
+  "time_penalty" | "return_to_base" | "flag_dropped" | "organizer_replaces";
+
+export const CAPTURE_CONSEQUENCE_LABELS: Record<CaptureConsequence, string> = {
+  time_penalty: "Pénalité de points",
+  return_to_base: "Retour à la base (sans pénalité)",
+  flag_dropped: "Le drapeau tombe sur place",
+  organizer_replaces: "L'organisateur replace le drapeau",
+};
+
+/** Points a team scores for delivering a captured enemy flag. */
+export const CTF_CAPTURE_POINTS = 100;
+export const DEFAULT_CTF_TIME_PENALTY_M2 = 50;
+export const DEFAULT_CTF_CAPTURE_RADIUS_M = 8;
+/** How close a team must get to a flag (at its base or on the ground) to pick it up. */
+export const FLAG_PICKUP_RADIUS_M = 15;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }

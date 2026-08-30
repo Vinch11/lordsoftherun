@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { CaptureConsequence, GameMode } from "@/lib/conquete";
 
 export type Game = {
   id: string;
@@ -18,6 +19,10 @@ export type Game = {
   running_bonus_enabled: boolean;
   running_bonus_speed_kmh: number;
   forbidden_zone_running_only: boolean;
+  mode: GameMode;
+  ctf_capture_consequence: CaptureConsequence;
+  ctf_time_penalty_m2: number;
+  ctf_capture_radius_m: number;
 };
 
 export type Team = {
@@ -32,6 +37,8 @@ export type Team = {
   landmark_bonus_m2: number;
   penalty_m2: number;
   validated: boolean;
+  flags_captured: number;
+  shield_until: string | null;
 };
 
 export type Territory = {

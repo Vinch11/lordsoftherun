@@ -8,6 +8,8 @@ import {
   haversine,
 } from "@/lib/conquete";
 
+export type LandmarkKind = "points" | "shield";
+
 export type Landmark = {
   id: string;
   game_id: string;
@@ -15,6 +17,8 @@ export type Landmark = {
   lng: number;
   bonus_m2: number;
   icon: string;
+  kind: LandmarkKind;
+  shield_duration_s: number;
   active_after_minutes: number;
   active_until_minutes: number | null;
   claimed_by_team_id: string | null;
@@ -29,6 +33,8 @@ export async function addLandmark(
   icon: string = DEFAULT_LANDMARK_ICON,
   activeAfterMinutes = 0,
   activeUntilMinutes: number | null = null,
+  kind: LandmarkKind = "points",
+  shieldDurationS = 30,
 ) {
   const { error } = await supabase.from("landmarks").insert({
     game_id: gameId,
@@ -38,6 +44,8 @@ export async function addLandmark(
     icon,
     active_after_minutes: activeAfterMinutes,
     active_until_minutes: activeUntilMinutes,
+    kind,
+    shield_duration_s: shieldDurationS,
   });
   if (error) throw error;
 }
@@ -45,7 +53,15 @@ export async function addLandmark(
 export async function updateLandmark(
   id: string,
   patch: Partial<
-    Pick<Landmark, "bonus_m2" | "icon" | "active_after_minutes" | "active_until_minutes">
+    Pick<
+      Landmark,
+      | "bonus_m2"
+      | "icon"
+      | "active_after_minutes"
+      | "active_until_minutes"
+      | "kind"
+      | "shield_duration_s"
+    >
   >,
 ) {
   const { error } = await supabase.from("landmarks").update(patch).eq("id", id);
@@ -76,8 +92,18 @@ export function isLandmarkActive(
   return true;
 }
 
-/** Tries to be the first team to claim a landmark; returns true on success. */
-export async function tryClaimLandmark(landmark: Landmark, teamId: string): Promise<boolean> {
+/**
+ * Tries to be the first team to claim a landmark; returns true on success.
+ * `ctfMode` skips the territory-oriented recomputeScores (which would zero
+ * out a capture-the-flag team's score, since it has no territories) and
+ * instead applies the "points" bonus straight to score_m2. A "shield"
+ * landmark never touches score_m2 either way — it just grants tag immunity.
+ */
+export async function tryClaimLandmark(
+  landmark: Landmark,
+  teamId: string,
+  ctfMode = false,
+): Promise<boolean> {
   const { data, error } = await supabase
     .from("landmarks")
     .update({ claimed_by_team_id: teamId, claimed_at: new Date().toISOString() })
@@ -87,16 +113,25 @@ export async function tryClaimLandmark(landmark: Landmark, teamId: string): Prom
     .maybeSingle();
   if (error || !data) return false;
 
+  if (landmark.kind === "shield") {
+    const shieldUntil = new Date(Date.now() + landmark.shield_duration_s * 1000).toISOString();
+    await supabase.from("teams").update({ shield_until: shieldUntil }).eq("id", teamId);
+    return true;
+  }
+
   const { data: team } = await supabase
     .from("teams")
-    .select("landmark_bonus_m2")
+    .select("landmark_bonus_m2, score_m2")
     .eq("id", teamId)
     .maybeSingle();
   await supabase
     .from("teams")
-    .update({ landmark_bonus_m2: (team?.landmark_bonus_m2 ?? 0) + landmark.bonus_m2 })
+    .update({
+      landmark_bonus_m2: (team?.landmark_bonus_m2 ?? 0) + landmark.bonus_m2,
+      ...(ctfMode ? { score_m2: (team?.score_m2 ?? 0) + landmark.bonus_m2 } : {}),
+    })
     .eq("id", teamId);
-  await recomputeScores(landmark.game_id);
+  if (!ctfMode) await recomputeScores(landmark.game_id);
   return true;
 }
 
@@ -106,11 +141,12 @@ export async function checkLandmarkClaims(
   teamId: string,
   point: [number, number],
   startedAt: string | null,
+  ctfMode = false,
 ): Promise<Landmark | null> {
   for (const l of landmarks) {
     if (!isLandmarkActive(l, startedAt, Date.now())) continue;
     if (haversine(point, [l.lat, l.lng]) <= LANDMARK_CLAIM_RADIUS_M) {
-      if (await tryClaimLandmark(l, teamId)) return l;
+      if (await tryClaimLandmark(l, teamId, ctfMode)) return l;
     }
   }
   return null;

@@ -106,10 +106,7 @@ async function notifyStolen(
 ): Promise<StolenFrom[]> {
   const meaningful = [...stolen.entries()].filter(([, m2]) => m2 >= 20);
   if (meaningful.length === 0) return [];
-  const { data: teamRows } = await supabase
-    .from("teams")
-    .select("id, name")
-    .eq("game_id", gameId);
+  const { data: teamRows } = await supabase.from("teams").select("id, name").eq("game_id", gameId);
   const nameOf = new Map((teamRows ?? []).map((t) => [t.id, t.name]));
   const attacker = nameOf.get(attackerId) ?? "Une équipe";
 
