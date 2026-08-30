@@ -55,6 +55,19 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
   const myFlag = flags.find((f) => f.team_id === teamId) ?? null;
+  const prevMyFlagStatusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const prevStatus = prevMyFlagStatusRef.current;
+    if (myFlag && prevStatus !== null && myFlag.status === "carried" && prevStatus !== "carried") {
+      const carrierName =
+        teams.find((t) => t.id === myFlag.carried_by_team_id)?.name ?? "Une équipe";
+      toast.error(`🚩 ${carrierName} a pris votre drapeau !`);
+      notifyMessage("🚩 Drapeau pris !", `${carrierName} a pris votre drapeau.`);
+    }
+    prevMyFlagStatusRef.current = myFlag?.status ?? null;
+  }, [myFlag, teams]);
+
   const carriedFlags = useMemo(
     () => flags.filter((f) => f.carried_by_team_id === teamId),
     [flags, teamId],
@@ -291,6 +304,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const toDrop = pos && dropPoint ? haversine(pos, dropPoint) : null;
 
   useWakeLock(!finished);
+
+  const prevFinishedRef = useRef(finished);
+  useEffect(() => {
+    if (finished && !prevFinishedRef.current) {
+      toast.success("🏁 Partie terminée !");
+      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+    }
+    prevFinishedRef.current = finished;
+  }, [finished]);
 
   const myFlagStatusLabel = !myFlag
     ? "Pas encore placé"
