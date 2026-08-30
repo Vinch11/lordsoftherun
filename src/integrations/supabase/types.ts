@@ -511,6 +511,7 @@ export type Database = {
       }
       teams: {
         Row: {
+          claimed_by: string | null
           color: string
           created_at: string
           flags_captured: number
@@ -529,6 +530,7 @@ export type Database = {
           validated: boolean
         }
         Insert: {
+          claimed_by?: string | null
           color: string
           created_at?: string
           flags_captured?: number
@@ -547,6 +549,7 @@ export type Database = {
           validated?: boolean
         }
         Update: {
+          claimed_by?: string | null
           color?: string
           created_at?: string
           flags_captured?: number
@@ -624,7 +627,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_admin: { Args: { uid: string }; Returns: boolean }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
