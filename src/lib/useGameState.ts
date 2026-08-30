@@ -23,6 +23,10 @@ export type Game = {
   ctf_capture_consequence: CaptureConsequence;
   ctf_time_penalty_m2: number;
   ctf_capture_radius_m: number;
+  grid_center_lat: number | null;
+  grid_center_lng: number | null;
+  grid_radius_m: number;
+  grid_cell_size_m: number;
 };
 
 export type Team = {

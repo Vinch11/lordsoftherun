@@ -26,6 +26,7 @@ import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { CtfPlayView } from "@/components/CtfPlayView";
+import { GridPlayView } from "@/components/GridPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 export const Route = createFileRoute("/jouer/$teamId")({
@@ -87,6 +88,9 @@ function PlayView() {
   }
   if (game.mode === "capture_drapeau") {
     return <CtfPlayView gameId={gameId} teamId={teamId} />;
+  }
+  if (game.mode === "grille") {
+    return <GridPlayView gameId={gameId} teamId={teamId} />;
   }
   return <TerritoryPlayView gameId={gameId} teamId={teamId} />;
 }
