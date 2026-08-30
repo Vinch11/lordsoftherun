@@ -101,8 +101,11 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
-      <div className="panel flex max-h-[92dvh] w-full max-w-2xl flex-col gap-3 overflow-hidden p-4">
-        <div className="flex items-center gap-2">
+      <div
+        className="panel flex max-h-[92dvh] w-full max-w-2xl flex-col gap-3 overflow-hidden p-4"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="flex shrink-0 items-center gap-2">
           <span className="section-title flex-1">
             {step === "presence" ? (
               <>
@@ -122,7 +125,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
 
         {step === "presence" ? (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2">
               <button type="button" className="seg-btn" onClick={() => setAbsent(new Set())}>
                 Tous présents
               </button>
@@ -134,7 +137,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
                 Tous absents
               </button>
             </div>
-            <div className="flex flex-1 flex-col gap-1 overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
               {players.map((p) => {
                 const present = !absent.has(p.name);
                 return (
@@ -168,7 +171,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
             </div>
             <button
               type="button"
-              className="btn-huge btn-huge-dark"
+              className="btn-huge btn-huge-dark shrink-0"
               disabled={presentPlayers.length < 2}
               onClick={() => setStep("teams")}
             >
@@ -177,7 +180,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
           </>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2">
               <button
                 type="button"
                 className="seg-btn"
@@ -196,7 +199,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex shrink-0 items-center justify-between gap-3">
               <span className="text-sm font-semibold">Nombre d'équipes</span>
               <div className="flex items-center gap-3">
                 <button
@@ -229,7 +232,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
               </div>
             </div>
 
-            <div className="flex flex-1 flex-col gap-3 overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
               {mode === "manual" && (
                 <div
                   className="rounded-md border border-dashed p-2"
@@ -316,7 +319,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid shrink-0 grid-cols-2 gap-2">
               <button type="button" className="seg-btn" onClick={() => setStep("presence")}>
                 <ArrowLeft className="h-4 w-4" /> Retour
               </button>
