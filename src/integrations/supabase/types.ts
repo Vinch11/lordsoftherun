@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      flags: {
+        Row: {
+          carried_by_team_id: string | null
+          created_at: string
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+          status: string
+          team_id: string
+        }
+        Insert: {
+          carried_by_team_id?: string | null
+          created_at?: string
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+          status?: string
+          team_id: string
+        }
+        Update: {
+          carried_by_team_id?: string | null
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flags_carried_by_team_id_fkey"
+            columns: ["carried_by_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flags_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flags_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       forbidden_zones: {
         Row: {
           created_at: string
@@ -56,11 +111,15 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          ctf_capture_consequence: string
+          ctf_capture_radius_m: number
+          ctf_time_penalty_m2: number
           duration_minutes: number
           ends_at: string | null
           forbidden_zone_running_only: boolean
           id: string
           map_style: string
+          mode: string
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
@@ -75,11 +134,15 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          ctf_capture_consequence?: string
+          ctf_capture_radius_m?: number
+          ctf_time_penalty_m2?: number
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
           id?: string
           map_style?: string
+          mode?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -94,11 +157,15 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          ctf_capture_consequence?: string
+          ctf_capture_radius_m?: number
+          ctf_time_penalty_m2?: number
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
           id?: string
           map_style?: string
+          mode?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -123,8 +190,10 @@ export type Database = {
           game_id: string
           icon: string
           id: string
+          kind: string
           lat: number
           lng: number
+          shield_duration_s: number
         }
         Insert: {
           active_after_minutes?: number
@@ -136,8 +205,10 @@ export type Database = {
           game_id: string
           icon?: string
           id?: string
+          kind?: string
           lat: number
           lng: number
+          shield_duration_s?: number
         }
         Update: {
           active_after_minutes?: number
@@ -149,8 +220,10 @@ export type Database = {
           game_id?: string
           icon?: string
           id?: string
+          kind?: string
           lat?: number
           lng?: number
+          shield_duration_s?: number
         }
         Relationships: [
           {
@@ -290,6 +363,7 @@ export type Database = {
           name: string
           owner_id: string
           radius_m: number
+          shield_duration_s: number
           value_m2: number
         }
         Insert: {
@@ -304,6 +378,7 @@ export type Database = {
           name: string
           owner_id: string
           radius_m?: number
+          shield_duration_s?: number
           value_m2?: number
         }
         Update: {
@@ -318,6 +393,7 @@ export type Database = {
           name?: string
           owner_id?: string
           radius_m?: number
+          shield_duration_s?: number
           value_m2?: number
         }
         Relationships: []
@@ -326,6 +402,7 @@ export type Database = {
         Row: {
           color: string
           created_at: string
+          flags_captured: number
           game_id: string
           id: string
           landmark_bonus_m2: number
@@ -334,6 +411,7 @@ export type Database = {
           name: string
           penalty_m2: number
           score_m2: number
+          shield_until: string | null
           total_captured_m2: number
           updated_at: string
           validated: boolean
@@ -341,6 +419,7 @@ export type Database = {
         Insert: {
           color: string
           created_at?: string
+          flags_captured?: number
           game_id: string
           id?: string
           landmark_bonus_m2?: number
@@ -349,6 +428,7 @@ export type Database = {
           name: string
           penalty_m2?: number
           score_m2?: number
+          shield_until?: string | null
           total_captured_m2?: number
           updated_at?: string
           validated?: boolean
@@ -356,6 +436,7 @@ export type Database = {
         Update: {
           color?: string
           created_at?: string
+          flags_captured?: number
           game_id?: string
           id?: string
           landmark_bonus_m2?: number
@@ -364,6 +445,7 @@ export type Database = {
           name?: string
           penalty_m2?: number
           score_m2?: number
+          shield_until?: string | null
           total_captured_m2?: number
           updated_at?: string
           validated?: boolean
