@@ -35,7 +35,21 @@ export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
 /** Re-entering an already-penalized forbidden zone only counts again after this long. */
 export const FORBIDDEN_PENALTY_COOLDOWN_MS = 30_000;
 
-export type GameMode = "territoire" | "capture_drapeau";
+export type GameMode = "territoire" | "capture_drapeau" | "grille";
+
+export const GAME_MODE_LABELS: Record<GameMode, string> = {
+  territoire: "Territoire",
+  capture_drapeau: "Capture du drapeau",
+  grille: "Grille",
+};
+
+export const GAME_MODE_DESCRIPTIONS: Record<GameMode, string> = {
+  territoire: "Les équipes ferment des boucles GPS pour capturer du territoire.",
+  capture_drapeau:
+    "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt.",
+  grille:
+    "La zone de jeu est divisée en cases : chaque case prend la couleur de la dernière équipe qui l'a traversée.",
+};
 
 export type CaptureConsequence =
   "time_penalty" | "return_to_base" | "flag_dropped" | "organizer_replaces";
@@ -53,6 +67,13 @@ export const DEFAULT_CTF_TIME_PENALTY_M2 = 50;
 export const DEFAULT_CTF_CAPTURE_RADIUS_M = 8;
 /** How close a team must get to a flag (at its base or on the ground) to pick it up. */
 export const FLAG_PICKUP_RADIUS_M = 15;
+
+export const DEFAULT_GRID_RADIUS_M = 40;
+export const DEFAULT_GRID_CELL_SIZE_M = 6;
+export const MIN_GRID_CELL_SIZE_M = 3;
+export const MAX_GRID_CELL_SIZE_M = 15;
+/** Below this cell size, GPS jitter alone can flip a cell's color; shown as a warning. */
+export const GRID_CELL_SIZE_WARNING_THRESHOLD_M = 5;
 
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));

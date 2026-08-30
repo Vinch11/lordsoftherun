@@ -127,6 +127,13 @@
       "when": 1788073630245,
       "tag": "0017_message_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788120000000,
+      "tag": "0018_grid_mode",
+      "breakpoints": true
     }
   ]
 }

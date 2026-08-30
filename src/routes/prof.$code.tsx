@@ -8,6 +8,7 @@ import {
   Eye,
   Flag,
   Gamepad2,
+  Grid3x3,
   Maximize2,
   MapPin,
   Medal,
@@ -48,6 +49,7 @@ import {
 } from "@/lib/landmarks";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import { placeFlag, useFlags } from "@/lib/flags";
+import { cellCenter, useGridCells } from "@/lib/grid";
 import {
   applySavedPoint,
   deleteSavedPoint,
@@ -60,10 +62,17 @@ import {
   DEFAULT_CTF_TIME_PENALTY_M2,
   DEFAULT_FORBIDDEN_PENALTY_M2,
   DEFAULT_FORBIDDEN_RADIUS_M,
+  DEFAULT_GRID_CELL_SIZE_M,
+  DEFAULT_GRID_RADIUS_M,
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
+  GAME_MODE_DESCRIPTIONS,
+  GAME_MODE_LABELS,
+  GRID_CELL_SIZE_WARNING_THRESHOLD_M,
   LANDMARK_ICONS,
+  MAX_GRID_CELL_SIZE_M,
+  MIN_GRID_CELL_SIZE_M,
   formatArea,
   formatClock,
   formatCountdown,
@@ -295,9 +304,9 @@ function TeacherDashboard() {
   const [durationUnit, setDurationUnit] = useState<DurationUnit>("minutes");
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
-  const [placingMode, setPlacingMode] = useState<"none" | "zone" | "landmark" | "forbidden">(
-    "none",
-  );
+  const [placingMode, setPlacingMode] = useState<
+    "none" | "zone" | "landmark" | "forbidden" | "grid_zone"
+  >("none");
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
   const [landmarkIconChoice, setLandmarkIconChoice] = useState<string>(DEFAULT_LANDMARK_ICON);
@@ -310,6 +319,8 @@ function TeacherDashboard() {
   const [ctfConsequence, setCtfConsequence] = useState<CaptureConsequence>("return_to_base");
   const [ctfTimePenalty, setCtfTimePenalty] = useState(DEFAULT_CTF_TIME_PENALTY_M2);
   const [ctfCaptureRadius, setCtfCaptureRadius] = useState(DEFAULT_CTF_CAPTURE_RADIUS_M);
+  const [gridRadius, setGridRadius] = useState(DEFAULT_GRID_RADIUS_M);
+  const [gridCellSize, setGridCellSize] = useState(DEFAULT_GRID_CELL_SIZE_M);
   const [placingFlagForTeam, setPlacingFlagForTeam] = useState<string | null>(null);
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
@@ -379,6 +390,7 @@ function TeacherDashboard() {
   const { landmarks } = useLandmarks(gameId);
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
+  const { cells: gridCells } = useGridCells(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
     "landmark",
@@ -413,6 +425,8 @@ function TeacherDashboard() {
       setCtfConsequence(game.ctf_capture_consequence);
       setCtfTimePenalty(game.ctf_time_penalty_m2);
       setCtfCaptureRadius(game.ctf_capture_radius_m);
+      setGridRadius(game.grid_radius_m);
+      setGridCellSize(game.grid_cell_size_m);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -473,13 +487,13 @@ function TeacherDashboard() {
     }
     stoppedRef.current = true;
     // The return-zone-at-the-final-whistle rule is a territory-mode concept;
-    // in capture-the-flag every team's score already reflects the flags it
-    // actually delivered, so nobody gets excluded from the ranking here.
+    // capture-the-flag and grille already reflect a team's real performance
+    // in their score without it, so nobody gets excluded from the ranking.
     await Promise.all(
       teams.map((t) =>
         supabase
           .from("teams")
-          .update({ validated: gameMode === "capture_drapeau" ? true : withinReturnZone(t) })
+          .update({ validated: gameMode !== "territoire" ? true : withinReturnZone(t) })
           .eq("id", t.id),
       ),
     );
@@ -510,7 +524,18 @@ function TeacherDashboard() {
     ? (new Date(game.photo_deadline).getTime() - now) / 1000
     : null;
 
-  const ranked = useMemo(() => [...teams].sort((a, b) => b.score_m2 - a.score_m2), [teams]);
+  const gridScoreByTeam = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of gridCells) m.set(c.owner_team_id, (m.get(c.owner_team_id) ?? 0) + 1);
+    return m;
+  }, [gridCells]);
+  const teamScore = (t: (typeof teams)[number]) =>
+    gameMode === "grille" ? (gridScoreByTeam.get(t.id) ?? 0) : t.score_m2;
+  const ranked = useMemo(
+    () => [...teams].sort((a, b) => teamScore(b) - teamScore(a)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [teams, gameMode, gridScoreByTeam],
+  );
   const finished = game?.status === "finished";
   const validatedRanked = useMemo(() => ranked.filter((t) => t.validated), [ranked]);
   const unvalidated = useMemo(() => ranked.filter((t) => !t.validated), [ranked]);
@@ -589,6 +614,25 @@ function TeacherDashboard() {
         : null,
     [game?.return_lat, game?.return_lng, game?.return_radius_m],
   );
+
+  const gridZone = useMemo(
+    () =>
+      game?.grid_center_lat != null && game.grid_center_lng != null
+        ? { lat: game.grid_center_lat, lng: game.grid_center_lng, radiusM: game.grid_radius_m }
+        : null,
+    [game?.grid_center_lat, game?.grid_center_lng, game?.grid_radius_m],
+  );
+
+  const mapGridCells = useMemo(() => {
+    if (game?.grid_center_lat == null || game.grid_center_lng == null) return [];
+    const center: [number, number] = [game.grid_center_lat, game.grid_center_lng];
+    const cellSize = game.grid_cell_size_m;
+    return gridCells.map((c) => {
+      const [lat, lng] = cellCenter(center, cellSize, c.row, c.col);
+      const owner = teams.find((tm) => tm.id === c.owner_team_id);
+      return { id: c.id, lat, lng, sizeM: cellSize, color: owner?.color ?? "#888" };
+    });
+  }, [gridCells, game?.grid_center_lat, game?.grid_center_lng, game?.grid_cell_size_m, teams]);
 
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/rejoindre/${code}` : "";
@@ -767,6 +811,36 @@ function TeacherDashboard() {
     await supabase.from("games").update({ return_lat: null, return_lng: null }).eq("id", gameId);
   }
 
+  async function placeGridZone(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    await supabase
+      .from("games")
+      .update({ grid_center_lat: lat, grid_center_lng: lng, grid_radius_m: gridRadius })
+      .eq("id", gameId);
+    setPlacingMode("none");
+    toast.success("Zone de jeu placée.");
+  }
+
+  async function updateGridRadius(next: number) {
+    setGridRadius(next);
+    if (!gameId || !isOwner || game?.grid_center_lat == null) return;
+    await supabase.from("games").update({ grid_radius_m: next }).eq("id", gameId);
+  }
+
+  async function updateGridCellSize(next: number) {
+    setGridCellSize(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_cell_size_m: next }).eq("id", gameId);
+  }
+
+  async function clearGridZone() {
+    if (!gameId || !isOwner) return;
+    await supabase
+      .from("games")
+      .update({ grid_center_lat: null, grid_center_lng: null })
+      .eq("id", gameId);
+  }
+
   async function updateRunningBonusEnabled(next: boolean) {
     setRunningBonusEnabled(next);
     if (!gameId || !isOwner) return;
@@ -921,6 +995,8 @@ function TeacherDashboard() {
             landmarks={mapLandmarks}
             forbiddenZones={mapForbiddenZones}
             flags={mapFlags}
+            gridZone={gridZone}
+            gridCells={mapGridCells}
             mapStyle={game?.map_style}
           />
         </div>
@@ -967,7 +1043,9 @@ function TeacherDashboard() {
                 <span className="display text-sm tabular-nums">
                   {gameMode === "capture_drapeau"
                     ? `🚩 ${team.flags_captured}`
-                    : formatArea(team.score_m2)}
+                    : gameMode === "grille"
+                      ? `${gridScoreByTeam.get(team.id) ?? 0} cases`
+                      : formatArea(team.score_m2)}
                 </span>
               </div>
             ))}
@@ -1020,6 +1098,8 @@ function TeacherDashboard() {
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
           flags={mapFlags}
+          gridZone={gridZone}
+          gridCells={mapGridCells}
           mapStyle={game?.map_style}
           onMapClick={
             placingFlagForTeam
@@ -1030,7 +1110,9 @@ function TeacherDashboard() {
                   ? placeLandmark
                   : placingMode === "forbidden"
                     ? placeForbidden
-                    : undefined
+                    : placingMode === "grid_zone"
+                      ? placeGridZone
+                      : undefined
           }
         />
         <div
@@ -1079,7 +1161,9 @@ function TeacherDashboard() {
                 ? "Touchez la carte pour placer le centre de la zone de retour"
                 : placingMode === "landmark"
                   ? "Touchez la carte pour placer le repère bonus"
-                  : "Touchez la carte pour placer la zone interdite"}
+                  : placingMode === "grid_zone"
+                    ? "Touchez la carte pour placer le centre de la zone de jeu"
+                    : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
@@ -1126,7 +1210,7 @@ function TeacherDashboard() {
             <Gamepad2 className="h-4 w-4" /> Mode de jeu
           </div>
           {isOwner && game?.status === "lobby" ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 className="seg-btn"
                 data-active={gameMode === "territoire"}
@@ -1139,20 +1223,23 @@ function TeacherDashboard() {
                 data-active={gameMode === "capture_drapeau"}
                 onClick={() => void updateMode("capture_drapeau")}
               >
-                Capture du drapeau
+                Drapeau
+              </button>
+              <button
+                className="seg-btn"
+                data-active={gameMode === "grille"}
+                onClick={() => void updateMode("grille")}
+              >
+                Grille
               </button>
             </div>
           ) : (
             <p className="text-sm font-semibold">
-              {gameMode === "capture_drapeau" ? "Capture du drapeau" : "Territoire"}
+              {GAME_MODE_LABELS[gameMode]}
               {game?.status !== "lobby" && isOwner && " (verrouillé après le lancement)"}
             </p>
           )}
-          <p className="text-xs text-muted-foreground">
-            {gameMode === "capture_drapeau"
-              ? "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt."
-              : "Les équipes ferment des boucles GPS pour capturer du territoire."}
-          </p>
+          <p className="text-xs text-muted-foreground">{GAME_MODE_DESCRIPTIONS[gameMode]}</p>
         </section>
 
         <section className="panel flex flex-col gap-3 p-4">
@@ -1243,70 +1330,157 @@ function TeacherDashboard() {
           </div>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-between">
-            <div className="section-title">
-              <MapPin className="h-4 w-4" />{" "}
-              {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
-            </div>
-            {returnZone && isOwner && (
-              <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          {gameMode === "capture_drapeau" ? (
-            <p className="text-sm text-muted-foreground">
-              {returnZone
-                ? "Les équipes doivent ramener un drapeau capturé dans cette zone pour marquer un point."
-                : "Aucune zone définie : chaque équipe doit ramener un drapeau capturé jusqu'à sa propre base."}
-            </p>
-          ) : returnZone ? (
-            <p className="text-sm text-muted-foreground">
-              Les équipes doivent être revenues dans cette zone quand le temps s'écoule pour que
-              leur territoire compte au classement.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Aucune zone définie : tous les territoires capturés comptent, quelle que soit la
-              position finale des équipes.
-            </p>
-          )}
-          {isOwner && (
-            <>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Rayon</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    aria-label="Réduire le rayon"
-                    className="icon-btn"
-                    onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
-                  <button
-                    aria-label="Augmenter le rayon"
-                    className="icon-btn"
-                    onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+        {gameMode !== "grille" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between">
+              <div className="section-title">
+                <MapPin className="h-4 w-4" />{" "}
+                {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
               </div>
-              <button
-                className={`btn-huge ${placingMode === "zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                onClick={() => setPlacingMode((p) => (p === "zone" ? "none" : "zone"))}
-              >
-                {placingMode === "zone"
-                  ? "Touchez la carte..."
-                  : returnZone
-                    ? "Déplacer la zone"
-                    : "Placer sur la carte"}
-              </button>
-            </>
-          )}
-        </section>
+              {returnZone && isOwner && (
+                <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {gameMode === "capture_drapeau" ? (
+              <p className="text-sm text-muted-foreground">
+                {returnZone
+                  ? "Les équipes doivent ramener un drapeau capturé dans cette zone pour marquer un point."
+                  : "Aucune zone définie : chaque équipe doit ramener un drapeau capturé jusqu'à sa propre base."}
+              </p>
+            ) : returnZone ? (
+              <p className="text-sm text-muted-foreground">
+                Les équipes doivent être revenues dans cette zone quand le temps s'écoule pour que
+                leur territoire compte au classement.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucune zone définie : tous les territoires capturés comptent, quelle que soit la
+                position finale des équipes.
+              </p>
+            )}
+            {isOwner && (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Rayon</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
+                    <button
+                      aria-label="Augmenter le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className={`btn-huge ${placingMode === "zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setPlacingMode((p) => (p === "zone" ? "none" : "zone"))}
+                >
+                  {placingMode === "zone"
+                    ? "Touchez la carte..."
+                    : returnZone
+                      ? "Déplacer la zone"
+                      : "Placer sur la carte"}
+                </button>
+              </>
+            )}
+          </section>
+        )}
+
+        {gameMode === "grille" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between">
+              <div className="section-title">
+                <Grid3x3 className="h-4 w-4" /> Zone de jeu
+              </div>
+              {gridZone && isOwner && (
+                <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearGridZone}>
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {gridZone
+                ? "La grille recouvre cette zone : chaque case prend la couleur de la dernière équipe passée dessus."
+                : "Placez le centre de la zone où la partie doit se dérouler (cour, terrain de sport…)."}
+            </p>
+            {isOwner && (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Rayon</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateGridRadius(Math.max(10, gridRadius - 5))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{gridRadius} m</span>
+                    <button
+                      aria-label="Augmenter le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateGridRadius(Math.min(150, gridRadius + 5))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Taille des cases</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la taille des cases"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridCellSize(Math.max(MIN_GRID_CELL_SIZE_M, gridCellSize - 1))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{gridCellSize} m</span>
+                    <button
+                      aria-label="Augmenter la taille des cases"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridCellSize(Math.min(MAX_GRID_CELL_SIZE_M, gridCellSize + 1))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                {gridCellSize < GRID_CELL_SIZE_WARNING_THRESHOLD_M && (
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ En dessous de {GRID_CELL_SIZE_WARNING_THRESHOLD_M} m, les cases peuvent
+                    changer de couleur de façon erratique à cause de l'imprécision du GPS
+                    (généralement 3 à 10 m).
+                  </p>
+                )}
+                <button
+                  className={`btn-huge ${placingMode === "grid_zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setPlacingMode((p) => (p === "grid_zone" ? "none" : "grid_zone"))}
+                >
+                  {placingMode === "grid_zone"
+                    ? "Touchez la carte..."
+                    : gridZone
+                      ? "Déplacer la zone"
+                      : "Placer sur la carte"}
+                </button>
+              </>
+            )}
+          </section>
+        )}
 
         {gameMode === "capture_drapeau" && (
           <section className="panel flex flex-col gap-3 p-4">
@@ -1490,302 +1664,308 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="section-title">
-            <Star className="h-4 w-4" /> Repères bonus
-          </div>
-          <p className="text-sm text-muted-foreground">
-            La première équipe qui passe à proximité d'un repère gagne des points bonus au
-            classement final.
-          </p>
-          {isOwner && (
-            <>
-              <LandmarkFields
-                icon={landmarkIconChoice}
-                onIcon={setLandmarkIconChoice}
-                kind={landmarkKind}
-                onKind={setLandmarkKind}
-                showShieldOption={gameMode === "capture_drapeau"}
-                bonus={landmarkBonus}
-                onBonus={setLandmarkBonus}
-                shieldDuration={landmarkShieldDuration}
-                onShieldDuration={setLandmarkShieldDuration}
-                appearAfter={landmarkAppearAfter}
-                onAppearAfter={setLandmarkAppearAfter}
-                expires={landmarkExpires}
-                onExpires={setLandmarkExpires}
-                disappearAfter={landmarkDisappearAfter}
-                onDisappearAfter={setLandmarkDisappearAfter}
-              />
+        {gameMode !== "grille" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Star className="h-4 w-4" /> Repères bonus
+            </div>
+            <p className="text-sm text-muted-foreground">
+              La première équipe qui passe à proximité d'un repère gagne des points bonus au
+              classement final.
+            </p>
+            {isOwner && (
+              <>
+                <LandmarkFields
+                  icon={landmarkIconChoice}
+                  onIcon={setLandmarkIconChoice}
+                  kind={landmarkKind}
+                  onKind={setLandmarkKind}
+                  showShieldOption={gameMode === "capture_drapeau"}
+                  bonus={landmarkBonus}
+                  onBonus={setLandmarkBonus}
+                  shieldDuration={landmarkShieldDuration}
+                  onShieldDuration={setLandmarkShieldDuration}
+                  appearAfter={landmarkAppearAfter}
+                  onAppearAfter={setLandmarkAppearAfter}
+                  expires={landmarkExpires}
+                  onExpires={setLandmarkExpires}
+                  disappearAfter={landmarkDisappearAfter}
+                  onDisappearAfter={setLandmarkDisappearAfter}
+                />
 
-              <button
-                className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
-              >
-                <Star className="h-5 w-5" />{" "}
-                {placingMode === "landmark" ? "Touchez la carte..." : "Ajouter un repère"}
-              </button>
-            </>
-          )}
-          {landmarks.length > 0 && (
-            <div className="flex flex-col gap-1">
-              {landmarks.map((l) => {
-                const elapsedMin = game?.started_at
-                  ? (now - new Date(game.started_at).getTime()) / 60000
-                  : 0;
-                const status = l.claimed_by_team_id
-                  ? `Pris par ${teams.find((t) => t.id === l.claimed_by_team_id)?.name ?? "une équipe"}`
-                  : elapsedMin < l.active_after_minutes
-                    ? `Apparaît dans ${Math.ceil(l.active_after_minutes - elapsedMin)} min`
-                    : l.active_until_minutes != null && elapsedMin > l.active_until_minutes
-                      ? "Expiré"
-                      : "Disponible";
-                return (
-                  <div key={l.id} className="border-b border-border py-2 last:border-0">
-                    <div className="flex items-center gap-3">
-                      <span className="text-lg shrink-0">{l.icon}</span>
-                      <span className="flex-1 text-sm">{status}</span>
-                      <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
-                        {l.kind === "shield" ? (
+                <button
+                  className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
+                >
+                  <Star className="h-5 w-5" />{" "}
+                  {placingMode === "landmark" ? "Touchez la carte..." : "Ajouter un repère"}
+                </button>
+              </>
+            )}
+            {landmarks.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {landmarks.map((l) => {
+                  const elapsedMin = game?.started_at
+                    ? (now - new Date(game.started_at).getTime()) / 60000
+                    : 0;
+                  const status = l.claimed_by_team_id
+                    ? `Pris par ${teams.find((t) => t.id === l.claimed_by_team_id)?.name ?? "une équipe"}`
+                    : elapsedMin < l.active_after_minutes
+                      ? `Apparaît dans ${Math.ceil(l.active_after_minutes - elapsedMin)} min`
+                      : l.active_until_minutes != null && elapsedMin > l.active_until_minutes
+                        ? "Expiré"
+                        : "Disponible";
+                  return (
+                    <div key={l.id} className="border-b border-border py-2 last:border-0">
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg shrink-0">{l.icon}</span>
+                        <span className="flex-1 text-sm">{status}</span>
+                        <span className="flex items-center gap-1 text-sm font-semibold text-muted-foreground">
+                          {l.kind === "shield" ? (
+                            <>
+                              <Shield className="h-3.5 w-3.5" /> {l.shield_duration_s}s
+                            </>
+                          ) : (
+                            formatArea(l.bonus_m2)
+                          )}
+                        </span>
+                        {isOwner && (
                           <>
-                            <Shield className="h-3.5 w-3.5" /> {l.shield_duration_s}s
+                            <button
+                              aria-label="Modifier le repère"
+                              onClick={() =>
+                                editingLandmarkId === l.id
+                                  ? setEditingLandmarkId(null)
+                                  : startEditLandmark(l)
+                              }
+                            >
+                              <Pencil className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                            <button
+                              aria-label="Enregistrer comme modèle"
+                              onClick={() =>
+                                void saveTemplate(
+                                  "landmark",
+                                  l.lat,
+                                  l.lng,
+                                  0,
+                                  l.bonus_m2,
+                                  l.icon,
+                                  l.active_after_minutes,
+                                  l.active_until_minutes,
+                                )
+                              }
+                            >
+                              <Bookmark className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                            <button
+                              aria-label="Supprimer le repère"
+                              onClick={() => void deleteLandmark(l.id)}
+                            >
+                              <X className="h-4 w-4 text-muted-foreground" />
+                            </button>
                           </>
-                        ) : (
-                          formatArea(l.bonus_m2)
                         )}
-                      </span>
-                      {isOwner && (
-                        <>
-                          <button
-                            aria-label="Modifier le repère"
-                            onClick={() =>
-                              editingLandmarkId === l.id
-                                ? setEditingLandmarkId(null)
-                                : startEditLandmark(l)
-                            }
-                          >
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                          <button
-                            aria-label="Enregistrer comme modèle"
-                            onClick={() =>
-                              void saveTemplate(
-                                "landmark",
-                                l.lat,
-                                l.lng,
-                                0,
-                                l.bonus_m2,
-                                l.icon,
-                                l.active_after_minutes,
-                                l.active_until_minutes,
-                              )
-                            }
-                          >
-                            <Bookmark className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                          <button
-                            aria-label="Supprimer le repère"
-                            onClick={() => void deleteLandmark(l.id)}
-                          >
-                            <X className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        </>
+                      </div>
+                      {isOwner && editingLandmarkId === l.id && (
+                        <div className="mt-2 flex flex-col gap-3 rounded-xl bg-muted/40 p-3">
+                          <LandmarkFields
+                            icon={landmarkIconChoice}
+                            onIcon={setLandmarkIconChoice}
+                            kind={landmarkKind}
+                            onKind={setLandmarkKind}
+                            showShieldOption={gameMode === "capture_drapeau"}
+                            bonus={landmarkBonus}
+                            onBonus={setLandmarkBonus}
+                            shieldDuration={landmarkShieldDuration}
+                            onShieldDuration={setLandmarkShieldDuration}
+                            appearAfter={landmarkAppearAfter}
+                            onAppearAfter={setLandmarkAppearAfter}
+                            expires={landmarkExpires}
+                            onExpires={setLandmarkExpires}
+                            disappearAfter={landmarkDisappearAfter}
+                            onDisappearAfter={setLandmarkDisappearAfter}
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              className="btn-huge-accent flex-1 rounded-xl py-2 text-sm font-bold"
+                              onClick={() => void saveEditLandmark()}
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              className="flex-1 rounded-xl bg-muted py-2 text-sm font-semibold"
+                              onClick={() => setEditingLandmarkId(null)}
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    {isOwner && editingLandmarkId === l.id && (
-                      <div className="mt-2 flex flex-col gap-3 rounded-xl bg-muted/40 p-3">
-                        <LandmarkFields
-                          icon={landmarkIconChoice}
-                          onIcon={setLandmarkIconChoice}
-                          kind={landmarkKind}
-                          onKind={setLandmarkKind}
-                          showShieldOption={gameMode === "capture_drapeau"}
-                          bonus={landmarkBonus}
-                          onBonus={setLandmarkBonus}
-                          shieldDuration={landmarkShieldDuration}
-                          onShieldDuration={setLandmarkShieldDuration}
-                          appearAfter={landmarkAppearAfter}
-                          onAppearAfter={setLandmarkAppearAfter}
-                          expires={landmarkExpires}
-                          onExpires={setLandmarkExpires}
-                          disappearAfter={landmarkDisappearAfter}
-                          onDisappearAfter={setLandmarkDisappearAfter}
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            className="btn-huge-accent flex-1 rounded-xl py-2 text-sm font-bold"
-                            onClick={() => void saveEditLandmark()}
-                          >
-                            Enregistrer
-                          </button>
-                          <button
-                            className="flex-1 rounded-xl bg-muted py-2 text-sm font-semibold"
-                            onClick={() => setEditingLandmarkId(null)}
-                          >
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
+                  );
+                })}
+              </div>
+            )}
+            {isOwner && landmarkTemplates.length > 0 && (
+              <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+                <span className="label-xs">Mes modèles</span>
+                {landmarkTemplates.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 py-1">
+                    <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 text-sm">{p.name}</span>
+                    <button className="mini-btn" onClick={() => void useTemplate(p)}>
+                      Réutiliser
+                    </button>
+                    <button
+                      aria-label="Supprimer le modèle"
+                      onClick={() => void deleteTemplate(p.id, "landmark")}
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {gameMode !== "grille" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <ShieldAlert className="h-4 w-4" /> Zones interdites
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Une équipe qui pénètre dans une zone interdite perd des points sur son score final.
+            </p>
+            {isOwner && (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">
+                    Pénaliser seulement en cas de traversée en courant
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 shrink-0"
+                    checked={forbiddenRunningOnly}
+                    onChange={(e) => void updateForbiddenRunningOnly(e.target.checked)}
+                  />
+                </label>
+                {forbiddenRunningOnly && (
+                  <p className="text-xs text-muted-foreground">
+                    Une équipe qui marche dans une zone interdite (ex. traverser une rue au pas) ne
+                    sera pas pénalisée ; seule une traversée en courant compte.
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Rayon</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le rayon"
+                      className="icon-btn"
+                      onClick={() => setForbiddenRadius((r) => Math.max(5, r - 5))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{forbiddenRadius} m</span>
+                    <button
+                      aria-label="Augmenter le rayon"
+                      className="icon-btn"
+                      onClick={() => setForbiddenRadius((r) => Math.min(200, r + 5))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Pénalité</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la pénalité"
+                      className="icon-btn"
+                      onClick={() => setForbiddenPenalty((p) => Math.max(10, p - 10))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-24 text-center text-lg">
+                      -{formatArea(forbiddenPenalty)}
+                    </span>
+                    <button
+                      aria-label="Augmenter la pénalité"
+                      className="icon-btn"
+                      onClick={() => setForbiddenPenalty((p) => Math.min(500, p + 10))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className={`btn-huge ${placingMode === "forbidden" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setPlacingMode((p) => (p === "forbidden" ? "none" : "forbidden"))}
+                >
+                  <ShieldAlert className="h-5 w-5" />{" "}
+                  {placingMode === "forbidden"
+                    ? "Touchez la carte..."
+                    : "Ajouter une zone interdite"}
+                </button>
+              </>
+            )}
+            {forbiddenZones.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {forbiddenZones.map((z) => (
+                  <div
+                    key={z.id}
+                    className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                  >
+                    <ShieldAlert className="h-4 w-4 shrink-0 text-destructive" />
+                    <span className="flex-1 text-sm">Rayon {z.radius_m} m</span>
+                    <span className="text-sm font-semibold text-muted-foreground">
+                      -{formatArea(z.penalty_m2)}
+                    </span>
+                    {isOwner && (
+                      <>
+                        <button
+                          aria-label="Enregistrer comme modèle"
+                          onClick={() =>
+                            void saveTemplate("forbidden", z.lat, z.lng, z.radius_m, z.penalty_m2)
+                          }
+                        >
+                          <Bookmark className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                        <button
+                          aria-label="Supprimer la zone"
+                          onClick={() => void deleteForbidden(z.id)}
+                        >
+                          <X className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-          {isOwner && landmarkTemplates.length > 0 && (
-            <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="label-xs">Mes modèles</span>
-              {landmarkTemplates.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 py-1">
-                  <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 text-sm">{p.name}</span>
-                  <button className="mini-btn" onClick={() => void useTemplate(p)}>
-                    Réutiliser
-                  </button>
-                  <button
-                    aria-label="Supprimer le modèle"
-                    onClick={() => void deleteTemplate(p.id, "landmark")}
-                  >
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="section-title">
-            <ShieldAlert className="h-4 w-4" /> Zones interdites
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Une équipe qui pénètre dans une zone interdite perd des points sur son score final.
-          </p>
-          {isOwner && (
-            <>
-              <label className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">
-                  Pénaliser seulement en cas de traversée en courant
-                </span>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 shrink-0"
-                  checked={forbiddenRunningOnly}
-                  onChange={(e) => void updateForbiddenRunningOnly(e.target.checked)}
-                />
-              </label>
-              {forbiddenRunningOnly && (
-                <p className="text-xs text-muted-foreground">
-                  Une équipe qui marche dans une zone interdite (ex. traverser une rue au pas) ne
-                  sera pas pénalisée ; seule une traversée en courant compte.
-                </p>
-              )}
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Rayon</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    aria-label="Réduire le rayon"
-                    className="icon-btn"
-                    onClick={() => setForbiddenRadius((r) => Math.max(5, r - 5))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="display w-16 text-center text-lg">{forbiddenRadius} m</span>
-                  <button
-                    aria-label="Augmenter le rayon"
-                    className="icon-btn"
-                    onClick={() => setForbiddenRadius((r) => Math.min(200, r + 5))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+                ))}
               </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Pénalité</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    aria-label="Réduire la pénalité"
-                    className="icon-btn"
-                    onClick={() => setForbiddenPenalty((p) => Math.max(10, p - 10))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="display w-24 text-center text-lg">
-                    -{formatArea(forbiddenPenalty)}
-                  </span>
-                  <button
-                    aria-label="Augmenter la pénalité"
-                    className="icon-btn"
-                    onClick={() => setForbiddenPenalty((p) => Math.min(500, p + 10))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+            )}
+            {isOwner && forbiddenTemplates.length > 0 && (
+              <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+                <span className="label-xs">Mes modèles</span>
+                {forbiddenTemplates.map((p) => (
+                  <div key={p.id} className="flex items-center gap-3 py-1">
+                    <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 text-sm">{p.name}</span>
+                    <button className="mini-btn" onClick={() => void useTemplate(p)}>
+                      Réutiliser
+                    </button>
+                    <button
+                      aria-label="Supprimer le modèle"
+                      onClick={() => void deleteTemplate(p.id, "forbidden")}
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <button
-                className={`btn-huge ${placingMode === "forbidden" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                onClick={() => setPlacingMode((p) => (p === "forbidden" ? "none" : "forbidden"))}
-              >
-                <ShieldAlert className="h-5 w-5" />{" "}
-                {placingMode === "forbidden" ? "Touchez la carte..." : "Ajouter une zone interdite"}
-              </button>
-            </>
-          )}
-          {forbiddenZones.length > 0 && (
-            <div className="flex flex-col gap-1">
-              {forbiddenZones.map((z) => (
-                <div
-                  key={z.id}
-                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
-                >
-                  <ShieldAlert className="h-4 w-4 shrink-0 text-destructive" />
-                  <span className="flex-1 text-sm">Rayon {z.radius_m} m</span>
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    -{formatArea(z.penalty_m2)}
-                  </span>
-                  {isOwner && (
-                    <>
-                      <button
-                        aria-label="Enregistrer comme modèle"
-                        onClick={() =>
-                          void saveTemplate("forbidden", z.lat, z.lng, z.radius_m, z.penalty_m2)
-                        }
-                      >
-                        <Bookmark className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button
-                        aria-label="Supprimer la zone"
-                        onClick={() => void deleteForbidden(z.id)}
-                      >
-                        <X className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {isOwner && forbiddenTemplates.length > 0 && (
-            <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
-              <span className="label-xs">Mes modèles</span>
-              {forbiddenTemplates.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 py-1">
-                  <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="flex-1 text-sm">{p.name}</span>
-                  <button className="mini-btn" onClick={() => void useTemplate(p)}>
-                    Réutiliser
-                  </button>
-                  <button
-                    aria-label="Supprimer le modèle"
-                    onClick={() => void deleteTemplate(p.id, "forbidden")}
-                  >
-                    <X className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+            )}
+          </section>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="section-title">
@@ -1901,7 +2081,11 @@ function TeacherDashboard() {
                 )}
               </span>
               <span className="flex flex-col items-end">
-                <span className="display text-xl tabular-nums">{formatArea(t.score_m2)}</span>
+                <span className="display text-xl tabular-nums">
+                  {gameMode === "grille"
+                    ? `${gridScoreByTeam.get(t.id) ?? 0} case${(gridScoreByTeam.get(t.id) ?? 0) > 1 ? "s" : ""}`
+                    : formatArea(t.score_m2)}
+                </span>
                 {gameMode === "capture_drapeau" && (
                   <span className="text-xs text-muted-foreground">🚩 {t.flags_captured}</span>
                 )}

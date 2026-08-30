@@ -356,6 +356,10 @@
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #dc2626);
 }
 
+.zone-glow-violet {
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #8338ec);
+}
+
 .leaflet-tooltip {
   background: color-mix(in oklch, var(--color-background) 92%, transparent) !important;
   color: var(--color-foreground) !important;
@@ -375,7 +379,6 @@
 .leaflet-container {
   background: #eef2f6 !important;
 }
-
 
 @layer components {
   /* Shared page furniture so every screen reads like the home screen:
@@ -570,4 +573,3 @@
     box-shadow: 0 -18px 50px -20px oklch(0 0 0 / 0.85);
   }
 }
-

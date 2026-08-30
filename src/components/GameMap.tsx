@@ -26,6 +26,10 @@ export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: 
 
 export type MapFlag = { id: string; lat: number; lng: number; color: string; label: string };
 
+export type GridZone = { lat: number; lng: number; radiusM: number };
+
+export type MapGridCell = { id: string; lat: number; lng: number; sizeM: number; color: string };
+
 type Props = {
   center: [number, number] | null;
   teams: MapTeam[];
@@ -37,9 +41,22 @@ type Props = {
   landmarks?: MapLandmark[];
   forbiddenZones?: MapForbiddenZone[];
   flags?: MapFlag[];
+  gridZone?: GridZone | null;
+  gridCells?: MapGridCell[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
 };
+
+const METERS_PER_DEG_LAT = 111320;
+
+function cellRectBounds(lat: number, lng: number, sizeM: number): L.LatLngBoundsExpression {
+  const dLat = sizeM / 2 / METERS_PER_DEG_LAT;
+  const dLng = sizeM / 2 / (METERS_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180));
+  return [
+    [lat - dLat, lng - dLng],
+    [lat + dLat, lng + dLng],
+  ];
+}
 
 const landmarkIcon = (icon: string) =>
   L.divIcon({
@@ -85,6 +102,8 @@ export default function GameMap({
   landmarks = [],
   forbiddenZones = [],
   flags = [],
+  gridZone = null,
+  gridCells = [],
   onMapClick,
   mapStyle = "classic",
 }: Props) {
@@ -99,6 +118,8 @@ export default function GameMap({
   const landmarkLayer = useRef<L.LayerGroup | null>(null);
   const forbiddenLayer = useRef<L.LayerGroup | null>(null);
   const flagLayer = useRef<L.LayerGroup | null>(null);
+  const gridZoneLayer = useRef<L.LayerGroup | null>(null);
+  const gridCellLayer = useRef<L.LayerGroup | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const didInitialFit = useRef(false);
@@ -125,6 +146,8 @@ export default function GameMap({
     forbiddenLayer.current = L.layerGroup().addTo(map);
     landmarkLayer.current = L.layerGroup().addTo(map);
     flagLayer.current = L.layerGroup().addTo(map);
+    gridCellLayer.current = L.layerGroup().addTo(map);
+    gridZoneLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
     map.on("click", (e: L.LeafletMouseEvent) =>
@@ -249,6 +272,38 @@ export default function GameMap({
         .addTo(layer);
     }
   }, [flags]);
+
+  useEffect(() => {
+    const layer = gridCellLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const c of gridCells) {
+      L.rectangle(cellRectBounds(c.lat, c.lng, c.sizeM), {
+        color: c.color,
+        weight: 1,
+        fillColor: c.color,
+        fillOpacity: 0.55,
+      }).addTo(layer);
+    }
+  }, [gridCells]);
+
+  useEffect(() => {
+    const layer = gridZoneLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (gridZone) {
+      L.circle([gridZone.lat, gridZone.lng], {
+        radius: gridZone.radiusM,
+        color: "#8338ec",
+        weight: spec.zone.weight,
+        dashArray: spec.zone.dashArray,
+        fillOpacity: 0,
+        className: "zone-glow-violet",
+      })
+        .bindTooltip("Zone de jeu")
+        .addTo(layer);
+    }
+  }, [gridZone, spec]);
 
   useEffect(() => {
     const layer = teamLayer.current;

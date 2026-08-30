@@ -1,0 +1,298 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Grid3x3, MessageCircle, Send, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { MapCanvas } from "@/components/MapCanvas";
+import { useGameState } from "@/lib/useGameState";
+import { formatCountdown, haversine } from "@/lib/conquete";
+import { sendTeamMessage, useMessages } from "@/lib/messages";
+import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
+import { useWakeLock } from "@/hooks/useWakeLock";
+
+export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
+  const [pos, setPos] = useState<[number, number] | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatBody, setChatBody] = useState("");
+  const [unread, setUnread] = useState(false);
+
+  const lastSync = useRef(0);
+  const seenMessageCount = useRef<number | null>(null);
+  const lastClaimedCellRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    requestNotificationPermission();
+  }, []);
+
+  const { game, teams } = useGameState(gameId);
+  const gameRef = useRef(game);
+  gameRef.current = game;
+  const { messages } = useMessages(gameId);
+  const { cells } = useGridCells(gameId);
+  const cellsRef = useRef(cells);
+  cellsRef.current = cells;
+
+  const me = teams.find((t) => t.id === teamId) ?? null;
+  const myColor = me?.color ?? "#e63946";
+  const myCellCount = useMemo(
+    () => cells.filter((c) => c.owner_team_id === teamId).length,
+    [cells, teamId],
+  );
+
+  const myMessages = useMemo(
+    () =>
+      messages.filter((m) => (m.sender === "prof" && m.team_id === null) || m.team_id === teamId),
+    [messages, teamId],
+  );
+
+  useEffect(() => {
+    if (seenMessageCount.current === null) {
+      seenMessageCount.current = myMessages.length;
+      return;
+    }
+    if (myMessages.length > seenMessageCount.current) {
+      const latest = myMessages[myMessages.length - 1];
+      if (latest?.sender === "prof") {
+        toast(`💬 Prof : ${latest.body}`);
+        notifyMessage("💬 Message du prof", latest.body);
+        if (!chatOpen) setUnread(true);
+      }
+    }
+    seenMessageCount.current = myMessages.length;
+  }, [myMessages, chatOpen]);
+
+  async function sendChat() {
+    if (!chatBody.trim()) return;
+    const body = chatBody.trim();
+    setChatBody("");
+    try {
+      await sendTeamMessage(gameId, teamId, body);
+    } catch {
+      toast.error("Message non envoyé.");
+    }
+  }
+
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const gridCenter = useMemo<[number, number] | null>(
+    () =>
+      game?.grid_center_lat != null && game.grid_center_lng != null
+        ? [game.grid_center_lat, game.grid_center_lng]
+        : null,
+    [game?.grid_center_lat, game?.grid_center_lng],
+  );
+  const gridCenterRef = useRef(gridCenter);
+  gridCenterRef.current = gridCenter;
+  const gridRadiusRef = useRef(game?.grid_radius_m ?? 40);
+  gridRadiusRef.current = game?.grid_radius_m ?? 40;
+  const cellSizeRef = useRef(game?.grid_cell_size_m ?? 6);
+  cellSizeRef.current = game?.grid_cell_size_m ?? 6;
+
+  const onPosition = useCallback(
+    (p: GeolocationPosition) => {
+      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      setPos(point);
+      setAccuracy(p.coords.accuracy);
+      setGeoError(null);
+
+      if (Date.now() - lastSync.current > 3000) {
+        lastSync.current = Date.now();
+        void supabase
+          .from("teams")
+          .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+          .eq("id", teamId);
+      }
+
+      const center = gridCenterRef.current;
+      if (!center) return;
+      if (haversine(point, center) > gridRadiusRef.current) return;
+
+      const { row, col } = pointToCell(center, cellSizeRef.current, point);
+      const key = `${row}:${col}`;
+      if (lastClaimedCellRef.current === key) return;
+      lastClaimedCellRef.current = key;
+      const existing = cellsRef.current.find((c) => c.row === row && c.col === col);
+      if (existing?.owner_team_id === teamId) return;
+      void claimGridCell(gameId, teamId, row, col);
+    },
+    [teamId, gameId],
+  );
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGeoError("GPS indisponible sur cet appareil.");
+      return;
+    }
+    const id = navigator.geolocation.watchPosition(
+      onPosition,
+      (err) => setGeoError(err.message || "Position GPS refusée."),
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [onPosition]);
+
+  const gridZone = useMemo(
+    () =>
+      gridCenter
+        ? { lat: gridCenter[0], lng: gridCenter[1], radiusM: game?.grid_radius_m ?? 40 }
+        : null,
+    [gridCenter, game?.grid_radius_m],
+  );
+
+  const mapGridCells = useMemo(() => {
+    if (!gridCenter) return [];
+    const cellSize = game?.grid_cell_size_m ?? 6;
+    return cells.map((c) => {
+      const [lat, lng] = cellCenter(gridCenter, cellSize, c.row, c.col);
+      const owner = teams.find((t) => t.id === c.owner_team_id);
+      return { id: c.id, lat, lng, sizeM: cellSize, color: owner?.color ?? "#888" };
+    });
+  }, [cells, gridCenter, game?.grid_cell_size_m, teams]);
+
+  const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
+  const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
+
+  useWakeLock(!finished);
+
+  const prevFinishedRef = useRef(finished);
+  useEffect(() => {
+    if (finished && !prevFinishedRef.current) {
+      toast.success("🏁 Partie terminée !");
+      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+    }
+    prevFinishedRef.current = finished;
+  }, [finished]);
+
+  return (
+    <main className="relative h-[100dvh] w-full overflow-hidden">
+      <div className="absolute inset-0">
+        <MapCanvas
+          center={pos}
+          teams={teams}
+          territories={[]}
+          gridZone={gridZone}
+          gridCells={mapGridCells}
+          mapStyle={game?.map_style}
+          follow
+        />
+      </div>
+
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
+        style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
+      >
+        <div className="hud-badge min-w-0 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
+              style={{ backgroundColor: myColor }}
+            />
+            <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
+          </div>
+          <div className="display flex items-center gap-1 text-xl">
+            <Grid3x3 className="h-4 w-4" /> {myCellCount}
+          </div>
+        </div>
+        <div className="hud-badge shrink-0 px-3 py-2 text-right">
+          <div className="label-xs">Temps</div>
+          <div className="display text-2xl tabular-nums">
+            {remaining === null ? "--:--" : formatCountdown(remaining)}
+          </div>
+        </div>
+      </div>
+
+      <button
+        aria-label="Messages"
+        className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+        style={{ top: "max(7rem, calc(env(safe-area-inset-top) + 4.5rem))" }}
+        onClick={() => {
+          setChatOpen(true);
+          setUnread(false);
+        }}
+      >
+        <MessageCircle className="h-6 w-6" />
+        {unread && (
+          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
+        )}
+      </button>
+
+      {chatOpen && (
+        <div
+          className="sheet pointer-events-auto absolute inset-x-0 bottom-0 z-[1100] flex max-h-[70vh] flex-col gap-3 p-4"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <div className="flex items-center justify-between">
+            <span className="section-title">
+              <MessageCircle className="h-4 w-4" /> Messages avec le prof
+            </span>
+            <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+            {myMessages.length === 0 && (
+              <p className="py-2 text-center text-sm text-muted-foreground">Aucun message.</p>
+            )}
+            {myMessages.map((m) => (
+              <div
+                key={m.id}
+                className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
+                  m.sender === "prof"
+                    ? "bg-secondary text-secondary-foreground"
+                    : "self-end bg-primary/20"
+                }`}
+              >
+                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
+                <div>{m.body}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              className="field"
+              placeholder="Votre message au prof..."
+              value={chatBody}
+              onChange={(e) => setChatBody(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void sendChat()}
+            />
+            <button
+              aria-label="Envoyer"
+              className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
+              onClick={sendChat}
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div
+        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      >
+        {geoError && (
+          <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
+        )}
+
+        {!gridZone && (
+          <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
+            En attente que le prof définisse la zone de jeu…
+          </div>
+        )}
+
+        {finished && (
+          <div className="btn-huge btn-huge-dark">
+            Partie terminée — {myCellCount} case{myCellCount > 1 ? "s" : ""} contrôlée
+            {myCellCount > 1 ? "s" : ""} !
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}
