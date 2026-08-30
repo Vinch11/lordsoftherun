@@ -298,7 +298,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           point,
           gameRef.current?.started_at ?? null,
         ).then((won) => {
-          if (won) {
+          if (!won) return;
+          if (won.kind === "shield") {
+            toast.success(`${won.icon} Bouclier activé ! Immunité ${won.shield_duration_s}s.`);
+            notifyMessage(`${won.icon} Bouclier !`, `Immunité ${won.shield_duration_s}s`);
+          } else {
             toast.success(`${won.icon} Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
             notifyMessage(`${won.icon} Repère bonus !`, `+${formatArea(won.bonus_m2)}`);
           }

@@ -100,6 +100,7 @@ type LandmarkFieldsProps = {
   onIcon: (icon: string) => void;
   kind: LandmarkKind;
   onKind: (kind: LandmarkKind) => void;
+  showShieldOption: boolean;
   bonus: number;
   onBonus: (updater: (b: number) => number) => void;
   shieldDuration: number;
@@ -117,6 +118,7 @@ function LandmarkFields({
   onIcon,
   kind,
   onKind,
+  showShieldOption,
   bonus,
   onBonus,
   shieldDuration,
@@ -144,25 +146,27 @@ function LandmarkFields({
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className="seg-btn"
-          data-active={kind === "points"}
-          onClick={() => onKind("points")}
-        >
-          Points bonus
-        </button>
-        <button
-          type="button"
-          className="seg-btn"
-          data-active={kind === "shield"}
-          onClick={() => onKind("shield")}
-        >
-          Bouclier
-        </button>
-      </div>
-      {kind === "points" ? (
+      {showShieldOption && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            className="seg-btn"
+            data-active={kind === "points"}
+            onClick={() => onKind("points")}
+          >
+            Points bonus
+          </button>
+          <button
+            type="button"
+            className="seg-btn"
+            data-active={kind === "shield"}
+            onClick={() => onKind("shield")}
+          >
+            Bouclier
+          </button>
+        </div>
+      )}
+      {!showShieldOption || kind === "points" ? (
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-semibold">Bonus</span>
           <div className="flex items-center gap-3">
@@ -612,6 +616,7 @@ function TeacherDashboard() {
 
   async function placeLandmark(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
+    const kind: LandmarkKind = gameMode === "capture_drapeau" ? landmarkKind : "points";
     try {
       await addLandmark(
         gameId,
@@ -621,11 +626,11 @@ function TeacherDashboard() {
         landmarkIconChoice,
         landmarkAppearAfter,
         landmarkExpires ? landmarkDisappearAfter : null,
-        landmarkKind,
+        kind,
         landmarkShieldDuration,
       );
       setPlacingMode("none");
-      toast.success(landmarkKind === "shield" ? "Bouclier placé !" : "Repère bonus placé !");
+      toast.success(kind === "shield" ? "Bouclier placé !" : "Repère bonus placé !");
     } catch {
       toast.error("Impossible de placer le repère.");
     }
@@ -656,7 +661,7 @@ function TeacherDashboard() {
     try {
       await updateLandmark(editingLandmarkId, {
         icon: landmarkIconChoice,
-        kind: landmarkKind,
+        kind: gameMode === "capture_drapeau" ? landmarkKind : "points",
         bonus_m2: landmarkBonus,
         shield_duration_s: landmarkShieldDuration,
         active_after_minutes: landmarkAppearAfter,
@@ -1472,6 +1477,7 @@ function TeacherDashboard() {
                 onIcon={setLandmarkIconChoice}
                 kind={landmarkKind}
                 onKind={setLandmarkKind}
+                showShieldOption={gameMode === "capture_drapeau"}
                 bonus={landmarkBonus}
                 onBonus={setLandmarkBonus}
                 shieldDuration={landmarkShieldDuration}
@@ -1565,6 +1571,7 @@ function TeacherDashboard() {
                           onIcon={setLandmarkIconChoice}
                           kind={landmarkKind}
                           onKind={setLandmarkKind}
+                          showShieldOption={gameMode === "capture_drapeau"}
                           bonus={landmarkBonus}
                           onBonus={setLandmarkBonus}
                           shieldDuration={landmarkShieldDuration}
@@ -1865,8 +1872,11 @@ function TeacherDashboard() {
                   </span>
                 )}
               </span>
-              <span className="display text-xl tabular-nums">
-                {gameMode === "capture_drapeau" ? `🚩 ${t.flags_captured}` : formatArea(t.score_m2)}
+              <span className="flex flex-col items-end">
+                <span className="display text-xl tabular-nums">{formatArea(t.score_m2)}</span>
+                {gameMode === "capture_drapeau" && (
+                  <span className="text-xs text-muted-foreground">🚩 {t.flags_captured}</span>
+                )}
               </span>
             </div>
           ))}
