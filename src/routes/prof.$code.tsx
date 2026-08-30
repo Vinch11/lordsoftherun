@@ -1341,7 +1341,9 @@ function TeacherDashboard() {
         )}
       </div>
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:max-w-2xl lg:overflow-y-auto [&>*]:shrink-0">
+      <div
+        className={`mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:max-w-2xl lg:overflow-y-auto [&>*]:shrink-0 ${panelOpen ? "" : "lg:hidden"}`}
+      >
         <header className="panel flex flex-col gap-4 p-4">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
             <div className="min-w-0">
