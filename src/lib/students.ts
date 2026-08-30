@@ -79,6 +79,57 @@ function detectDelimiter(sample: string): string {
 
 const HEADER_HINTS = /^(nom|name|élève|eleve|student|nom complet|prénom|prenom)$/i;
 
+export type ParsedStudent = { name: string; group?: string };
+
+function findColumn(headers: string[], candidates: string[]): number {
+  const normalized = headers.map((h) =>
+    h
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, ""),
+  );
+  for (const c of candidates) {
+    const i = normalized.indexOf(c);
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
+/**
+ * Same import logic as Tournoi Facile: when the file has a header row with
+ * Prénom / Nom / Groupe columns, names are rebuilt from those columns and the
+ * group is kept; otherwise we fall back to the "one name per line" reader.
+ */
+export function parseRosterCsv(csvText: string): ParsedStudent[] {
+  const text = csvText.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return [];
+  const delimiter = detectDelimiter(lines.slice(0, 5).join("\n"));
+  const rows = lines.map((l) => parseCsvLine(l, delimiter).map((c) => c.trim()));
+
+  const headers = rows[0]!;
+  const iFirst = findColumn(headers, ["prenom", "first name", "firstname"]);
+  const iLast = findColumn(headers, ["nom de famille", "nom", "last name", "lastname"]);
+  const iGroup = findColumn(headers, ["groupe", "group", "classe", "class"]);
+
+  if (iFirst !== -1 || iLast !== -1) {
+    const out: ParsedStudent[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i]!;
+      const first = iFirst !== -1 ? (row[iFirst] ?? "") : "";
+      const last = iLast !== -1 ? (row[iLast] ?? "") : "";
+      const name = [first, last].filter(Boolean).join(" ").trim();
+      if (!name) continue;
+      const group = iGroup !== -1 ? (row[iGroup] ?? "").trim() : "";
+      out.push(group ? { name, group } : { name });
+    }
+    if (out.length > 0) return out;
+  }
+
+  return parseIdoceoRoster(csvText).map((name) => ({ name }));
+}
+
 /**
  * Extracts student names from a gradebook export (iDoceo, Excel, plain list).
  * Handles , ; and tab delimiters, files with or without a header row, and
@@ -105,6 +156,44 @@ export function parseIdoceoRoster(csvText: string): string[] {
   }
   return names;
 }
+
+/**
+ * Commits the wizard result: replaces the roster, recreates the teams and
+ * assigns each present student to the team they were placed in.
+ */
+export async function applyRosterComposition(
+  gameId: string,
+  roster: { name: string; present: boolean }[],
+  composedTeams: { name: string; color: string; members: string[] }[],
+): Promise<void> {
+  await supabase.from("students").delete().eq("game_id", gameId);
+  await supabase.from("teams").delete().eq("game_id", gameId);
+
+  const createdTeamIds = new Map<string, string>();
+  if (composedTeams.length > 0) {
+    const { data, error } = await supabase
+      .from("teams")
+      .insert(composedTeams.map((t) => ({ game_id: gameId, name: t.name, color: t.color })))
+      .select();
+    if (error || !data) throw error ?? new Error("team creation failed");
+    composedTeams.forEach((t, i) => {
+      const created = data[i];
+      if (created) for (const member of t.members) createdTeamIds.set(member, created.id);
+    });
+  }
+
+  if (roster.length === 0) return;
+  const { error } = await supabase.from("students").insert(
+    roster.map((s) => ({
+      game_id: gameId,
+      name: s.name,
+      present: s.present,
+      team_id: createdTeamIds.get(s.name) ?? null,
+    })),
+  );
+  if (error) throw error;
+}
+
 
 /** Replaces the whole roster for a game — re-importing a corrected CSV starts clean. */
 export async function importRoster(gameId: string, names: string[]): Promise<void> {
