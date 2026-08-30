@@ -1259,7 +1259,9 @@ function TeacherDashboard() {
 
   return (
     <main className="flex min-h-screen flex-col lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
-      <div className="relative h-[45vh] min-h-[280px] w-full lg:h-full lg:w-2/5 lg:shrink-0">
+      <div
+        className={`relative h-[45vh] min-h-[280px] w-full lg:h-full lg:shrink-0 lg:transition-[width] lg:duration-300 ${panelOpen ? "lg:w-2/5" : "lg:w-full"}`}
+      >
 
         <MapCanvas
           center={center}
