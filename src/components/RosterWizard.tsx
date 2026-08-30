@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Shuffle, UserMinus, Users, X } from "lucide-react";
 import { TEAM_COLORS } from "@/lib/conquete";
 import type { ParsedStudent } from "@/lib/students";
@@ -23,6 +23,7 @@ type Step = "presence" | "teams";
  * 1. check who is present, 2. build the teams automatically or by hand.
  */
 export function RosterWizard({ players, open, busy = false, onClose, onConfirm }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<Step>("presence");
   const [absent, setAbsent] = useState<Set<string>>(new Set());
   const [teamCount, setTeamCount] = useState(4);
@@ -65,6 +66,10 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
     }
   }, [step, mode, teamCount, presentPlayers]);
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
+
   if (!open) return null;
 
   function toggleAbsent(name: string) {
@@ -100,9 +105,9 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
     .filter((t) => t.members.length > 0);
 
   return (
-    <div className="fixed inset-0 z-[1200] overflow-y-auto bg-background sm:bg-black/70 sm:p-4">
+    <div ref={scrollRef} className="fixed inset-0 z-[1200] overflow-y-auto bg-background">
       <div
-        className="mx-auto flex min-h-dvh w-full max-w-2xl flex-col gap-3 bg-background p-4 sm:panel sm:min-h-0"
+        className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-3 bg-background p-4 sm:p-6"
         style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       >
         <div className="sticky top-0 z-10 flex items-center gap-2 bg-background py-2">
@@ -174,10 +179,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
                 type="button"
                 className="btn-huge btn-huge-dark w-full"
                 disabled={presentPlayers.length < 2}
-                onClick={() => {
-                  setStep("teams");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                }}
+                onClick={() => setStep("teams")}
               >
                 Composer les équipes <ArrowRight className="h-5 w-5" />
               </button>
