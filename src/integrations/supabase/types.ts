@@ -125,8 +125,11 @@ export type Database = {
           grid_cell_size_m: number
           grid_center_lat: number | null
           grid_center_lng: number | null
+          grid_height_m: number
           grid_radius_m: number
+          grid_shape: string
           grid_show_overlay: boolean
+          grid_width_m: number
           id: string
           map_style: string
           mode: string
@@ -161,8 +164,11 @@ export type Database = {
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
+          grid_height_m?: number
           grid_radius_m?: number
+          grid_shape?: string
           grid_show_overlay?: boolean
+          grid_width_m?: number
           id?: string
           map_style?: string
           mode?: string
@@ -197,8 +203,11 @@ export type Database = {
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
+          grid_height_m?: number
           grid_radius_m?: number
+          grid_shape?: string
           grid_show_overlay?: boolean
+          grid_width_m?: number
           id?: string
           map_style?: string
           mode?: string
