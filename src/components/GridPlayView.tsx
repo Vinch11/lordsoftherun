@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { ScoreStrip } from "@/components/ScoreStrip";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_VEHICLE_PENALTY_M2,
@@ -63,6 +64,20 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
     () => cells.filter((c) => c.owner_team_id === teamId).length,
     [cells, teamId],
   );
+
+  const scoreStripTeams = useMemo(() => {
+    const cellCountByTeam = new Map<string, number>();
+    for (const c of cells) {
+      cellCountByTeam.set(c.owner_team_id, (cellCountByTeam.get(c.owner_team_id) ?? 0) + 1);
+    }
+    return teams.map((tm) => ({
+      id: tm.id,
+      name: tm.name,
+      color: tm.color,
+      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) - tm.penalty_m2),
+    }));
+  }, [cells, teams]);
+  const formatCellScore = (n: number) => `${Math.round(n)} case${Math.round(n) > 1 ? "s" : ""}`;
 
   const myMessages = useMemo(
     () =>
@@ -318,10 +333,17 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         </div>
       </div>
 
+      <div
+        className="pointer-events-none absolute inset-x-3 z-[999]"
+        style={{ top: "max(6.5rem, calc(env(safe-area-inset-top) + 4.25rem))" }}
+      >
+        <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatCellScore} />
+      </div>
+
       <button
         aria-label="Messages"
         className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(7rem, calc(env(safe-area-inset-top) + 4.5rem))" }}
+        style={{ top: "max(12rem, calc(env(safe-area-inset-top) + 9.5rem))" }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Camera, Crosshair, Flag, HelpCircle, MessageCircle, Send, Square, X } from "lucide-react";
 import { RulesIntro } from "@/components/RulesIntro";
 import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
+import { ScoreStrip } from "@/components/ScoreStrip";
 
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
@@ -440,6 +441,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     [forbiddenZones],
   );
 
+  const scoreStripTeams = useMemo(
+    () => teams.map((tm) => ({ id: tm.id, name: tm.name, color: tm.color, score: tm.score_m2 })),
+    [teams],
+  );
+
   const returnZone = useMemo(
     () =>
       game?.return_lat != null && game.return_lng != null
@@ -555,10 +561,17 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         </div>
       </div>
 
+      <div
+        className="pointer-events-none absolute inset-x-3 z-[999]"
+        style={{ top: "max(6.5rem, calc(env(safe-area-inset-top) + 4.25rem))" }}
+      >
+        <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatArea} />
+      </div>
+
       <button
         aria-label="Messages"
         className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(7rem, calc(env(safe-area-inset-top) + 4.5rem))" }}
+        style={{ top: "max(12rem, calc(env(safe-area-inset-top) + 9.5rem))" }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -573,7 +586,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       <button
         aria-label="Règles et consignes"
         className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(11rem, calc(env(safe-area-inset-top) + 8.5rem))" }}
+        style={{ top: "max(16rem, calc(env(safe-area-inset-top) + 13.5rem))" }}
         onClick={() => setRulesOpen(true)}
       >
         <HelpCircle className="h-6 w-6" />

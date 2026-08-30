@@ -345,17 +345,20 @@
    dark contact shadow (for contrast on the light basemap) plus a colored
    glow, and tooltips read as game HUD chips rather than plain map labels. */
 .territory-glow {
-  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 9px currentColor);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 9px currentColor)
+    drop-shadow(0 0 26px currentColor);
   animation: territory-pulse 2.6s ease-in-out infinite;
 }
 
 @keyframes territory-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 7px currentColor);
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 8px currentColor)
+      drop-shadow(0 0 18px currentColor);
   }
   50% {
-    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 14px currentColor);
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 16px currentColor)
+      drop-shadow(0 0 44px currentColor);
   }
 }
 
@@ -377,14 +380,16 @@
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #8338ec);
 }
 
-/* Restrained sci-fi HUD framing for the team play screens: four corner
-   brackets sitting above the Leaflet canvas, evoking a game cockpit without
-   covering any of the map itself. */
+/* Sci-fi HUD framing for the team play screens: four corner brackets plus a
+   scanning tick that cycles between them, sitting above the Leaflet canvas
+   without covering any of the map itself. */
 .hud-bracket {
   position: absolute;
-  width: 28px;
-  height: 28px;
-  border: 2px solid rgba(255, 255, 255, 0.35);
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  filter: drop-shadow(0 0 6px var(--color-accent))
+    drop-shadow(0 0 16px color-mix(in oklch, var(--color-accent) 55%, transparent));
   pointer-events: none;
   z-index: 500;
 }
@@ -394,6 +399,7 @@
   left: 10px;
   border-right: none;
   border-bottom: none;
+  border-radius: 6px 0 0 0;
 }
 
 .hud-bracket-tr {
@@ -401,6 +407,7 @@
   right: 10px;
   border-left: none;
   border-bottom: none;
+  border-radius: 0 6px 0 0;
 }
 
 .hud-bracket-bl {
@@ -408,6 +415,7 @@
   left: 10px;
   border-right: none;
   border-top: none;
+  border-radius: 0 0 0 6px;
 }
 
 .hud-bracket-br {
@@ -415,6 +423,156 @@
   right: 10px;
   border-left: none;
   border-top: none;
+  border-radius: 0 0 6px 0;
+}
+
+.hud-bracket-tick {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 10px 2px var(--color-accent);
+  pointer-events: none;
+  z-index: 500;
+  animation: hud-tick-move 3.6s linear infinite;
+}
+
+@keyframes hud-tick-move {
+  0% {
+    top: 10px;
+    left: 10px;
+    right: auto;
+    bottom: auto;
+  }
+  24% {
+    top: 10px;
+    right: 10px;
+    left: auto;
+    bottom: auto;
+  }
+  50% {
+    bottom: 10px;
+    right: 10px;
+    top: auto;
+    left: auto;
+  }
+  74% {
+    bottom: 10px;
+    left: 10px;
+    top: auto;
+    right: auto;
+  }
+  100% {
+    top: 10px;
+    left: 10px;
+    right: auto;
+    bottom: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-bracket-tick {
+    animation: none;
+  }
+}
+
+/* Landmark hexagon badge (GameMap's landmarkIcon): a static core plus an
+   expanding ring that repeats like a radar ping, so a bonus/shield reads
+   from across the map without having to zoom in. */
+.hex-core {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  line-height: 1;
+  animation: hex-core-pulse 1.8s ease-in-out infinite;
+}
+
+.hex-ring {
+  position: absolute;
+  inset: -7px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  border: 1.5px solid;
+  animation: hex-ring-expand 2.4s linear infinite;
+}
+
+@keyframes hex-core-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 3px rgba(0, 0, 0, 0.5),
+      0 0 9px var(--hex-glow);
+  }
+  50% {
+    box-shadow:
+      0 0 3px rgba(0, 0, 0, 0.5),
+      0 0 20px var(--hex-glow);
+  }
+}
+
+@keyframes hex-ring-expand {
+  0% {
+    transform: scale(0.85) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.35) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hex-core,
+  .hex-ring {
+    animation: none;
+  }
+}
+
+/* Live "who's winning" strip on the team play screens. */
+.score-strip {
+  background: color-mix(in oklch, var(--color-background) 68%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow:
+    0 10px 26px -14px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.score-chip-leader {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--color-accent) 20%, transparent),
+    transparent
+  );
+}
+
+.score-chip-leader .label-xs,
+.score-chip-leader .display {
+  color: var(--color-accent);
+}
+
+.score-chip-crown {
+  filter: drop-shadow(0 0 4px var(--color-accent));
+}
+
+.score-chip-me {
+  outline: 1.5px solid var(--color-primary);
+  outline-offset: -1px;
+  border-radius: 0.5rem;
+}
+
+.score-chip-me .label-xs,
+.score-chip-me .display {
+  color: var(--color-primary);
+}
+
+.score-chip-track {
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .leaflet-tooltip {
