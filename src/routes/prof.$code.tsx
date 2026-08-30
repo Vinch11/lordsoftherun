@@ -331,6 +331,7 @@ function TeacherDashboard() {
   const t = getTerminology(profile?.terminology);
   const [creatingGame, setCreatingGame] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
+  const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
 
   const [gameId, setGameId] = useState<string | null>(null);
