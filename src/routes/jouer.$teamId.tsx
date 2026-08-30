@@ -25,6 +25,7 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -149,6 +150,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
+  const meRef = useRef(me);
+  meRef.current = me;
 
   const myMessages = useMemo(
     () =>
@@ -331,6 +334,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         });
       }
 
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
       if (!runningRef.current) return;
       const trackNow = trackRef.current;
       const last = trackNow[trackNow.length - 1];
@@ -413,6 +420,19 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
     prevFinishedRef.current = finished;
   }, [finished]);
+
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const endgameLabel = !game?.grace_ends_at
+    ? !returnZone
+      ? "Partie terminée"
+      : me?.validated
+        ? "Partie terminée — territoire validé !"
+        : "Partie terminée — territoire non comptabilisé (hors zone)"
+    : graceStatus?.remainingS != null
+      ? `⏳ Revenez dans la zone avant : ${formatClock(graceStatus.remainingS)}`
+      : graceStatus?.validated
+        ? "Partie terminée — territoire validé !"
+        : "Partie terminée — territoire non comptabilisé (retour hors délai)";
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
 
@@ -631,7 +651,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </div>
         )}
 
-        {returnZone && !finished && (
+        {returnZone && (!finished || graceStatus?.remainingS != null) && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3">
             <span className="label-xs">Zone de retour</span>
             <span className="display text-xl tabular-nums">
@@ -641,13 +661,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         )}
 
         {finished ? (
-          <div className="btn-huge btn-huge-dark">
-            {returnZone
-              ? me?.validated
-                ? "Partie terminée — territoire validé !"
-                : "Partie terminée — territoire non comptabilisé (hors zone)"
-              : "Partie terminée"}
-          </div>
+          <div className="btn-huge btn-huge-dark">{endgameLabel}</div>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle

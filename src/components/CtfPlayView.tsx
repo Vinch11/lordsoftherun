@@ -17,6 +17,7 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
@@ -233,6 +234,11 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           }
         }
       }
+
+      if (gameRef.current) {
+        const myTeam = teamsRef.current.find((t) => t.id === teamId);
+        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
+      }
     },
     [teamId],
   );
@@ -302,6 +308,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
   const toDrop = pos && dropPoint ? haversine(pos, dropPoint) : null;
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const flagsCapturedLabel = `${me?.flags_captured ?? 0} drapeau${(me?.flags_captured ?? 0) > 1 ? "x" : ""} capturé${(me?.flags_captured ?? 0) > 1 ? "s" : ""}`;
+  const endgameLabel = !game?.grace_ends_at
+    ? `Partie terminée — ${flagsCapturedLabel} !`
+    : graceStatus?.remainingS != null
+      ? `Partie terminée — ${flagsCapturedLabel} !`
+      : graceStatus?.validated
+        ? "Partie terminée — retour validé !"
+        : "Partie terminée — retour hors délai";
 
   useWakeLock(!finished);
 
@@ -459,13 +474,16 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <span className="text-sm font-semibold">{myFlagStatusLabel}</span>
         </div>
 
-        {finished && (
-          <div className="btn-huge btn-huge-dark">
-            Partie terminée — {me?.flags_captured ?? 0} drapeau
-            {(me?.flags_captured ?? 0) > 1 ? "x" : ""} capturé
-            {(me?.flags_captured ?? 0) > 1 ? "s" : ""} !
+        {finished && game?.grace_ends_at && graceStatus?.remainingS != null && (
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
+            <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
+            <span className="display text-lg tabular-nums">
+              {formatCountdown(graceStatus.remainingS)}
+            </span>
           </div>
         )}
+
+        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
       </div>
     </main>
   );

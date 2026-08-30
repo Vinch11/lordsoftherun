@@ -8,6 +8,7 @@ import { formatCountdown, haversine } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { useWakeLock } from "@/hooks/useWakeLock";
 
 export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
@@ -36,6 +37,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   cellsRef.current = cells;
 
   const me = teams.find((t) => t.id === teamId) ?? null;
+  const meRef = useRef(me);
+  meRef.current = me;
   const myColor = me?.color ?? "#e63946";
   const myCellCount = useMemo(
     () => cells.filter((c) => c.owner_team_id === teamId).length,
@@ -109,6 +112,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           .eq("id", teamId);
       }
 
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
       const center = gridCenterRef.current;
       if (!center) return;
       if (haversine(point, center) > gridRadiusRef.current) return;
@@ -157,6 +164,23 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const returnZone = useMemo(
+    () =>
+      game?.return_lat != null && game.return_lng != null
+        ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
+        : null,
+    [game?.return_lat, game?.return_lng, game?.return_radius_m],
+  );
+  const toReturnZone = pos && returnZone ? haversine(pos, [returnZone.lat, returnZone.lng]) : null;
+  const cellsLabel = `${myCellCount} case${myCellCount > 1 ? "s" : ""} contrôlée${myCellCount > 1 ? "s" : ""}`;
+  const endgameLabel = !game?.grace_ends_at
+    ? `Partie terminée — ${cellsLabel} !`
+    : graceStatus?.remainingS != null
+      ? `Partie terminée — ${cellsLabel} !`
+      : graceStatus?.validated
+        ? "Partie terminée — retour validé !"
+        : "Partie terminée — retour hors délai";
 
   useWakeLock(!finished);
 
@@ -176,8 +200,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           center={pos}
           teams={teams}
           territories={[]}
-          gridZone={gridZone}
-          gridCells={mapGridCells}
+          gridZone={game?.grid_show_overlay === false ? null : gridZone}
+          gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
           mapStyle={game?.map_style}
           follow
         />
@@ -286,12 +310,17 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           </div>
         )}
 
-        {finished && (
-          <div className="btn-huge btn-huge-dark">
-            Partie terminée — {myCellCount} case{myCellCount > 1 ? "s" : ""} contrôlée
-            {myCellCount > 1 ? "s" : ""} !
+        {finished && returnZone && graceStatus?.remainingS != null && (
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
+            <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
+            <span className="display text-lg tabular-nums">
+              {formatCountdown(graceStatus.remainingS)}
+              {toReturnZone !== null && ` · ${Math.round(toReturnZone)} m`}
+            </span>
           </div>
         )}
+
+        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
       </div>
     </main>
   );
