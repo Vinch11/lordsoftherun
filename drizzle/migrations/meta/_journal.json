@@ -218,6 +218,13 @@
       "when": 1788108965045,
       "tag": "0030_team_trail",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788108974435,
+      "tag": "0031_rejoin_team",
+      "breakpoints": true
     }
   ]
 }
