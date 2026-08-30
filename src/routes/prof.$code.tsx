@@ -390,6 +390,9 @@ function TeacherDashboard() {
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
+  const [wizardPlayers, setWizardPlayers] = useState<ParsedStudent[]>([]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
