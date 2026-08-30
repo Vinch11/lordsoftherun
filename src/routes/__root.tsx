@@ -14,7 +14,6 @@ import appCss from "../styles.css?url";
 import { ensureSession } from "../lib/session";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
-
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -135,7 +134,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionState, setSessionState] = useState<"pending" | "ready" | "failed">("pending");
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -145,23 +144,41 @@ function RootComponent() {
 
   // Data queries all run from child effects, so we mount them only once a
   // session exists — otherwise the very first request of a brand-new visitor
-  // would race the anonymous sign-in and be rejected by RLS.
+  // would race the anonymous sign-in and be rejected by RLS. When no session
+  // can be established at all, every downstream query will silently come back
+  // empty (RLS, not an error), so we surface that up front instead of letting
+  // it masquerade as "wrong code" / "game not found" further down.
   useEffect(() => {
-    void ensureSession().finally(() => setSessionReady(true));
+    void ensureSession().then((ok) => setSessionState(ok ? "ready" : "failed"));
   }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      {sessionReady ? (
-        <Outlet />
-      ) : (
+      {sessionState === "ready" && <Outlet />}
+      {sessionState === "pending" && (
         <div className="flex min-h-screen items-center justify-center px-6 text-center">
           <p className="text-lg text-muted-foreground">Chargement…</p>
+        </div>
+      )}
+      {sessionState === "failed" && (
+        <div className="flex min-h-screen items-center justify-center px-6 text-center">
+          <div className="max-w-sm">
+            <p className="text-lg font-semibold text-foreground">Connexion impossible</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Le service n'a pas pu ouvrir de session. Vérifiez votre connexion internet et
+              réessayez.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Réessayer
+            </button>
+          </div>
         </div>
       )}
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
 }
-
