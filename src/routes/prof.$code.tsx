@@ -1685,6 +1685,36 @@ function TeacherDashboard() {
           </div>
         )}
 
+        {previewTeamId && (
+          <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-background/95 p-4">
+            <div className="flex w-full max-w-[380px] items-center justify-between">
+              <span className="section-title">
+                <Smartphone className="h-4 w-4" /> Aperçu :{" "}
+                {teams.find((tm) => tm.id === previewTeamId)?.name ?? ""}
+              </span>
+              <button
+                aria-label="Fermer l'aperçu"
+                className="icon-btn"
+                onClick={() => setPreviewTeamId(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
+              <iframe
+                title="Aperçu de la vue élève"
+                src={`/jouer/${previewTeamId}`}
+                className="h-full w-full"
+                allow="geolocation"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aperçu en direct — la position affichée est celle de votre appareil.
+            </p>
+          </div>
+        )}
+
+
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
             <div className="section-title">
