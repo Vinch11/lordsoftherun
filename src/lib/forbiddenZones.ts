@@ -70,7 +70,7 @@ export function useForbiddenZones(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`forbidden-zones-${gameId}`)
+      .channel(`forbidden-zones-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {

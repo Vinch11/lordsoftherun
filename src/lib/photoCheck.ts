@@ -61,7 +61,7 @@ export function usePhotoSubmissions(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`photos-${gameId}`)
+      .channel(`photos-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {

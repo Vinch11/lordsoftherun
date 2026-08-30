@@ -103,7 +103,7 @@ export function useGridCells(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`grid-cells-${gameId}`)
+      .channel(`grid-cells-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "grid_cells", filter: `game_id=eq.${gameId}` },
