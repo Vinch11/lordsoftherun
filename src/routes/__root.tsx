@@ -133,6 +133,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -140,11 +141,25 @@ function RootComponent() {
     }
   }, []);
 
+  // Data queries all run from child effects, so we mount them only once a
+  // session exists — otherwise the very first request of a brand-new visitor
+  // would race the anonymous sign-in and be rejected by RLS.
+  useEffect(() => {
+    void ensureSession().finally(() => setSessionReady(true));
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      {sessionReady ? (
+        <Outlet />
+      ) : (
+        <div className="flex min-h-screen items-center justify-center px-6 text-center">
+          <p className="text-lg text-muted-foreground">Chargement…</p>
+        </div>
+      )}
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
 }
+
