@@ -1649,15 +1649,26 @@ function TeacherDashboard() {
                     (généralement 3 à 10 m).
                   </p>
                 )}
-                <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Afficher la grille aux équipes</span>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 shrink-0"
-                    checked={gridShowOverlay}
-                    onChange={(e) => void updateGridShowOverlay(e.target.checked)}
-                  />
-                </label>
+                <div className="flex flex-col gap-2">
+                  <span className="label-xs">Grille visible par les équipes</span>
+                  <button
+                    type="button"
+                    aria-pressed={gridShowOverlay}
+                    className={`btn-huge ${gridShowOverlay ? "btn-huge-accent" : "btn-huge-dark"}`}
+                    onClick={() => void updateGridShowOverlay(!gridShowOverlay)}
+                  >
+                    {gridShowOverlay ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Eye className="h-5 w-5" /> Grille affichée
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-2">
+                        <EyeOff className="h-5 w-5" /> Grille masquée
+                      </span>
+                    )}
+                  </button>
+                </div>
+
                 {!gridShowOverlay && (
                   <p className="text-xs text-muted-foreground">
                     Les équipes ne verront plus les cases colorées sur leur carte, seulement leur
