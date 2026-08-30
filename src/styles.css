@@ -258,11 +258,11 @@
   .btn-huge-dark {
     background-color: var(--color-secondary);
     color: var(--color-secondary-foreground);
-    box-shadow: 0 6px 0 0 color-mix(in oklch, var(--color-secondary) 70%, black);
+    box-shadow: 0 2px 8px color-mix(in oklch, black 45%, transparent);
   }
 
   .btn-huge-dark:active {
-    box-shadow: 0 2px 0 0 color-mix(in oklch, var(--color-secondary) 70%, black);
+    box-shadow: 0 1px 4px color-mix(in oklch, black 40%, transparent);
   }
 
   .panel {
