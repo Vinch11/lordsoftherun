@@ -11,6 +11,7 @@ export type MapTeam = {
   color: string;
   lat: number | null;
   lng: number | null;
+  current_trail?: [number, number][];
 };
 
 export type MapTerritory = {
@@ -159,6 +160,7 @@ export default function GameMap({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const territoryLayer = useRef<L.LayerGroup | null>(null);
+  const teamTrailLayer = useRef<L.LayerGroup | null>(null);
   const teamLayer = useRef<L.LayerGroup | null>(null);
   const zoneLayer = useRef<L.LayerGroup | null>(null);
   const landmarkLayer = useRef<L.LayerGroup | null>(null);
@@ -196,6 +198,7 @@ export default function GameMap({
     flagLayer.current = L.layerGroup().addTo(map);
     gridCellLayer.current = L.layerGroup().addTo(map);
     gridZoneLayer.current = L.layerGroup().addTo(map);
+    teamTrailLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
     map.on("click", (e: L.LeafletMouseEvent) =>
@@ -365,6 +368,21 @@ export default function GameMap({
         .addTo(layer);
     }
   }, [gridZone, spec]);
+
+  useEffect(() => {
+    const layer = teamTrailLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const t of teams) {
+      if (!t.current_trail || t.current_trail.length < 2) continue;
+      L.polyline(t.current_trail, {
+        color: t.color,
+        weight: 4,
+        opacity: 0.5,
+        dashArray: "2 8",
+      }).addTo(layer);
+    }
+  }, [teams]);
 
   useEffect(() => {
     const layer = teamLayer.current;

@@ -310,7 +310,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         lastSync.current = Date.now();
         void supabase
           .from("teams")
-          .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+          .update({
+            lat: point[0],
+            lng: point[1],
+            current_trail: trackRef.current,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", teamId);
       }
 
