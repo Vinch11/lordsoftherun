@@ -1256,8 +1256,9 @@ function TeacherDashboard() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col lg:h-screen lg:flex-row lg:overflow-hidden">
+    <main className="flex min-h-screen flex-col lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
       <div className="relative h-[45vh] min-h-[280px] w-full lg:h-full lg:w-2/5 lg:shrink-0">
+
         <MapCanvas
           center={center}
           teams={teams}
