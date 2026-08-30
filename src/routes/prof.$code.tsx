@@ -6,6 +6,7 @@ import {
   Bike,
   Bookmark,
   Camera,
+  Download,
   Eye,
   EyeOff,
   Flag,
@@ -23,9 +24,12 @@ import {
   Send,
   Shield,
   ShieldAlert,
+  Shuffle,
   Star,
   Timer,
   Trophy,
+  Upload,
+  Users,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,6 +60,15 @@ import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/
 import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
 import { resolveGraceStatus } from "@/lib/grace";
+import {
+  assignStudentTeam,
+  downloadCsv,
+  importRoster,
+  parseIdoceoRoster,
+  setStudentPresent,
+  shuffleTeams,
+  useStudents,
+} from "@/lib/students";
 import {
   applySavedPoint,
   deleteSavedPoint,
@@ -89,6 +102,7 @@ import {
   MIN_GRID_CELL_SIZE_M,
   MIN_GRID_RADIUS_M,
   MIN_GRID_SIDE_M,
+  TEAM_COLORS,
   formatArea,
   formatClock,
   formatCountdown,
@@ -369,6 +383,8 @@ function TeacherDashboard() {
   const [photoDelay, setPhotoDelay] = useState(3);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [view, setView] = useState<"dashboard" | "overview">("dashboard");
+  const [teamCount, setTeamCount] = useState(4);
+  const [rosterBusy, setRosterBusy] = useState(false);
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
@@ -426,6 +442,7 @@ function TeacherDashboard() {
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
+  const { students } = useStudents(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
     "landmark",
@@ -736,6 +753,50 @@ function TeacherDashboard() {
 
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/rejoindre/${code}` : "";
+
+  async function importRosterFile(file: File) {
+    if (!gameId) return;
+    setRosterBusy(true);
+    try {
+      const names = parseIdoceoRoster(await file.text());
+      if (names.length === 0) {
+        toast.error("Aucun élève trouvé dans ce fichier.");
+        return;
+      }
+      await importRoster(gameId, names);
+      toast.success(`${names.length} élèves importés.`);
+    } catch {
+      toast.error("Échec de l'import du CSV.");
+    } finally {
+      setRosterBusy(false);
+    }
+  }
+
+  async function onShuffleTeams() {
+    if (!gameId) return;
+    setRosterBusy(true);
+    try {
+      await shuffleTeams(gameId, students, teamCount);
+      toast.success(`${teamCount} équipes créées.`);
+    } catch {
+      toast.error("Échec de la répartition.");
+    } finally {
+      setRosterBusy(false);
+    }
+  }
+
+  function exportIdoceoCsv() {
+    const maxScore = Math.max(0, ...teams.map((tm) => teamScore(tm)));
+    const rows: string[][] = [["Élève", "Conquête"]];
+    for (const s of students) {
+      if (!s.present || !s.team_id) continue;
+      const team = teams.find((tm) => tm.id === s.team_id);
+      if (!team) continue;
+      const pct = maxScore > 0 ? Math.round((teamScore(team) / maxScore) * 100) : 0;
+      rows.push([s.name, `${pct}%`]);
+    }
+    downloadCsv(`conquete-${code}.csv`, rows);
+  }
 
   async function start() {
     if (!gameId) return;
@@ -1264,7 +1325,6 @@ function TeacherDashboard() {
       <div
         className={`relative h-[45vh] min-h-[280px] w-full lg:h-full lg:shrink-0 lg:transition-[width] lg:duration-300 ${panelOpen ? "lg:w-2/5" : "lg:w-full"}`}
       >
-
         <MapCanvas
           center={center}
           teams={teams}
@@ -1430,6 +1490,107 @@ function TeacherDashboard() {
           )}
           <p className="text-xs text-muted-foreground">{GAME_MODE_DESCRIPTIONS[gameMode]}</p>
         </section>
+
+        {isOwner && game?.status === "lobby" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Users className="h-4 w-4" /> Élèves
+              {students.length > 0 && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {students.filter((s) => s.present).length}/{students.length} présents
+                </span>
+              )}
+            </div>
+
+            {students.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Importez la liste de classe (export CSV iDoceo) pour prendre la présence et répartir
+                les équipes automatiquement.
+              </p>
+            ) : (
+              <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
+                {students.map((s) => (
+                  <div key={s.id} className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={s.present}
+                      onChange={(e) => void setStudentPresent(s.id, e.target.checked)}
+                    />
+                    <span
+                      className={`flex-1 truncate text-sm ${
+                        s.present ? "" : "text-muted-foreground line-through"
+                      }`}
+                    >
+                      {s.name}
+                    </span>
+                    {teams.length > 0 && (
+                      <select
+                        className="field w-28 py-1 text-xs"
+                        value={s.team_id ?? ""}
+                        onChange={(e) => void assignStudentTeam(s.id, e.target.value || null)}
+                      >
+                        <option value="">—</option>
+                        {teams.map((tm) => (
+                          <option key={tm.id} value={tm.id}>
+                            {tm.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <label className="btn-huge btn-huge-dark cursor-pointer">
+              <Upload className="h-5 w-5" />
+              {students.length === 0 ? "Importer un CSV iDoceo" : "Réimporter un autre CSV"}
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                disabled={rosterBusy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void importRosterFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+
+            {students.length > 0 && (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="section-title">Nombre d'équipes</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire"
+                      className="icon-btn"
+                      onClick={() => setTeamCount((v) => Math.max(2, v - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-10 text-center text-xl">{teamCount}</span>
+                    <button
+                      aria-label="Augmenter"
+                      className="icon-btn"
+                      onClick={() => setTeamCount((v) => Math.min(TEAM_COLORS.length, v + 1))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className="btn-huge btn-huge-dark"
+                  disabled={rosterBusy}
+                  onClick={() => void onShuffleTeams()}
+                >
+                  <Shuffle className="h-5 w-5" /> Répartir aléatoirement en {teamCount} équipes
+                </button>
+              </>
+            )}
+          </section>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
@@ -2590,6 +2751,11 @@ function TeacherDashboard() {
                 </div>
               ))}
             </div>
+          )}
+          {finished && students.length > 0 && (
+            <button className="btn-huge btn-huge-dark mt-2" onClick={exportIdoceoCsv}>
+              <Download className="h-5 w-5" /> Exporter CSV (iDoceo)
+            </button>
           )}
         </section>
 
