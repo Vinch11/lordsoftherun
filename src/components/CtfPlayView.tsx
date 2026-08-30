@@ -34,6 +34,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
+  const [followMe, setFollowMe] = useState(true);
 
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
@@ -405,7 +406,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           forbiddenZones={mapForbiddenZones}
           flags={mapFlags}
           mapStyle={game?.map_style}
-          follow
+          follow={followMe}
+          onUserPan={() => setFollowMe(false)}
+          onRecenter={() => setFollowMe(true)}
           hudFrame
         />
       </div>
