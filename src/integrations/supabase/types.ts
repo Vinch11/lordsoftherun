@@ -117,10 +117,16 @@ export type Database = {
           duration_minutes: number
           ends_at: string | null
           forbidden_zone_running_only: boolean
+          grace_enabled: boolean
+          grace_ends_at: string | null
+          grace_minutes: number
+          grace_penalty_mode: string
+          grace_penalty_per_second_m2: number
           grid_cell_size_m: number
           grid_center_lat: number | null
           grid_center_lng: number | null
           grid_radius_m: number
+          grid_show_overlay: boolean
           id: string
           map_style: string
           mode: string
@@ -144,10 +150,16 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
+          grace_enabled?: boolean
+          grace_ends_at?: string | null
+          grace_minutes?: number
+          grace_penalty_mode?: string
+          grace_penalty_per_second_m2?: number
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
           grid_radius_m?: number
+          grid_show_overlay?: boolean
           id?: string
           map_style?: string
           mode?: string
@@ -171,10 +183,16 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
+          grace_enabled?: boolean
+          grace_ends_at?: string | null
+          grace_minutes?: number
+          grace_penalty_mode?: string
+          grace_penalty_per_second_m2?: number
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
           grid_radius_m?: number
+          grid_show_overlay?: boolean
           id?: string
           map_style?: string
           mode?: string
@@ -485,6 +503,7 @@ export type Database = {
           lng: number | null
           name: string
           penalty_m2: number
+          returned_at: string | null
           score_m2: number
           shield_until: string | null
           total_captured_m2: number
@@ -502,6 +521,7 @@ export type Database = {
           lng?: number | null
           name: string
           penalty_m2?: number
+          returned_at?: string | null
           score_m2?: number
           shield_until?: string | null
           total_captured_m2?: number
@@ -519,6 +539,7 @@ export type Database = {
           lng?: number | null
           name?: string
           penalty_m2?: number
+          returned_at?: string | null
           score_m2?: number
           shield_until?: string | null
           total_captured_m2?: number
