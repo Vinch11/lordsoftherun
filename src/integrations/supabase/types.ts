@@ -140,6 +140,9 @@ export type Database = {
           running_bonus_speed_kmh: number
           started_at: string | null
           status: string
+          vehicle_allowed: boolean
+          vehicle_penalty_m2: number
+          vehicle_speed_threshold_kmh: number
         }
         Insert: {
           code: string
@@ -173,6 +176,9 @@ export type Database = {
           running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
+          vehicle_allowed?: boolean
+          vehicle_penalty_m2?: number
+          vehicle_speed_threshold_kmh?: number
         }
         Update: {
           code?: string
@@ -206,6 +212,9 @@ export type Database = {
           running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
+          vehicle_allowed?: boolean
+          vehicle_penalty_m2?: number
+          vehicle_speed_threshold_kmh?: number
         }
         Relationships: []
       }
