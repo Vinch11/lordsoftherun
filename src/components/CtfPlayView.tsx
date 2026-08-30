@@ -17,6 +17,7 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -288,6 +289,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
   const toDrop = pos && dropPoint ? haversine(pos, dropPoint) : null;
+
+  useWakeLock(!finished);
 
   const myFlagStatusLabel = !myFlag
     ? "Pas encore placé"

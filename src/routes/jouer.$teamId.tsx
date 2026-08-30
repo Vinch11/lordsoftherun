@@ -26,6 +26,7 @@ import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { CtfPlayView } from "@/components/CtfPlayView";
+import { useWakeLock } from "@/hooks/useWakeLock";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -397,6 +398,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
+
+  useWakeLock(!finished);
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
 
