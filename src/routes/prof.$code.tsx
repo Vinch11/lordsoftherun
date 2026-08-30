@@ -787,14 +787,17 @@ function TeacherDashboard() {
 
   function exportIdoceoCsv() {
     const maxScore = Math.max(0, ...teams.map((tm) => teamScore(tm)));
-    const rows: string[][] = [["Élève", "Conquête"]];
+    // iDoceo lit la 2e colonne comme une note numérique : pas de "%" ni de
+    // virgule décimale, sinon la cellule est importée comme texte vide.
+    const rows: string[][] = [["Élève", "Conquête (/100)"]];
     for (const s of students) {
       if (!s.present || !s.team_id) continue;
       const team = teams.find((tm) => tm.id === s.team_id);
       if (!team) continue;
       const pct = maxScore > 0 ? Math.round((teamScore(team) / maxScore) * 100) : 0;
-      rows.push([s.name, `${pct}%`]);
+      rows.push([s.name, String(pct)]);
     }
+
     downloadCsv(`conquete-${code}.csv`, rows);
   }
 
