@@ -62,10 +62,12 @@ import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
+  addStudent,
   assignStudentTeam,
   downloadCsv,
   importRoster,
   parseIdoceoRoster,
+  removeStudent,
   setStudentPresent,
   shuffleTeams,
   useStudents,
@@ -387,6 +389,7 @@ function TeacherDashboard() {
   const [view, setView] = useState<"dashboard" | "overview">("dashboard");
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
+  const [newStudentName, setNewStudentName] = useState("");
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
@@ -444,7 +447,7 @@ function TeacherDashboard() {
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
-  const { students } = useStudents(gameId);
+  const { students, refresh: refreshStudents } = useStudents(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
     "landmark",
@@ -766,9 +769,12 @@ function TeacherDashboard() {
         return;
       }
       await importRoster(gameId, names);
+      await refreshStudents();
       toast.success(`${names.length} élèves importés.`);
-    } catch {
-      toast.error("Échec de l'import du CSV.");
+    } catch (e) {
+      toast.error(
+        `Échec de l'import du CSV : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
     } finally {
       setRosterBusy(false);
     }
@@ -779,9 +785,12 @@ function TeacherDashboard() {
     setRosterBusy(true);
     try {
       await shuffleTeams(gameId, students, teamCount);
+      await refreshStudents();
       toast.success(`${teamCount} équipes créées.`);
-    } catch {
-      toast.error("Échec de la répartition.");
+    } catch (e) {
+      toast.error(
+        `Échec de la répartition : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
     } finally {
       setRosterBusy(false);
     }
@@ -1519,7 +1528,9 @@ function TeacherDashboard() {
                     <input
                       type="checkbox"
                       checked={s.present}
-                      onChange={(e) => void setStudentPresent(s.id, e.target.checked)}
+                      onChange={(e) => {
+                        void setStudentPresent(s.id, e.target.checked).then(refreshStudents);
+                      }}
                     />
                     <span
                       className={`flex-1 truncate text-sm ${
@@ -1532,7 +1543,11 @@ function TeacherDashboard() {
                       <select
                         className="field w-28 py-1 text-xs"
                         value={s.team_id ?? ""}
-                        onChange={(e) => void assignStudentTeam(s.id, e.target.value || null)}
+                        onChange={(e) => {
+                          void assignStudentTeam(s.id, e.target.value || null).then(
+                            refreshStudents,
+                          );
+                        }}
                       >
                         <option value="">—</option>
                         {teams.map((tm) => (
@@ -1542,10 +1557,66 @@ function TeacherDashboard() {
                         ))}
                       </select>
                     )}
+                    <button
+                      type="button"
+                      aria-label={`Retirer ${s.name}`}
+                      className="icon-btn h-7 w-7"
+                      onClick={() => void removeStudent(s.id).then(refreshStudents)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
+
+            {students.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className="seg-btn"
+                  onClick={() =>
+                    void Promise.all(students.map((s) => setStudentPresent(s.id, true))).then(
+                      refreshStudents,
+                    )
+                  }
+                >
+                  Tous présents
+                </button>
+                <button
+                  className="seg-btn"
+                  onClick={() =>
+                    void Promise.all(students.map((s) => setStudentPresent(s.id, false))).then(
+                      refreshStudents,
+                    )
+                  }
+                >
+                  Tous absents
+                </button>
+              </div>
+            )}
+
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newStudentName.trim();
+                if (!name || !gameId) return;
+                setNewStudentName("");
+                void addStudent(gameId, name)
+                  .then(refreshStudents)
+                  .catch(() => toast.error("Ajout impossible."));
+              }}
+            >
+              <input
+                className="field flex-1 py-2 text-sm"
+                placeholder="Ajouter un élève"
+                value={newStudentName}
+                onChange={(e) => setNewStudentName(e.target.value)}
+              />
+              <button type="submit" className="icon-btn" aria-label="Ajouter l'élève">
+                <Plus className="h-4 w-4" />
+              </button>
+            </form>
 
             <label className="btn-huge btn-huge-dark cursor-pointer">
               <Upload className="h-5 w-5" />
