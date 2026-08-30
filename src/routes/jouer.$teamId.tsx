@@ -401,6 +401,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   useWakeLock(!finished);
 
+  const prevFinishedRef = useRef(finished);
+  useEffect(() => {
+    if (finished && !prevFinishedRef.current) {
+      toast.success("🏁 Partie terminée !");
+      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+    }
+    prevFinishedRef.current = finished;
+  }, [finished]);
+
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
 
   const photoDeadlineRemaining = game?.photo_deadline
