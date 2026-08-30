@@ -3,11 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Bike,
   Bookmark,
   Camera,
   Eye,
   EyeOff,
-
   Flag,
   Gamepad2,
   Grid3x3,
@@ -73,6 +73,8 @@ import {
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
+  DEFAULT_VEHICLE_PENALTY_M2,
+  DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   GAME_MODE_DESCRIPTIONS,
   GAME_MODE_LABELS,
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
@@ -335,6 +337,11 @@ function TeacherDashboard() {
   const [gracePenaltyPerSecond, setGracePenaltyPerSecond] = useState(
     DEFAULT_GRACE_PENALTY_PER_SECOND_M2,
   );
+  const [vehicleAllowed, setVehicleAllowed] = useState(true);
+  const [vehicleSpeedThreshold, setVehicleSpeedThreshold] = useState(
+    DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
+  );
+  const [vehiclePenalty, setVehiclePenalty] = useState(DEFAULT_VEHICLE_PENALTY_M2);
   const [placingFlagForTeam, setPlacingFlagForTeam] = useState<string | null>(null);
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
@@ -446,6 +453,9 @@ function TeacherDashboard() {
       setGraceMinutes(game.grace_minutes);
       setGracePenaltyMode(game.grace_penalty_mode);
       setGracePenaltyPerSecond(game.grace_penalty_per_second_m2);
+      setVehicleAllowed(game.vehicle_allowed);
+      setVehicleSpeedThreshold(game.vehicle_speed_threshold_kmh);
+      setVehiclePenalty(game.vehicle_penalty_m2);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -574,7 +584,12 @@ function TeacherDashboard() {
   const isTeamValidated = (t: (typeof teams)[number]) =>
     game?.grace_ends_at ? graceStatusFor(t).validated : t.validated;
   const teamScore = (t: (typeof teams)[number]) => {
-    const base = gameMode === "grille" ? (gridScoreByTeam.get(t.id) ?? 0) : t.score_m2;
+    // In grille mode, score_m2 is never touched by the game itself (cell
+    // count is the real score), but penalty_m2 IS used there for flat
+    // penalties (vehicle check) — so it has to be subtracted here instead
+    // of relying on score_m2 already reflecting it, unlike territoire/CTF.
+    const base =
+      gameMode === "grille" ? (gridScoreByTeam.get(t.id) ?? 0) - t.penalty_m2 : t.score_m2;
     return Math.max(0, base - graceStatusFor(t).penalty);
   };
   const ranked = useMemo(
@@ -923,6 +938,24 @@ function TeacherDashboard() {
     setGracePenaltyPerSecond(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ grace_penalty_per_second_m2: next }).eq("id", gameId);
+  }
+
+  async function updateVehicleAllowed(next: boolean) {
+    setVehicleAllowed(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ vehicle_allowed: next }).eq("id", gameId);
+  }
+
+  async function updateVehicleSpeedThreshold(next: number) {
+    setVehicleSpeedThreshold(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ vehicle_speed_threshold_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateVehiclePenalty(next: number) {
+    setVehiclePenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ vehicle_penalty_m2: next }).eq("id", gameId);
   }
 
   async function updateRunningBonusEnabled(next: boolean) {
@@ -1575,6 +1608,89 @@ function TeacherDashboard() {
                       </div>
                     </div>
                   )}
+                </>
+              )}
+            </>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Bike className="h-4 w-4" /> Véhicules
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {vehicleAllowed
+              ? "Vélo, trottinette, voiture… autorisés sans restriction."
+              : "Une équipe qui maintient une vitesse suspecte plusieurs secondes reçoit une grosse pénalité."}
+          </p>
+          {isOwner && (
+            <>
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Autoriser les véhicules</span>
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 shrink-0"
+                  checked={vehicleAllowed}
+                  onChange={(e) => void updateVehicleAllowed(e.target.checked)}
+                />
+              </label>
+              {!vehicleAllowed && (
+                <>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Seuil de vitesse</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire le seuil"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateVehicleSpeedThreshold(Math.max(10, vehicleSpeedThreshold - 1))
+                        }
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-20 text-center text-lg">
+                        {vehicleSpeedThreshold} km/h
+                      </span>
+                      <button
+                        aria-label="Augmenter le seuil"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateVehicleSpeedThreshold(Math.min(40, vehicleSpeedThreshold + 1))
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Vitesse soutenue pendant au moins 5 secondes (pas un simple pic GPS). Une course
+                    rapide peut ponctuellement dépasser {vehicleSpeedThreshold} km/h ; ne descendez
+                    pas trop bas pour éviter les faux positifs.
+                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Pénalité</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire la pénalité"
+                        className="icon-btn"
+                        onClick={() => void updateVehiclePenalty(Math.max(50, vehiclePenalty - 50))}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-24 text-center text-lg">
+                        -{formatArea(vehiclePenalty)}
+                      </span>
+                      <button
+                        aria-label="Augmenter la pénalité"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateVehiclePenalty(Math.min(2000, vehiclePenalty + 50))
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                 </>
               )}
             </>
@@ -2319,7 +2435,9 @@ function TeacherDashboard() {
                   />
                   <span className="flex-1 truncate font-semibold">{t.name}</span>
                   <span className="display text-base tabular-nums line-through">
-                    {formatArea(t.score_m2)}
+                    {gameMode === "grille"
+                      ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
+                      : formatArea(teamScore(t))}
                   </span>
                 </div>
               ))}

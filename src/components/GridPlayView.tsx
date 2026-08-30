@@ -4,10 +4,20 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
-import { formatCountdown, haversine } from "@/lib/conquete";
+import {
+  DEFAULT_VEHICLE_PENALTY_M2,
+  DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
+  FORBIDDEN_PENALTY_COOLDOWN_MS,
+  VEHICLE_SUSTAINED_MS,
+  formatArea,
+  formatCountdown,
+  haversine,
+  kmhToMs,
+} from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
+import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -25,6 +35,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastClaimedCellRef = useRef<string | null>(null);
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  const instSpeedRef = useRef(0);
+  const vehicleAboveSinceRef = useRef<number | null>(null);
+  const lastVehiclePenaltyRef = useRef(0);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
@@ -114,12 +128,48 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
+      const prevPos = lastPosRef.current;
+      const nowMs = Date.now();
+      if (prevPos) {
+        const dt = (nowMs - prevPos.t) / 1000;
+        const dist = haversine(prevPos.point, point);
+        // Ignore samples too close together in time/space: GPS jitter would
+        // otherwise produce wildly inflated instantaneous speed readings.
+        if (dt > 0.5 && dist > 2) {
+          instSpeedRef.current = dist / dt;
+          lastPosRef.current = { point, t: nowMs };
+        }
+      } else {
+        lastPosRef.current = { point, t: nowMs };
+      }
+
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
         void supabase
           .from("teams")
           .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
           .eq("id", teamId);
+      }
+
+      if (gameRef.current && !gameRef.current.vehicle_allowed) {
+        const thresholdKmh =
+          gameRef.current.vehicle_speed_threshold_kmh ?? DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH;
+        if (instSpeedRef.current >= kmhToMs(thresholdKmh)) {
+          vehicleAboveSinceRef.current ??= Date.now();
+          if (
+            Date.now() - vehicleAboveSinceRef.current >= VEHICLE_SUSTAINED_MS &&
+            Date.now() - lastVehiclePenaltyRef.current >= FORBIDDEN_PENALTY_COOLDOWN_MS
+          ) {
+            lastVehiclePenaltyRef.current = Date.now();
+            const penaltyM2 = gameRef.current.vehicle_penalty_m2 ?? DEFAULT_VEHICLE_PENALTY_M2;
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId, true).then(() => {
+              toast.error(`🚴 Vitesse suspecte détectée ! -${formatArea(penaltyM2)}`);
+              notifyMessage("🚴 Vitesse suspecte !", `-${formatArea(penaltyM2)}`);
+            });
+          }
+        } else {
+          vehicleAboveSinceRef.current = null;
+        }
       }
 
       if (gameRef.current) {

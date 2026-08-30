@@ -79,6 +79,12 @@ export type GracePenaltyMode = "cancel" | "per_second";
 export const DEFAULT_GRACE_MINUTES = 5;
 export const DEFAULT_GRACE_PENALTY_PER_SECOND_M2 = 2;
 
+/** Above this sustained speed, a team is presumed to be on a bike/scooter/car. */
+export const DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH = 18;
+export const DEFAULT_VEHICLE_PENALTY_M2 = 200;
+/** How long a team must sustain the speed before it counts (filters GPS spikes). */
+export const VEHICLE_SUSTAINED_MS = 5_000;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }

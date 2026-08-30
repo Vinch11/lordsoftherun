@@ -31,12 +31,17 @@ export async function removeForbiddenZone(id: string) {
 }
 
 /**
- * Applies a penalty to a team for straying into a forbidden zone. `ctfMode`
- * skips the territory-oriented recomputeScores (a capture-the-flag team has
- * no territories, so it would just zero out its score) and docks score_m2
- * directly instead.
+ * Applies a flat point penalty to a team (straying into a forbidden zone,
+ * or any other flat-penalty check that reuses this — see vehicleCheck.ts).
+ * `ctfMode` skips the territory-oriented recomputeScores (a non-territoire
+ * team has no territories, so it would just zero out its score) and docks
+ * score_m2 directly instead.
  */
-export async function applyPenalty(zone: ForbiddenZone, teamId: string, ctfMode = false) {
+export async function applyPenalty(
+  zone: Pick<ForbiddenZone, "game_id" | "penalty_m2">,
+  teamId: string,
+  ctfMode = false,
+) {
   const { data: team } = await supabase
     .from("teams")
     .select("penalty_m2, score_m2")
