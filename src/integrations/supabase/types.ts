@@ -117,6 +117,10 @@ export type Database = {
           duration_minutes: number
           ends_at: string | null
           forbidden_zone_running_only: boolean
+          grid_cell_size_m: number
+          grid_center_lat: number | null
+          grid_center_lng: number | null
+          grid_radius_m: number
           id: string
           map_style: string
           mode: string
@@ -140,6 +144,10 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
+          grid_cell_size_m?: number
+          grid_center_lat?: number | null
+          grid_center_lng?: number | null
+          grid_radius_m?: number
           id?: string
           map_style?: string
           mode?: string
@@ -163,6 +171,10 @@ export type Database = {
           duration_minutes?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
+          grid_cell_size_m?: number
+          grid_center_lat?: number | null
+          grid_center_lng?: number | null
+          grid_radius_m?: number
           id?: string
           map_style?: string
           mode?: string
@@ -178,6 +190,48 @@ export type Database = {
           status?: string
         }
         Relationships: []
+      }
+      grid_cells: {
+        Row: {
+          col: number
+          game_id: string
+          id: string
+          owner_team_id: string
+          row: number
+          updated_at: string
+        }
+        Insert: {
+          col: number
+          game_id: string
+          id?: string
+          owner_team_id: string
+          row: number
+          updated_at?: string
+        }
+        Update: {
+          col?: number
+          game_id?: string
+          id?: string
+          owner_team_id?: string
+          row?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grid_cells_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grid_cells_owner_team_id_fkey"
+            columns: ["owner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       landmarks: {
         Row: {
