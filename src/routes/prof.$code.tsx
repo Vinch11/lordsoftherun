@@ -15,6 +15,8 @@ import {
   MapPin,
   Medal,
   Minus,
+  PanelRightClose,
+  PanelRightOpen,
   Pencil,
   Plus,
   QrCode,
