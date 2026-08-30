@@ -25,6 +25,7 @@ import {
   Shield,
   ShieldAlert,
   Shuffle,
+  Smartphone,
   Star,
   Timer,
   Trophy,
