@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Flag as FlagIcon, MessageCircle, Send, Shield, X } from "lucide-react";
+import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -18,7 +18,9 @@ import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landm
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -32,6 +34,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
   useEffect(() => {
     requestNotificationPermission();
@@ -132,7 +136,13 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -453,6 +463,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       >
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
+        )}
+
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
         )}
 
         {carriedFlags.length > 0 && (

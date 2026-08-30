@@ -26,9 +26,11 @@ import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -113,6 +115,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
@@ -271,7 +275,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -590,6 +600,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       >
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
+        )}
+
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
         )}
 
         {running && (

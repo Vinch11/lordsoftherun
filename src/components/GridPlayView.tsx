@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Grid3x3, MessageCircle, Send, X } from "lucide-react";
+import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -9,7 +9,9 @@ import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -23,6 +25,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastClaimedCellRef = useRef<string | null>(null);
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
   useEffect(() => {
     requestNotificationPermission();
@@ -99,7 +103,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -302,6 +312,15 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       >
         {geoError && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
+        )}
+
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
         )}
 
         {!gridZone && (
