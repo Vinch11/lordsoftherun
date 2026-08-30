@@ -26,7 +26,14 @@ export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: 
 
 export type MapFlag = { id: string; lat: number; lng: number; color: string; label: string };
 
-export type GridZone = { lat: number; lng: number; radiusM: number };
+export type GridZone = {
+  lat: number;
+  lng: number;
+  shape: "circle" | "rectangle";
+  radiusM: number;
+  widthM: number;
+  heightM: number;
+};
 
 export type MapGridCell = { id: string; lat: number; lng: number; sizeM: number; color: string };
 
@@ -49,13 +56,22 @@ type Props = {
 
 const METERS_PER_DEG_LAT = 111320;
 
-function cellRectBounds(lat: number, lng: number, sizeM: number): L.LatLngBoundsExpression {
-  const dLat = sizeM / 2 / METERS_PER_DEG_LAT;
-  const dLng = sizeM / 2 / (METERS_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180));
+function rectBoundsMeters(
+  lat: number,
+  lng: number,
+  widthM: number,
+  heightM: number,
+): L.LatLngBoundsExpression {
+  const dLat = heightM / 2 / METERS_PER_DEG_LAT;
+  const dLng = widthM / 2 / (METERS_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180));
   return [
     [lat - dLat, lng - dLng],
     [lat + dLat, lng + dLng],
   ];
+}
+
+function cellRectBounds(lat: number, lng: number, sizeM: number): L.LatLngBoundsExpression {
+  return rectBoundsMeters(lat, lng, sizeM, sizeM);
 }
 
 const landmarkIcon = (icon: string) =>
@@ -291,7 +307,17 @@ export default function GameMap({
     const layer = gridZoneLayer.current;
     if (!layer) return;
     layer.clearLayers();
-    if (gridZone) {
+    if (gridZone?.shape === "rectangle") {
+      L.rectangle(rectBoundsMeters(gridZone.lat, gridZone.lng, gridZone.widthM, gridZone.heightM), {
+        color: "#8338ec",
+        weight: spec.zone.weight,
+        dashArray: spec.zone.dashArray,
+        fillOpacity: 0,
+        className: "zone-glow-violet",
+      })
+        .bindTooltip("Zone de jeu")
+        .addTo(layer);
+    } else if (gridZone) {
       L.circle([gridZone.lat, gridZone.lng], {
         radius: gridZone.radiusM,
         color: "#8338ec",

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { CaptureConsequence, GameMode, GracePenaltyMode } from "@/lib/conquete";
+import type { CaptureConsequence, GameMode, GracePenaltyMode, GridShape } from "@/lib/conquete";
 
 export type Game = {
   id: string;
@@ -28,6 +28,9 @@ export type Game = {
   grid_radius_m: number;
   grid_cell_size_m: number;
   grid_show_overlay: boolean;
+  grid_shape: GridShape;
+  grid_width_m: number;
+  grid_height_m: number;
   grace_enabled: boolean;
   grace_minutes: number;
   grace_penalty_mode: GracePenaltyMode;

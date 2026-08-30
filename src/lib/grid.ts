@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { haversine, type GridShape } from "@/lib/conquete";
 
 export type GridCell = {
   id: string;
@@ -16,15 +17,40 @@ function metersPerDegLng(lat: number): number {
   return METERS_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
 }
 
+/** Flat-earth offset (meters) of `point` from `center` — fine at this scale. */
+export function toLocalMeters(
+  center: [number, number],
+  point: [number, number],
+): { dx: number; dy: number } {
+  const dy = (point[0] - center[0]) * METERS_PER_DEG_LAT;
+  const dx = (point[1] - center[1]) * metersPerDegLng(center[0]);
+  return { dx, dy };
+}
+
 /** Row/col of the grid cell (relative to `center`) that contains `point`. */
 export function pointToCell(
   center: [number, number],
   cellSizeM: number,
   point: [number, number],
 ): { row: number; col: number } {
-  const dy = (point[0] - center[0]) * METERS_PER_DEG_LAT;
-  const dx = (point[1] - center[1]) * metersPerDegLng(center[0]);
+  const { dx, dy } = toLocalMeters(center, point);
   return { row: Math.floor(dy / cellSizeM), col: Math.floor(dx / cellSizeM) };
+}
+
+/** Whether `point` falls inside the play zone, circle or rectangle alike. */
+export function isWithinGridZone(
+  shape: GridShape,
+  center: [number, number],
+  point: [number, number],
+  radiusM: number,
+  widthM: number,
+  heightM: number,
+): boolean {
+  if (shape === "rectangle") {
+    const { dx, dy } = toLocalMeters(center, point);
+    return Math.abs(dx) <= widthM / 2 && Math.abs(dy) <= heightM / 2;
+  }
+  return haversine(point, center) <= radiusM;
 }
 
 /** Center lat/lng of a grid cell, for rendering. */

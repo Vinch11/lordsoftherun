@@ -69,11 +69,19 @@ export const DEFAULT_CTF_CAPTURE_RADIUS_M = 8;
 export const FLAG_PICKUP_RADIUS_M = 15;
 
 export const DEFAULT_GRID_RADIUS_M = 40;
+export const MIN_GRID_RADIUS_M = 10;
+export const MAX_GRID_RADIUS_M = 300;
 export const DEFAULT_GRID_CELL_SIZE_M = 6;
 export const MIN_GRID_CELL_SIZE_M = 3;
 export const MAX_GRID_CELL_SIZE_M = 15;
 /** Below this cell size, GPS jitter alone can flip a cell's color; shown as a warning. */
 export const GRID_CELL_SIZE_WARNING_THRESHOLD_M = 5;
+
+export type GridShape = "circle" | "rectangle";
+export const DEFAULT_GRID_WIDTH_M = 80;
+export const DEFAULT_GRID_HEIGHT_M = 80;
+export const MIN_GRID_SIDE_M = 20;
+export const MAX_GRID_SIDE_M = 300;
 
 export type GracePenaltyMode = "cancel" | "per_second";
 export const DEFAULT_GRACE_MINUTES = 5;

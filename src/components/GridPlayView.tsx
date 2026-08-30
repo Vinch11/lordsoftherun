@@ -16,7 +16,7 @@ import {
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
-import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
+import { cellCenter, claimGridCell, isWithinGridZone, pointToCell, useGridCells } from "@/lib/grid";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
@@ -112,6 +112,12 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   gridCenterRef.current = gridCenter;
   const gridRadiusRef = useRef(game?.grid_radius_m ?? 40);
   gridRadiusRef.current = game?.grid_radius_m ?? 40;
+  const gridShapeRef = useRef(game?.grid_shape ?? "circle");
+  gridShapeRef.current = game?.grid_shape ?? "circle";
+  const gridWidthRef = useRef(game?.grid_width_m ?? 80);
+  gridWidthRef.current = game?.grid_width_m ?? 80;
+  const gridHeightRef = useRef(game?.grid_height_m ?? 80);
+  gridHeightRef.current = game?.grid_height_m ?? 80;
   const cellSizeRef = useRef(game?.grid_cell_size_m ?? 6);
   cellSizeRef.current = game?.grid_cell_size_m ?? 6;
 
@@ -178,7 +184,17 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       const center = gridCenterRef.current;
       if (!center) return;
-      if (haversine(point, center) > gridRadiusRef.current) return;
+      if (
+        !isWithinGridZone(
+          gridShapeRef.current,
+          center,
+          point,
+          gridRadiusRef.current,
+          gridWidthRef.current,
+          gridHeightRef.current,
+        )
+      )
+        return;
 
       const { row, col } = pointToCell(center, cellSizeRef.current, point);
       const key = `${row}:${col}`;
@@ -207,9 +223,16 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const gridZone = useMemo(
     () =>
       gridCenter
-        ? { lat: gridCenter[0], lng: gridCenter[1], radiusM: game?.grid_radius_m ?? 40 }
+        ? {
+            lat: gridCenter[0],
+            lng: gridCenter[1],
+            shape: game?.grid_shape ?? "circle",
+            radiusM: game?.grid_radius_m ?? 40,
+            widthM: game?.grid_width_m ?? 80,
+            heightM: game?.grid_height_m ?? 80,
+          }
         : null,
-    [gridCenter, game?.grid_radius_m],
+    [gridCenter, game?.grid_radius_m, game?.grid_shape, game?.grid_width_m, game?.grid_height_m],
   );
 
   const mapGridCells = useMemo(() => {
