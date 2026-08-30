@@ -31,6 +31,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
 import { getTerminology } from "@/lib/terminology";
 import { sendProfMessage, useMessages } from "@/lib/messages";
+import {
+  deleteMessageTemplate,
+  saveMessageTemplate,
+  useMessageTemplates,
+} from "@/lib/messageTemplates";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import {
@@ -381,6 +386,9 @@ function TeacherDashboard() {
   const { points: forbiddenTemplates, refresh: refreshForbiddenTemplates } = useSavedPoints(
     user?.id ?? null,
     "forbidden",
+  );
+  const { templates: messageTemplates, refresh: refreshMessageTemplates } = useMessageTemplates(
+    user?.id ?? null,
   );
 
   useEffect(() => {
@@ -852,6 +860,26 @@ function TeacherDashboard() {
       await sendProfMessage(gameId, body, messageTarget === "all" ? null : messageTarget);
     } catch {
       toast.error("Message non envoyé.");
+    }
+  }
+
+  async function saveMessageAsTemplate() {
+    if (!user || !messageBody.trim()) return;
+    try {
+      await saveMessageTemplate(user.id, messageBody.trim());
+      toast.success("Message enregistré comme modèle !");
+      void refreshMessageTemplates();
+    } catch {
+      toast.error("Impossible d'enregistrer le modèle.");
+    }
+  }
+
+  async function removeMessageTemplate(id: string) {
+    try {
+      await deleteMessageTemplate(id);
+      void refreshMessageTemplates();
+    } catch {
+      toast.error("Impossible de supprimer le modèle.");
     }
   }
 
@@ -1971,6 +1999,14 @@ function TeacherDashboard() {
                   onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
                 />
                 <button
+                  aria-label="Enregistrer comme modèle"
+                  className="icon-btn"
+                  disabled={!messageBody.trim()}
+                  onClick={() => void saveMessageAsTemplate()}
+                >
+                  <Bookmark className="h-5 w-5" />
+                </button>
+                <button
                   aria-label="Envoyer"
                   className="rounded-xl bg-primary p-3 text-primary-foreground"
                   onClick={sendMessage}
@@ -1978,6 +2014,26 @@ function TeacherDashboard() {
                   <Send className="h-5 w-5" />
                 </button>
               </div>
+              {messageTemplates.length > 0 && (
+                <div className="mt-1 flex flex-col gap-1 border-t border-border pt-2">
+                  <span className="label-xs">Mes modèles</span>
+                  {messageTemplates.map((t) => (
+                    <div key={t.id} className="flex items-center gap-3 py-1">
+                      <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="flex-1 truncate text-sm">{t.body}</span>
+                      <button className="mini-btn" onClick={() => setMessageBody(t.body)}>
+                        Utiliser
+                      </button>
+                      <button
+                        aria-label="Supprimer le modèle"
+                        onClick={() => void removeMessageTemplate(t.id)}
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </section>
