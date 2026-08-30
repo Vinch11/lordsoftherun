@@ -197,6 +197,20 @@
       "when": 1788185000000,
       "tag": "0027_team_trail",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788190000000,
+      "tag": "0028_rejoin_team",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788191000000,
+      "tag": "0029_students",
+      "breakpoints": true
     }
   ]
 }
