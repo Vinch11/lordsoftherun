@@ -287,6 +287,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
           mapStyle={game?.map_style}
           follow
+          hudFrame
         />
       </div>
 

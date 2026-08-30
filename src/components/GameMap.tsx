@@ -20,7 +20,13 @@ export type MapTerritory = {
 
 export type ReturnZone = { lat: number; lng: number; radiusM: number };
 
-export type MapLandmark = { id: string; lat: number; lng: number; icon: string };
+export type MapLandmark = {
+  id: string;
+  lat: number;
+  lng: number;
+  icon: string;
+  kind: "points" | "shield";
+};
 
 export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: number };
 
@@ -52,6 +58,7 @@ type Props = {
   gridCells?: MapGridCell[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
+  hudFrame?: boolean;
 };
 
 const METERS_PER_DEG_LAT = 111320;
@@ -74,13 +81,28 @@ function cellRectBounds(lat: number, lng: number, sizeM: number): L.LatLngBounds
   return rectBoundsMeters(lat, lng, sizeM, sizeM);
 }
 
-const landmarkIcon = (icon: string) =>
-  L.divIcon({
-    html: `<div style="font-size:26px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))">${icon}</div>`,
+const LANDMARK_KIND_COLOR: Record<MapLandmark["kind"], string> = {
+  points: "#e9c500",
+  shield: "#33d0e8",
+};
+
+const landmarkIcon = (icon: string, kind: MapLandmark["kind"]) => {
+  const color = LANDMARK_KIND_COLOR[kind];
+  return L.divIcon({
+    html: `<div style="
+      position:relative; width:34px; height:34px;
+      display:flex; align-items:center; justify-content:center;
+      clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+      background:linear-gradient(160deg, #121522, #05060b);
+      border:1px solid ${color}aa;
+      box-shadow:0 0 3px rgba(0,0,0,.5), 0 0 10px ${color}99;
+      font-size:16px; line-height:1;
+    ">${icon}</div>`,
     className: "",
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
   });
+};
 
 const flagIcon = (color: string) =>
   L.divIcon({
@@ -122,6 +144,7 @@ export default function GameMap({
   gridCells = [],
   onMapClick,
   mapStyle = "classic",
+  hudFrame = false,
 }: Props) {
   const spec = resolveMapStyle(mapStyle);
   const specRef = useRef(spec);
@@ -272,8 +295,8 @@ export default function GameMap({
     if (!layer) return;
     layer.clearLayers();
     for (const lm of landmarks) {
-      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.icon) })
-        .bindTooltip("Repère bonus")
+      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.icon, lm.kind) })
+        .bindTooltip(lm.kind === "shield" ? "Bouclier" : "Repère bonus")
         .addTo(layer);
     }
   }, [landmarks]);
@@ -355,5 +378,14 @@ export default function GameMap({
     line.setLatLngs(trail);
   }, [trail, trailColor, spec]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  if (!hudFrame) return <div ref={containerRef} className="h-full w-full" />;
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="h-full w-full" />
+      <div className="hud-bracket hud-bracket-tl" />
+      <div className="hud-bracket hud-bracket-tr" />
+      <div className="hud-bracket hud-bracket-bl" />
+      <div className="hud-bracket hud-bracket-br" />
+    </div>
+  );
 }
