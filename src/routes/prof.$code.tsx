@@ -63,15 +63,20 @@ import { cellCenter, useGridCells } from "@/lib/grid";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
   addStudent,
+  applyRosterComposition,
   assignStudentTeam,
   downloadCsv,
   importRoster,
   parseIdoceoRoster,
+  parseRosterCsv,
   removeStudent,
   setStudentPresent,
   shuffleTeams,
   useStudents,
+  type ParsedStudent,
 } from "@/lib/students";
+import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
+
 import {
   applySavedPoint,
   deleteSavedPoint,
