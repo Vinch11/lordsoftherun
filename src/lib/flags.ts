@@ -163,7 +163,7 @@ export function useFlags(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`flags-${gameId}`)
+      .channel(`flags-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "flags", filter: `game_id=eq.${gameId}` },

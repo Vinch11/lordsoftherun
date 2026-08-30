@@ -165,7 +165,7 @@ export function useLandmarks(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`landmarks-${gameId}`)
+      .channel(`landmarks-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "landmarks", filter: `game_id=eq.${gameId}` },

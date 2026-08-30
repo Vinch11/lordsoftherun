@@ -89,8 +89,10 @@ export function useGameState(gameId: string | null) {
   useEffect(() => {
     if (!gameId) return;
     void refresh();
+    // Unique per mount: reusing a topic name returns the *existing* channel,
+    // and adding listeners to an already-subscribed channel throws.
     const channel = supabase
-      .channel(`game-${gameId}`)
+      .channel(`game-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "teams", filter: `game_id=eq.${gameId}` },

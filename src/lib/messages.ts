@@ -43,7 +43,7 @@ export function useMessages(gameId: string | null) {
     if (!gameId) return;
     void refresh();
     const channel = supabase
-      .channel(`messages-${gameId}`)
+      .channel(`messages-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `game_id=eq.${gameId}` },
