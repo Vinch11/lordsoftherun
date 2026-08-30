@@ -63,15 +63,20 @@ import { cellCenter, useGridCells } from "@/lib/grid";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
   addStudent,
+  applyRosterComposition,
   assignStudentTeam,
   downloadCsv,
   importRoster,
   parseIdoceoRoster,
+  parseRosterCsv,
   removeStudent,
   setStudentPresent,
   shuffleTeams,
   useStudents,
+  type ParsedStudent,
 } from "@/lib/students";
+import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
+
 import {
   applySavedPoint,
   deleteSavedPoint,
@@ -390,6 +395,9 @@ function TeacherDashboard() {
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
+  const [wizardPlayers, setWizardPlayers] = useState<ParsedStudent[]>([]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
@@ -763,14 +771,13 @@ function TeacherDashboard() {
     if (!gameId) return;
     setRosterBusy(true);
     try {
-      const names = parseIdoceoRoster(await file.text());
-      if (names.length === 0) {
+      const parsed = parseRosterCsv(await file.text());
+      if (parsed.length === 0) {
         toast.error("Aucun élève trouvé dans ce fichier.");
         return;
       }
-      await importRoster(gameId, names);
-      await refreshStudents();
-      toast.success(`${names.length} élèves importés.`);
+      setWizardPlayers(parsed);
+      setWizardOpen(true);
     } catch (e) {
       toast.error(
         `Échec de l'import du CSV : ${e instanceof Error ? e.message : "erreur inconnue"}`,
@@ -779,6 +786,30 @@ function TeacherDashboard() {
       setRosterBusy(false);
     }
   }
+
+  async function confirmWizard(
+    roster: { name: string; present: boolean }[],
+    composed: ComposedTeam[],
+  ) {
+    if (!gameId) return;
+    setRosterBusy(true);
+    try {
+      await applyRosterComposition(gameId, roster, composed);
+      await refreshStudents();
+      setWizardOpen(false);
+      setWizardPlayers([]);
+      toast.success(
+        `${roster.filter((r) => r.present).length} élèves répartis en ${composed.length} équipes.`,
+      );
+    } catch (e) {
+      toast.error(
+        `Échec de la création des équipes : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
+    } finally {
+      setRosterBusy(false);
+    }
+  }
+
 
   async function onShuffleTeams() {
     if (!gameId) return;
@@ -1663,9 +1694,28 @@ function TeacherDashboard() {
                 >
                   <Shuffle className="h-5 w-5" /> Répartir aléatoirement en {teamCount} équipes
                 </button>
+                <button
+                  className="seg-btn"
+                  disabled={rosterBusy}
+                  onClick={() => {
+                    setWizardPlayers(students.map((s) => ({ name: s.name })));
+                    setWizardOpen(true);
+                  }}
+                >
+                  <Users className="h-4 w-4" /> Assistant présences & équipes
+                </button>
               </>
             )}
+
+            <RosterWizard
+              open={wizardOpen}
+              players={wizardPlayers}
+              busy={rosterBusy}
+              onClose={() => setWizardOpen(false)}
+              onConfirm={confirmWizard}
+            />
           </section>
+
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
