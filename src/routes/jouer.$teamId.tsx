@@ -130,6 +130,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
+  const [followMe, setFollowMe] = useState(true);
 
   const rulesKey = `conquete:rules-seen:${teamId}`;
   useEffect(() => {
@@ -514,7 +515,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
           mapStyle={game?.map_style}
-          follow
+          follow={followMe}
+          onUserPan={() => setFollowMe(false)}
+          onRecenter={() => setFollowMe(true)}
           hudFrame
         />
       </div>

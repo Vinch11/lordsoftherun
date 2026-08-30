@@ -31,6 +31,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
+  const [followMe, setFollowMe] = useState(true);
 
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
@@ -286,7 +287,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           gridZone={game?.grid_show_overlay === false ? null : gridZone}
           gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
           mapStyle={game?.map_style}
-          follow
+          follow={followMe}
+          onUserPan={() => setFollowMe(false)}
+          onRecenter={() => setFollowMe(true)}
           hudFrame
         />
       </div>

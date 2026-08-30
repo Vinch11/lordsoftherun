@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MultiPolygon, Polygon } from "geojson";
+import { LocateFixed } from "lucide-react";
 import { resolveMapStyle, type MapStyleId, type MapStyleSpec } from "@/lib/mapStyles";
 
 export type MapTeam = {
@@ -59,6 +60,10 @@ type Props = {
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
   hudFrame?: boolean;
+  /** Fires the moment the player drags the map by hand (not on programmatic pans). */
+  onUserPan?: () => void;
+  /** When provided, a "recenter on me" button appears while `follow` is false. */
+  onRecenter?: () => void;
 };
 
 const METERS_PER_DEG_LAT = 111320;
@@ -145,6 +150,8 @@ export default function GameMap({
   onMapClick,
   mapStyle = "classic",
   hudFrame = false,
+  onUserPan,
+  onRecenter,
 }: Props) {
   const spec = resolveMapStyle(mapStyle);
   const specRef = useRef(spec);
@@ -164,6 +171,8 @@ export default function GameMap({
   const didInitialFit = useRef(false);
   const onMapClickRef = useRef(onMapClick);
   onMapClickRef.current = onMapClick;
+  const onUserPanRef = useRef(onUserPan);
+  onUserPanRef.current = onUserPan;
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -192,6 +201,9 @@ export default function GameMap({
     map.on("click", (e: L.LeafletMouseEvent) =>
       onMapClickRef.current?.(e.latlng.lat, e.latlng.lng),
     );
+    // "dragstart" only fires for a manual drag, never for panTo/setView, so
+    // this can't misfire from our own auto-follow recentering below.
+    map.on("dragstart", () => onUserPanRef.current?.());
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
     return () => {
@@ -378,7 +390,25 @@ export default function GameMap({
     line.setLatLngs(trail);
   }, [trail, trailColor, spec]);
 
-  if (!hudFrame) return <div ref={containerRef} className="h-full w-full" />;
+  const recenterButton = onRecenter && !follow && (
+    <button
+      type="button"
+      aria-label="Recentrer sur ma position"
+      className="nav-back absolute right-4 top-1/2 z-[600] -translate-y-1/2"
+      onClick={onRecenter}
+    >
+      <LocateFixed className="h-5 w-5" />
+    </button>
+  );
+
+  if (!hudFrame) {
+    return (
+      <div className="relative h-full w-full">
+        <div ref={containerRef} className="h-full w-full" />
+        {recenterButton}
+      </div>
+    );
+  }
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
@@ -386,6 +416,7 @@ export default function GameMap({
       <div className="hud-bracket hud-bracket-tr" />
       <div className="hud-bracket hud-bracket-bl" />
       <div className="hud-bracket hud-bracket-br" />
+      {recenterButton}
     </div>
   );
 }
