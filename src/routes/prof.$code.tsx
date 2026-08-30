@@ -771,14 +771,13 @@ function TeacherDashboard() {
     if (!gameId) return;
     setRosterBusy(true);
     try {
-      const names = parseIdoceoRoster(await file.text());
-      if (names.length === 0) {
+      const parsed = parseRosterCsv(await file.text());
+      if (parsed.length === 0) {
         toast.error("Aucun élève trouvé dans ce fichier.");
         return;
       }
-      await importRoster(gameId, names);
-      await refreshStudents();
-      toast.success(`${names.length} élèves importés.`);
+      setWizardPlayers(parsed);
+      setWizardOpen(true);
     } catch (e) {
       toast.error(
         `Échec de l'import du CSV : ${e instanceof Error ? e.message : "erreur inconnue"}`,
@@ -787,6 +786,30 @@ function TeacherDashboard() {
       setRosterBusy(false);
     }
   }
+
+  async function confirmWizard(
+    roster: { name: string; present: boolean }[],
+    composed: ComposedTeam[],
+  ) {
+    if (!gameId) return;
+    setRosterBusy(true);
+    try {
+      await applyRosterComposition(gameId, roster, composed);
+      await refreshStudents();
+      setWizardOpen(false);
+      setWizardPlayers([]);
+      toast.success(
+        `${roster.filter((r) => r.present).length} élèves répartis en ${composed.length} équipes.`,
+      );
+    } catch (e) {
+      toast.error(
+        `Échec de la création des équipes : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
+    } finally {
+      setRosterBusy(false);
+    }
+  }
+
 
   async function onShuffleTeams() {
     if (!gameId) return;
