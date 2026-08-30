@@ -38,6 +38,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
+  const teamsRef = useRef(teams);
+  teamsRef.current = teams;
   const { messages } = useMessages(gameId);
   const { landmarks } = useLandmarks(gameId);
   const landmarksRef = useRef(landmarks);
@@ -57,6 +59,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
     [flags, teamId],
   );
   const shieldActive = !!me?.shield_until && new Date(me.shield_until).getTime() > now;
+  const shieldActiveRef = useRef(shieldActive);
+  shieldActiveRef.current = shieldActive;
   const shieldRemainingS = shieldActive
     ? Math.max(0, Math.round((new Date(me!.shield_until!).getTime() - now) / 1000))
     : 0;
@@ -106,6 +110,10 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
     return null;
   }, [game?.return_lat, game?.return_lng, myFlag]);
   const dropRadius = game?.return_lat != null ? game.return_radius_m : FLAG_PICKUP_RADIUS_M;
+  const dropPointRef = useRef(dropPoint);
+  dropPointRef.current = dropPoint;
+  const dropRadiusRef = useRef(dropRadius);
+  dropRadiusRef.current = dropRadius;
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
@@ -171,7 +179,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       }
 
       // Deliver any enemy flag currently carried, if close enough to the drop point.
+      const dropPoint = dropPointRef.current;
       if (dropPoint) {
+        const dropRadius = dropRadiusRef.current;
         for (const flag of flagsRef.current) {
           if (flag.carried_by_team_id !== teamId) continue;
           if (haversine(point, dropPoint) > dropRadius) continue;
@@ -184,9 +194,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       }
 
       // Get tagged by a nearby opposing team while carrying a flag.
-      if (!shieldActive) {
+      if (!shieldActiveRef.current) {
         const captureRadius = gameRef.current?.ctf_capture_radius_m ?? 8;
-        const nearbyEnemy = teams.some(
+        const nearbyEnemy = teamsRef.current.some(
           (t) =>
             t.id !== teamId &&
             t.lat != null &&
@@ -210,7 +220,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         }
       }
     },
-    [teamId, teams, dropPoint, dropRadius, shieldActive],
+    [teamId],
   );
 
   useEffect(() => {
