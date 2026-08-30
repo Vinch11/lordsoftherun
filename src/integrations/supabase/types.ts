@@ -509,11 +509,54 @@ export type Database = {
         }
         Relationships: []
       }
+      students: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          name: string
+          present: boolean
+          team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          name: string
+          present?: boolean
+          team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          name?: string
+          present?: boolean
+          team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "students_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "students_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           claimed_by: string | null
           color: string
           created_at: string
+          current_trail: Json
           flags_captured: number
           game_id: string
           id: string
@@ -533,6 +576,7 @@ export type Database = {
           claimed_by?: string | null
           color: string
           created_at?: string
+          current_trail?: Json
           flags_captured?: number
           game_id: string
           id?: string
@@ -552,6 +596,7 @@ export type Database = {
           claimed_by?: string | null
           color?: string
           created_at?: string
+          current_trail?: Json
           flags_captured?: number
           game_id?: string
           id?: string
@@ -627,7 +672,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      rejoin_team: { Args: { _team_id: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
