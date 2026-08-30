@@ -1694,9 +1694,28 @@ function TeacherDashboard() {
                 >
                   <Shuffle className="h-5 w-5" /> Répartir aléatoirement en {teamCount} équipes
                 </button>
+                <button
+                  className="seg-btn"
+                  disabled={rosterBusy}
+                  onClick={() => {
+                    setWizardPlayers(students.map((s) => ({ name: s.name })));
+                    setWizardOpen(true);
+                  }}
+                >
+                  <Users className="h-4 w-4" /> Assistant présences & équipes
+                </button>
               </>
             )}
+
+            <RosterWizard
+              open={wizardOpen}
+              players={wizardPlayers}
+              busy={rosterBusy}
+              onClose={() => setWizardOpen(false)}
+              onConfirm={confirmWizard}
+            />
           </section>
+
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
