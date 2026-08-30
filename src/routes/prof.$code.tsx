@@ -2688,7 +2688,41 @@ function TeacherDashboard() {
           )}
         </section>
 
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Smartphone className="h-4 w-4" /> Aperçu élève
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Ouvrez l'écran tel que le voit un groupe (carte, bouton de boucle, messages). En lecture
+            seule côté prof : évitez de lancer une boucle depuis cet aperçu.
+          </p>
+          {teams.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              En attente des groupes…
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {teams.map((tm) => (
+                <div
+                  key={tm.id}
+                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                >
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                    style={{ backgroundColor: tm.color }}
+                  />
+                  <span className="flex-1 truncate text-sm font-semibold">{tm.name}</span>
+                  <button className="mini-btn" onClick={() => setPreviewTeamId(tm.id)}>
+                    Aperçu
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="panel flex flex-col gap-1 p-4">
+
           <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
