@@ -1063,7 +1063,7 @@ function TeacherDashboard() {
               <div className="pill">
                 <MapPin className="h-3.5 w-3.5" /> Tableau de bord
               </div>
-              <h1 className="page-title mt-3 truncate">
+              <h1 className="page-title mt-3 truncate text-3xl">
                 Partie <em>{code}</em>
               </h1>
             </div>
