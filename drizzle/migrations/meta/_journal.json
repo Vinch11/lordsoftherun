@@ -225,6 +225,13 @@
       "when": 1788108974435,
       "tag": "0031_rejoin_team",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788108987715,
+      "tag": "0032_students",
+      "breakpoints": true
     }
   ]
 }
