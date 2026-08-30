@@ -231,11 +231,11 @@
   .btn-huge-accent {
     background-color: var(--color-accent);
     color: var(--color-accent-foreground);
-    box-shadow: 0 6px 0 0 color-mix(in oklch, var(--color-accent) 60%, black);
+    box-shadow: 0 2px 8px color-mix(in oklch, black 45%, transparent);
   }
 
   .btn-huge-accent:active {
-    box-shadow: 0 2px 0 0 color-mix(in oklch, var(--color-accent) 60%, black);
+    box-shadow: 0 1px 4px color-mix(in oklch, black 40%, transparent);
   }
 
   .btn-huge-accent:not(:disabled) {
