@@ -95,15 +95,15 @@ const LANDMARK_KIND_COLOR: Record<MapLandmark["kind"], string> = {
 const landmarkIcon = (icon: string, kind: MapLandmark["kind"]) => {
   const color = LANDMARK_KIND_COLOR[kind];
   return L.divIcon({
-    html: `<div style="
-      position:relative; width:34px; height:34px;
-      display:flex; align-items:center; justify-content:center;
-      clip-path:polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-      background:linear-gradient(160deg, #121522, #05060b);
-      border:1px solid ${color}aa;
-      box-shadow:0 0 3px rgba(0,0,0,.5), 0 0 10px ${color}99;
-      font-size:16px; line-height:1;
-    ">${icon}</div>`,
+    html: `<div style="position:relative; width:34px; height:34px;">
+      <div class="hex-ring" style="border-color:${color}"></div>
+      <div class="hex-core" style="
+        background:linear-gradient(160deg, #121522, #05060b);
+        border:1px solid ${color}aa;
+        --hex-glow: ${color}99;
+        font-size:16px;
+      ">${icon}</div>
+    </div>`,
     className: "",
     iconSize: [34, 34],
     iconAnchor: [17, 17],
@@ -434,6 +434,7 @@ export default function GameMap({
       <div className="hud-bracket hud-bracket-tr" />
       <div className="hud-bracket hud-bracket-bl" />
       <div className="hud-bracket hud-bracket-br" />
+      <div className="hud-bracket-tick" />
       {recenterButton}
     </div>
   );
