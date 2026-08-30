@@ -40,7 +40,7 @@ export function useStudents(gameId: string | null) {
   return { students, refresh };
 }
 
-function parseCsvLine(line: string): string[] {
+function parseCsvLine(line: string, delimiter: string): string[] {
   const cells: string[] = [];
   let cur = "";
   let inQuotes = false;
@@ -59,7 +59,7 @@ function parseCsvLine(line: string): string[] {
       }
     } else if (ch === '"') {
       inQuotes = true;
-    } else if (ch === ",") {
+    } else if (ch === delimiter) {
       cells.push(cur);
       cur = "";
     } else {
@@ -70,32 +70,63 @@ function parseCsvLine(line: string): string[] {
   return cells;
 }
 
+/** iDoceo (and Excel in FR locale) export with ; or tab as often as with , */
+function detectDelimiter(sample: string): string {
+  const counts = [",", ";", "\t"].map((d) => [d, sample.split(d).length - 1] as const);
+  counts.sort((a, b) => b[1] - a[1]);
+  return counts[0]![1] > 0 ? counts[0]![0] : ",";
+}
+
+const HEADER_HINTS = /^(nom|name|élève|eleve|student|nom complet|prénom|prenom)$/i;
+
 /**
- * Extracts student names from an iDoceo gradebook export: first row is a
- * header (its own first cell is empty), every following row's first cell is
- * a student's full name, the rest are per-assignment grades we don't care
- * about here. Trailing blank rows (iDoceo pads a few) have an empty first
- * cell too, so they're dropped along with the header.
+ * Extracts student names from a gradebook export (iDoceo, Excel, plain list).
+ * Handles , ; and tab delimiters, files with or without a header row, and
+ * files that are just one name per line.
  */
 export function parseIdoceoRoster(csvText: string): string[] {
-  const lines = csvText.split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0);
+  const text = csvText.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r\n|\n|\r/).filter((l) => l.trim().length > 0);
+  if (lines.length === 0) return [];
+  const delimiter = detectDelimiter(lines.slice(0, 5).join("\n"));
+
+  const rows = lines.map((l) => parseCsvLine(l, delimiter)[0]?.trim() ?? "");
+  const first = rows[0] ?? "";
+  // Drop the first row only when it really is a header (empty first cell, as
+  // iDoceo does, or a column label). A plain list keeps every line.
+  const skipFirst = first.length === 0 || HEADER_HINTS.test(first);
+
   const names: string[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const name = parseCsvLine(lines[i]!)[0]?.trim();
-    if (name) names.push(name);
+  for (let i = skipFirst ? 1 : 0; i < rows.length; i++) {
+    const name = rows[i]!;
+    if (!name) continue;
+    if (/^[\d\s.,%-]+$/.test(name)) continue; // grade-only rows
+    names.push(name);
   }
   return names;
 }
 
 /** Replaces the whole roster for a game — re-importing a corrected CSV starts clean. */
 export async function importRoster(gameId: string, names: string[]): Promise<void> {
-  await supabase.from("students").delete().eq("game_id", gameId);
+  const { error: delError } = await supabase.from("students").delete().eq("game_id", gameId);
+  if (delError) throw delError;
   if (names.length === 0) return;
   const { error } = await supabase
     .from("students")
     .insert(names.map((name) => ({ game_id: gameId, name })));
   if (error) throw error;
 }
+
+export async function addStudent(gameId: string, name: string): Promise<void> {
+  const { error } = await supabase.from("students").insert({ game_id: gameId, name });
+  if (error) throw error;
+}
+
+export async function removeStudent(studentId: string): Promise<void> {
+  const { error } = await supabase.from("students").delete().eq("id", studentId);
+  if (error) throw error;
+}
+
 
 export async function setStudentPresent(studentId: string, present: boolean): Promise<void> {
   const { error } = await supabase.from("students").update({ present }).eq("id", studentId);
