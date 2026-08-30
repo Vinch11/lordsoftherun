@@ -69,7 +69,9 @@ import {
   DEFAULT_GRACE_MINUTES,
   DEFAULT_GRACE_PENALTY_PER_SECOND_M2,
   DEFAULT_GRID_CELL_SIZE_M,
+  DEFAULT_GRID_HEIGHT_M,
   DEFAULT_GRID_RADIUS_M,
+  DEFAULT_GRID_WIDTH_M,
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
@@ -80,7 +82,11 @@ import {
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
   LANDMARK_ICONS,
   MAX_GRID_CELL_SIZE_M,
+  MAX_GRID_RADIUS_M,
+  MAX_GRID_SIDE_M,
   MIN_GRID_CELL_SIZE_M,
+  MIN_GRID_RADIUS_M,
+  MIN_GRID_SIDE_M,
   formatArea,
   formatClock,
   formatCountdown,
@@ -88,6 +94,7 @@ import {
   randomCode,
   type CaptureConsequence,
   type GameMode,
+  type GridShape,
   type GracePenaltyMode,
 } from "@/lib/conquete";
 
@@ -329,6 +336,9 @@ function TeacherDashboard() {
   const [ctfTimePenalty, setCtfTimePenalty] = useState(DEFAULT_CTF_TIME_PENALTY_M2);
   const [ctfCaptureRadius, setCtfCaptureRadius] = useState(DEFAULT_CTF_CAPTURE_RADIUS_M);
   const [gridRadius, setGridRadius] = useState(DEFAULT_GRID_RADIUS_M);
+  const [gridShape, setGridShape] = useState<GridShape>("circle");
+  const [gridWidth, setGridWidth] = useState(DEFAULT_GRID_WIDTH_M);
+  const [gridHeight, setGridHeight] = useState(DEFAULT_GRID_HEIGHT_M);
   const [gridCellSize, setGridCellSize] = useState(DEFAULT_GRID_CELL_SIZE_M);
   const [gridShowOverlay, setGridShowOverlay] = useState(true);
   const [graceEnabled, setGraceEnabled] = useState(false);
@@ -447,6 +457,9 @@ function TeacherDashboard() {
       setCtfTimePenalty(game.ctf_time_penalty_m2);
       setCtfCaptureRadius(game.ctf_capture_radius_m);
       setGridRadius(game.grid_radius_m);
+      setGridShape(game.grid_shape);
+      setGridWidth(game.grid_width_m);
+      setGridHeight(game.grid_height_m);
       setGridCellSize(game.grid_cell_size_m);
       setGridShowOverlay(game.grid_show_overlay);
       setGraceEnabled(game.grace_enabled);
@@ -687,9 +700,23 @@ function TeacherDashboard() {
   const gridZone = useMemo(
     () =>
       game?.grid_center_lat != null && game.grid_center_lng != null
-        ? { lat: game.grid_center_lat, lng: game.grid_center_lng, radiusM: game.grid_radius_m }
+        ? {
+            lat: game.grid_center_lat,
+            lng: game.grid_center_lng,
+            shape: game.grid_shape,
+            radiusM: game.grid_radius_m,
+            widthM: game.grid_width_m,
+            heightM: game.grid_height_m,
+          }
         : null,
-    [game?.grid_center_lat, game?.grid_center_lng, game?.grid_radius_m],
+    [
+      game?.grid_center_lat,
+      game?.grid_center_lng,
+      game?.grid_radius_m,
+      game?.grid_shape,
+      game?.grid_width_m,
+      game?.grid_height_m,
+    ],
   );
 
   const mapGridCells = useMemo(() => {
@@ -884,7 +911,13 @@ function TeacherDashboard() {
     if (!gameId || !isOwner) return;
     await supabase
       .from("games")
-      .update({ grid_center_lat: lat, grid_center_lng: lng, grid_radius_m: gridRadius })
+      .update({
+        grid_center_lat: lat,
+        grid_center_lng: lng,
+        grid_radius_m: gridRadius,
+        grid_width_m: gridWidth,
+        grid_height_m: gridHeight,
+      })
       .eq("id", gameId);
     setPlacingMode("none");
     toast.success("Zone de jeu placée.");
@@ -894,6 +927,24 @@ function TeacherDashboard() {
     setGridRadius(next);
     if (!gameId || !isOwner || game?.grid_center_lat == null) return;
     await supabase.from("games").update({ grid_radius_m: next }).eq("id", gameId);
+  }
+
+  async function updateGridShape(next: GridShape) {
+    setGridShape(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_shape: next }).eq("id", gameId);
+  }
+
+  async function updateGridWidth(next: number) {
+    setGridWidth(next);
+    if (!gameId || !isOwner || game?.grid_center_lat == null) return;
+    await supabase.from("games").update({ grid_width_m: next }).eq("id", gameId);
+  }
+
+  async function updateGridHeight(next: number) {
+    setGridHeight(next);
+    if (!gameId || !isOwner || game?.grid_center_lat == null) return;
+    await supabase.from("games").update({ grid_height_m: next }).eq("id", gameId);
   }
 
   async function updateGridCellSize(next: number) {
@@ -1716,26 +1767,102 @@ function TeacherDashboard() {
             </p>
             {isOwner && (
               <>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Rayon</span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      aria-label="Réduire le rayon"
-                      className="icon-btn"
-                      onClick={() => void updateGridRadius(Math.max(10, gridRadius - 5))}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="display w-16 text-center text-lg">{gridRadius} m</span>
-                    <button
-                      aria-label="Augmenter le rayon"
-                      className="icon-btn"
-                      onClick={() => void updateGridRadius(Math.min(150, gridRadius + 5))}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="seg-btn"
+                    data-active={gridShape === "circle"}
+                    onClick={() => void updateGridShape("circle")}
+                  >
+                    Cercle
+                  </button>
+                  <button
+                    className="seg-btn"
+                    data-active={gridShape === "rectangle"}
+                    onClick={() => void updateGridShape("rectangle")}
+                  >
+                    Rectangle / carré
+                  </button>
                 </div>
+                {gridShape === "circle" ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Rayon</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire le rayon"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateGridRadius(Math.max(MIN_GRID_RADIUS_M, gridRadius - 10))
+                        }
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-16 text-center text-lg">{gridRadius} m</span>
+                      <button
+                        aria-label="Augmenter le rayon"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateGridRadius(Math.min(MAX_GRID_RADIUS_M, gridRadius + 10))
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">Largeur</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          aria-label="Réduire la largeur"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridWidth(Math.max(MIN_GRID_SIDE_M, gridWidth - 10))
+                          }
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="display w-16 text-center text-lg">{gridWidth} m</span>
+                        <button
+                          aria-label="Augmenter la largeur"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridWidth(Math.min(MAX_GRID_SIDE_M, gridWidth + 10))
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">Hauteur</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          aria-label="Réduire la hauteur"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridHeight(Math.max(MIN_GRID_SIDE_M, gridHeight - 10))
+                          }
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="display w-16 text-center text-lg">{gridHeight} m</span>
+                        <button
+                          aria-label="Augmenter la hauteur"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridHeight(Math.min(MAX_GRID_SIDE_M, gridHeight + 10))
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Largeur = hauteur pour un carré.
+                    </p>
+                  </>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold">Taille des cases</span>
                   <div className="flex items-center gap-3">
