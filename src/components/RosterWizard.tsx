@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, Check, Shuffle, UserMinus, Users, X } from "lucide-react";
 import { TEAM_COLORS } from "@/lib/conquete";
 import type { ParsedStudent } from "@/lib/students";
@@ -70,7 +71,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
   function toggleAbsent(name: string) {
     setAbsent((prev) => {
@@ -104,7 +105,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
     }))
     .filter((t) => t.members.length > 0);
 
-  return (
+  return createPortal(
     <div ref={scrollRef} className="fixed inset-0 z-[1200] overflow-y-auto bg-background">
       <div
         className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-3 bg-background p-4 sm:p-6"
@@ -347,6 +348,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
