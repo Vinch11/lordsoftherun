@@ -56,6 +56,7 @@ export type Team = {
   flags_captured: number;
   shield_until: string | null;
   returned_at: string | null;
+  current_trail: [number, number][];
 };
 
 export type Territory = {
