@@ -113,12 +113,12 @@ export async function importRoster(gameId: string, names: string[]): Promise<voi
   if (names.length === 0) return;
   const { error } = await supabase
     .from("students")
-    .insert(names.map((name) => ({ game_id: gameId, name })));
+    .insert(names.map((name) => ({ game_id: gameId, name, present: true })));
   if (error) throw error;
 }
 
 export async function addStudent(gameId: string, name: string): Promise<void> {
-  const { error } = await supabase.from("students").insert({ game_id: gameId, name });
+  const { error } = await supabase.from("students").insert({ game_id: gameId, name, present: true });
   if (error) throw error;
 }
 
