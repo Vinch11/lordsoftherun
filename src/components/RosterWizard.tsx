@@ -101,8 +101,11 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
-      <div className="panel flex max-h-[92dvh] w-full max-w-2xl flex-col gap-3 overflow-hidden p-4">
-        <div className="flex items-center gap-2">
+      <div
+        className="panel flex max-h-[92dvh] w-full max-w-2xl flex-col gap-3 overflow-hidden p-4"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="flex shrink-0 items-center gap-2">
           <span className="section-title flex-1">
             {step === "presence" ? (
               <>
