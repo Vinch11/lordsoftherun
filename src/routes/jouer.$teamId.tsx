@@ -425,7 +425,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     () =>
       landmarks
         .filter((l) => isLandmarkActive(l, game?.started_at ?? null, now))
-        .map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, icon: l.icon })),
+        .map((l) => ({ id: l.id, lat: l.lat, lng: l.lng, icon: l.icon, kind: l.kind })),
     [landmarks, game?.started_at, now],
   );
 
@@ -515,6 +515,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           forbiddenZones={mapForbiddenZones}
           mapStyle={game?.map_style}
           follow
+          hudFrame
         />
       </div>
 

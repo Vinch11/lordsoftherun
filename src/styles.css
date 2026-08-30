@@ -346,6 +346,23 @@
    glow, and tooltips read as game HUD chips rather than plain map labels. */
 .territory-glow {
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 9px currentColor);
+  animation: territory-pulse 2.6s ease-in-out infinite;
+}
+
+@keyframes territory-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 7px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 14px currentColor);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .territory-glow {
+    animation: none;
+  }
 }
 
 .zone-glow-cyan {
@@ -358,6 +375,46 @@
 
 .zone-glow-violet {
   filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 9px #8338ec);
+}
+
+/* Restrained sci-fi HUD framing for the team play screens: four corner
+   brackets sitting above the Leaflet canvas, evoking a game cockpit without
+   covering any of the map itself. */
+.hud-bracket {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  z-index: 500;
+}
+
+.hud-bracket-tl {
+  top: 10px;
+  left: 10px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.hud-bracket-tr {
+  top: 10px;
+  right: 10px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.hud-bracket-bl {
+  bottom: 10px;
+  left: 10px;
+  border-right: none;
+  border-top: none;
+}
+
+.hud-bracket-br {
+  bottom: 10px;
+  right: 10px;
+  border-left: none;
+  border-top: none;
 }
 
 .leaflet-tooltip {
