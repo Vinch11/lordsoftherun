@@ -25,9 +25,12 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export const Route = createFileRoute("/jouer/$teamId")({
   head: () => ({
@@ -112,6 +115,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
@@ -149,6 +154,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
+  const meRef = useRef(me);
+  meRef.current = me;
 
   const myMessages = useMemo(
     () =>
@@ -268,7 +275,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -329,6 +342,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           toast.error(`⚠️ Zone interdite ! -${formatArea(zone.penalty_m2)}`);
           notifyMessage("⚠️ Zone interdite !", `-${formatArea(zone.penalty_m2)}`);
         });
+      }
+
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
       }
 
       if (!runningRef.current) return;
@@ -413,6 +430,19 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
     prevFinishedRef.current = finished;
   }, [finished]);
+
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const endgameLabel = !game?.grace_ends_at
+    ? !returnZone
+      ? "Partie terminée"
+      : me?.validated
+        ? "Partie terminée — territoire validé !"
+        : "Partie terminée — territoire non comptabilisé (hors zone)"
+    : graceStatus?.remainingS != null
+      ? `⏳ Revenez dans la zone avant : ${formatClock(graceStatus.remainingS)}`
+      : graceStatus?.validated
+        ? "Partie terminée — territoire validé !"
+        : "Partie terminée — territoire non comptabilisé (retour hors délai)";
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
 
@@ -572,6 +602,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
+        )}
+
         {running && (
           <div className="grid grid-cols-2 gap-2">
             <div className="stat">
@@ -631,7 +670,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </div>
         )}
 
-        {returnZone && !finished && (
+        {returnZone && (!finished || graceStatus?.remainingS != null) && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3">
             <span className="label-xs">Zone de retour</span>
             <span className="display text-xl tabular-nums">
@@ -641,13 +680,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         )}
 
         {finished ? (
-          <div className="btn-huge btn-huge-dark">
-            {returnZone
-              ? me?.validated
-                ? "Partie terminée — territoire validé !"
-                : "Partie terminée — territoire non comptabilisé (hors zone)"
-              : "Partie terminée"}
-          </div>
+          <div className="btn-huge btn-huge-dark">{endgameLabel}</div>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle

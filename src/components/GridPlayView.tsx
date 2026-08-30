@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Grid3x3, MessageCircle, Send, X } from "lucide-react";
+import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -8,7 +8,10 @@ import { formatCountdown, haversine } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { cellCenter, claimGridCell, pointToCell, useGridCells } from "@/lib/grid";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -22,6 +25,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastClaimedCellRef = useRef<string | null>(null);
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
   useEffect(() => {
     requestNotificationPermission();
@@ -36,6 +41,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   cellsRef.current = cells;
 
   const me = teams.find((t) => t.id === teamId) ?? null;
+  const meRef = useRef(me);
+  meRef.current = me;
   const myColor = me?.color ?? "#e63946";
   const myCellCount = useMemo(
     () => cells.filter((c) => c.owner_team_id === teamId).length,
@@ -96,7 +103,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -107,6 +120,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           .from("teams")
           .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
           .eq("id", teamId);
+      }
+
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
       }
 
       const center = gridCenterRef.current;
@@ -157,6 +174,23 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const returnZone = useMemo(
+    () =>
+      game?.return_lat != null && game.return_lng != null
+        ? { lat: game.return_lat, lng: game.return_lng, radiusM: game.return_radius_m }
+        : null,
+    [game?.return_lat, game?.return_lng, game?.return_radius_m],
+  );
+  const toReturnZone = pos && returnZone ? haversine(pos, [returnZone.lat, returnZone.lng]) : null;
+  const cellsLabel = `${myCellCount} case${myCellCount > 1 ? "s" : ""} contrôlée${myCellCount > 1 ? "s" : ""}`;
+  const endgameLabel = !game?.grace_ends_at
+    ? `Partie terminée — ${cellsLabel} !`
+    : graceStatus?.remainingS != null
+      ? `Partie terminée — ${cellsLabel} !`
+      : graceStatus?.validated
+        ? "Partie terminée — retour validé !"
+        : "Partie terminée — retour hors délai";
 
   useWakeLock(!finished);
 
@@ -176,8 +210,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           center={pos}
           teams={teams}
           territories={[]}
-          gridZone={gridZone}
-          gridCells={mapGridCells}
+          gridZone={game?.grid_show_overlay === false ? null : gridZone}
+          gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
           mapStyle={game?.map_style}
           follow
         />
@@ -280,18 +314,32 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
+        )}
+
         {!gridZone && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
             En attente que le prof définisse la zone de jeu…
           </div>
         )}
 
-        {finished && (
-          <div className="btn-huge btn-huge-dark">
-            Partie terminée — {myCellCount} case{myCellCount > 1 ? "s" : ""} contrôlée
-            {myCellCount > 1 ? "s" : ""} !
+        {finished && returnZone && graceStatus?.remainingS != null && (
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
+            <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
+            <span className="display text-lg tabular-nums">
+              {formatCountdown(graceStatus.remainingS)}
+              {toReturnZone !== null && ` · ${Math.round(toReturnZone)} m`}
+            </span>
           </div>
         )}
+
+        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
       </div>
     </main>
   );

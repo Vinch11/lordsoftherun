@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Flag as FlagIcon, MessageCircle, Send, Shield, X } from "lucide-react";
+import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
@@ -17,7 +17,10 @@ import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
+import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { useWakeLock } from "@/hooks/useWakeLock";
+import { useMotionHint } from "@/hooks/useMotionHint";
 
 export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string }) {
   const [pos, setPos] = useState<[number, number] | null>(null);
@@ -31,6 +34,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
+  const geoFilterRef = useRef(new GeoKalmanFilter());
+  const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
   useEffect(() => {
     requestNotificationPermission();
@@ -131,7 +136,13 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
-      const point: [number, number] = [p.coords.latitude, p.coords.longitude];
+      const point: [number, number] = geoFilterRef.current.update(
+        p.coords.latitude,
+        p.coords.longitude,
+        p.coords.accuracy || 15,
+        Date.now(),
+        movingRef.current,
+      );
       setPos(point);
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
@@ -233,6 +244,11 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           }
         }
       }
+
+      if (gameRef.current) {
+        const myTeam = teamsRef.current.find((t) => t.id === teamId);
+        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
+      }
     },
     [teamId],
   );
@@ -302,6 +318,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
   const toDrop = pos && dropPoint ? haversine(pos, dropPoint) : null;
+  const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
+  const flagsCapturedLabel = `${me?.flags_captured ?? 0} drapeau${(me?.flags_captured ?? 0) > 1 ? "x" : ""} capturé${(me?.flags_captured ?? 0) > 1 ? "s" : ""}`;
+  const endgameLabel = !game?.grace_ends_at
+    ? `Partie terminée — ${flagsCapturedLabel} !`
+    : graceStatus?.remainingS != null
+      ? `Partie terminée — ${flagsCapturedLabel} !`
+      : graceStatus?.validated
+        ? "Partie terminée — retour validé !"
+        : "Partie terminée — retour hors délai";
 
   useWakeLock(!finished);
 
@@ -440,6 +465,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
+        {needsPermission && (
+          <button
+            className="panel flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold"
+            onClick={() => void requestPermission()}
+          >
+            <Crosshair className="h-4 w-4" /> Activer la précision GPS avancée
+          </button>
+        )}
+
         {carriedFlags.length > 0 && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
             <span className="flex items-center gap-2 text-sm font-semibold">
@@ -459,13 +493,16 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <span className="text-sm font-semibold">{myFlagStatusLabel}</span>
         </div>
 
-        {finished && (
-          <div className="btn-huge btn-huge-dark">
-            Partie terminée — {me?.flags_captured ?? 0} drapeau
-            {(me?.flags_captured ?? 0) > 1 ? "x" : ""} capturé
-            {(me?.flags_captured ?? 0) > 1 ? "s" : ""} !
+        {finished && game?.grace_ends_at && graceStatus?.remainingS != null && (
+          <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
+            <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
+            <span className="display text-lg tabular-nums">
+              {formatCountdown(graceStatus.remainingS)}
+            </span>
           </div>
         )}
+
+        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
       </div>
     </main>
   );

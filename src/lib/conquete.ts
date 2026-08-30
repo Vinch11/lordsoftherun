@@ -75,6 +75,10 @@ export const MAX_GRID_CELL_SIZE_M = 15;
 /** Below this cell size, GPS jitter alone can flip a cell's color; shown as a warning. */
 export const GRID_CELL_SIZE_WARNING_THRESHOLD_M = 5;
 
+export type GracePenaltyMode = "cancel" | "per_second";
+export const DEFAULT_GRACE_MINUTES = 5;
+export const DEFAULT_GRACE_PENALTY_PER_SECOND_M2 = 2;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }
