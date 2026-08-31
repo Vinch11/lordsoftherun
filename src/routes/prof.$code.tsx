@@ -60,6 +60,17 @@ import {
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
+import {
+  addCircuitBox,
+  circuitFormatRank,
+  circuitRankMetric,
+  removeCircuitBox,
+  resampleToCheckpoints,
+  setCheckpoints,
+  useBananas,
+  useCheckpoints,
+  useCircuitBoxes,
+} from "@/lib/circuit";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
   addStudent,
@@ -85,6 +96,14 @@ import {
 } from "@/lib/savedPoints";
 import {
   CAPTURE_CONSEQUENCE_LABELS,
+  CIRCUIT_ITEM_ICONS,
+  DEFAULT_CIRCUIT_BANANA_PENALTY_S,
+  DEFAULT_CIRCUIT_BOOST_BONUS_S,
+  DEFAULT_CIRCUIT_CAPTURE_RADIUS_M,
+  DEFAULT_CIRCUIT_CHECKPOINT_COUNT,
+  DEFAULT_CIRCUIT_ITEM_COOLDOWN_S,
+  DEFAULT_CIRCUIT_LAP_COUNT,
+  DEFAULT_CIRCUIT_LIGHTNING_PENALTY_S,
   DEFAULT_CTF_CAPTURE_RADIUS_M,
   DEFAULT_CTF_TIME_PENALTY_M2,
   DEFAULT_FORBIDDEN_PENALTY_M2,
@@ -104,9 +123,11 @@ import {
   GAME_MODE_LABELS,
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
   LANDMARK_ICONS,
+  MAX_CIRCUIT_CHECKPOINT_COUNT,
   MAX_GRID_CELL_SIZE_M,
   MAX_GRID_RADIUS_M,
   MAX_GRID_SIDE_M,
+  MIN_CIRCUIT_CHECKPOINT_COUNT,
   MIN_GRID_CELL_SIZE_M,
   MIN_GRID_RADIUS_M,
   MIN_GRID_SIDE_M,
@@ -348,8 +369,9 @@ function TeacherDashboard() {
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
   const [placingMode, setPlacingMode] = useState<
-    "none" | "zone" | "landmark" | "forbidden" | "grid_zone"
+    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box"
   >("none");
+  const [circuitDrawing, setCircuitDrawing] = useState(false);
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
   const [landmarkBonus, setLandmarkBonus] = useState(DEFAULT_LANDMARK_BONUS_M2);
   const [landmarkIconChoice, setLandmarkIconChoice] = useState<string>(DEFAULT_LANDMARK_ICON);
@@ -373,6 +395,21 @@ function TeacherDashboard() {
   const [gracePenaltyMode, setGracePenaltyMode] = useState<GracePenaltyMode>("cancel");
   const [gracePenaltyPerSecond, setGracePenaltyPerSecond] = useState(
     DEFAULT_GRACE_PENALTY_PER_SECOND_M2,
+  );
+  const [circuitCheckpointCount, setCircuitCheckpointCount] = useState(
+    DEFAULT_CIRCUIT_CHECKPOINT_COUNT,
+  );
+  const [circuitLapCount, setCircuitLapCount] = useState(DEFAULT_CIRCUIT_LAP_COUNT);
+  const [circuitCaptureRadius, setCircuitCaptureRadius] = useState(
+    DEFAULT_CIRCUIT_CAPTURE_RADIUS_M,
+  );
+  const [circuitItemCooldown, setCircuitItemCooldown] = useState(DEFAULT_CIRCUIT_ITEM_COOLDOWN_S);
+  const [circuitBananaPenalty, setCircuitBananaPenalty] = useState(
+    DEFAULT_CIRCUIT_BANANA_PENALTY_S,
+  );
+  const [circuitBoostBonus, setCircuitBoostBonus] = useState(DEFAULT_CIRCUIT_BOOST_BONUS_S);
+  const [circuitLightningPenalty, setCircuitLightningPenalty] = useState(
+    DEFAULT_CIRCUIT_LIGHTNING_PENALTY_S,
   );
   const [vehicleAllowed, setVehicleAllowed] = useState(true);
   const [vehicleSpeedThreshold, setVehicleSpeedThreshold] = useState(
@@ -481,6 +518,9 @@ function TeacherDashboard() {
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
+  const { checkpoints } = useCheckpoints(gameId);
+  const { boxes: circuitBoxes } = useCircuitBoxes(gameId);
+  const { bananas } = useBananas(gameId);
   const { students, refresh: refreshStudents } = useStudents(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
@@ -529,6 +569,13 @@ function TeacherDashboard() {
       setVehicleAllowed(game.vehicle_allowed);
       setVehicleSpeedThreshold(game.vehicle_speed_threshold_kmh);
       setVehiclePenalty(game.vehicle_penalty_m2);
+      setCircuitCheckpointCount(game.circuit_checkpoint_count);
+      setCircuitLapCount(game.circuit_lap_count);
+      setCircuitCaptureRadius(game.circuit_capture_radius_m);
+      setCircuitItemCooldown(game.circuit_item_cooldown_s);
+      setCircuitBananaPenalty(game.circuit_banana_penalty_s);
+      setCircuitBoostBonus(game.circuit_boost_bonus_s);
+      setCircuitLightningPenalty(game.circuit_lightning_penalty_s);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -666,6 +713,10 @@ function TeacherDashboard() {
   const isTeamValidated = (t: (typeof teams)[number]) =>
     game?.grace_ends_at ? graceStatusFor(t).validated : t.validated;
   const teamScore = (t: (typeof teams)[number]) => {
+    // Circuit ranks by time/progress, not an area or cell count — the rank
+    // metric is a different unit entirely, so it bypasses the grace penalty
+    // subtraction below (grace/return-zone is a territoire-only concept).
+    if (gameMode === "circuit") return circuitRankMetric(t, game?.started_at ?? null);
     // In grille mode, score_m2 is never touched by the game itself (cell
     // count is the real score), but penalty_m2 IS used there for flat
     // penalties (vehicle check) — so it has to be subtracted here instead
@@ -676,6 +727,7 @@ function TeacherDashboard() {
         : t.score_m2;
     return Math.max(0, base - graceStatusFor(t).penalty);
   };
+  const formatTeamScore = useMemo(() => circuitFormatRank(circuitLapCount), [circuitLapCount]);
   const ranked = useMemo(
     () => [...teams].sort((a, b) => teamScore(b) - teamScore(a)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -806,6 +858,19 @@ function TeacherDashboard() {
       return { id: c.id, lat, lng, sizeM: cellSize, color: owner?.color ?? "#888" };
     });
   }, [gridCells, game?.grid_center_lat, game?.grid_center_lng, game?.grid_cell_size_m, teams]);
+
+  const mapCheckpoints = useMemo(
+    () => checkpoints.map((c) => ({ id: c.id, lat: c.lat, lng: c.lng, seq: c.seq_index })),
+    [checkpoints],
+  );
+  const mapCircuitBoxes = useMemo(
+    () => circuitBoxes.map((b) => ({ id: b.id, lat: b.lat, lng: b.lng })),
+    [circuitBoxes],
+  );
+  const mapBananas = useMemo(
+    () => bananas.map((b) => ({ id: b.id, lat: b.lat, lng: b.lng })),
+    [bananas],
+  );
 
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/rejoindre/${code}` : "";
@@ -1186,6 +1251,82 @@ function TeacherDashboard() {
     await supabase.from("games").update({ forbidden_zone_running_only: next }).eq("id", gameId);
   }
 
+  async function updateCircuitCheckpointCount(next: number) {
+    setCircuitCheckpointCount(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_checkpoint_count: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitLapCount(next: number) {
+    setCircuitLapCount(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_lap_count: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitCaptureRadius(next: number) {
+    setCircuitCaptureRadius(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_capture_radius_m: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitItemCooldown(next: number) {
+    setCircuitItemCooldown(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_item_cooldown_s: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitBananaPenalty(next: number) {
+    setCircuitBananaPenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_banana_penalty_s: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitBoostBonus(next: number) {
+    setCircuitBoostBonus(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_boost_bonus_s: next }).eq("id", gameId);
+  }
+
+  async function updateCircuitLightningPenalty(next: number) {
+    setCircuitLightningPenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ circuit_lightning_penalty_s: next }).eq("id", gameId);
+  }
+
+  async function onCircuitFreehandDraw(path: [number, number][]) {
+    if (!gameId || !isOwner) return;
+    const points = resampleToCheckpoints(path, circuitCheckpointCount);
+    if (points.length === 0) {
+      toast.error("Tracé trop court, réessayez.");
+      return;
+    }
+    try {
+      await setCheckpoints(gameId, points);
+      toast.success(`Circuit dessiné : ${points.length} checkpoints.`);
+    } catch {
+      toast.error("Impossible d'enregistrer le circuit.");
+    }
+  }
+
+  async function placeCircuitBox(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    try {
+      await addCircuitBox(gameId, lat, lng);
+      toast.success("Boîte mystère placée !");
+    } catch {
+      toast.error("Impossible de placer la boîte.");
+    }
+  }
+
+  async function deleteCircuitBox(id: string) {
+    if (!isOwner) return;
+    try {
+      await removeCircuitBox(id);
+    } catch {
+      toast.error("Impossible de supprimer la boîte.");
+    }
+  }
+
   async function updateMode(next: GameMode) {
     setGameModeState(next);
     if (!gameId || !isOwner) return;
@@ -1324,6 +1465,9 @@ function TeacherDashboard() {
             flags={mapFlags}
             gridZone={gridZone}
             gridCells={mapGridCells}
+            checkpoints={mapCheckpoints}
+            circuitBoxes={mapCircuitBoxes}
+            bananas={mapBananas}
             mapStyle={game?.map_style}
           />
         </div>
@@ -1368,11 +1512,13 @@ function TeacherDashboard() {
                 />
                 <span className="flex-1 truncate text-sm font-semibold">{team.name}</span>
                 <span className="display text-sm tabular-nums">
-                  {gameMode === "capture_drapeau"
-                    ? `🚩 ${team.flags_captured}`
-                    : gameMode === "grille"
-                      ? `${Math.round(teamScore(team))} cases`
-                      : formatArea(teamScore(team))}
+                  {gameMode === "circuit"
+                    ? formatTeamScore(teamScore(team))
+                    : gameMode === "capture_drapeau"
+                      ? `🚩 ${team.flags_captured}`
+                      : gameMode === "grille"
+                        ? `${Math.round(teamScore(team))} cases`
+                        : formatArea(teamScore(team))}
                 </span>
               </div>
             ))}
@@ -1429,7 +1575,15 @@ function TeacherDashboard() {
           flags={mapFlags}
           gridZone={gridZone}
           gridCells={mapGridCells}
+          checkpoints={mapCheckpoints}
+          circuitBoxes={mapCircuitBoxes}
+          bananas={mapBananas}
           mapStyle={game?.map_style}
+          drawingEnabled={circuitDrawing}
+          onFreehandDraw={(path) => {
+            setCircuitDrawing(false);
+            void onCircuitFreehandDraw(path);
+          }}
           onMapClick={
             placingFlagForTeam
               ? placeTeamFlag
@@ -1441,7 +1595,9 @@ function TeacherDashboard() {
                     ? placeForbidden
                     : placingMode === "grid_zone"
                       ? placeGridZone
-                      : undefined
+                      : placingMode === "circuit_box"
+                        ? placeCircuitBox
+                        : undefined
           }
         />
         <div
@@ -1569,7 +1725,7 @@ function TeacherDashboard() {
             <Gamepad2 className="h-4 w-4" /> Mode de jeu
           </div>
           {isOwner && game?.status === "lobby" ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <button
                 className="seg-btn"
                 data-active={gameMode === "territoire"}
@@ -1590,6 +1746,13 @@ function TeacherDashboard() {
                 onClick={() => void updateMode("grille")}
               >
                 Grille
+              </button>
+              <button
+                className="seg-btn"
+                data-active={gameMode === "circuit"}
+                onClick={() => void updateMode("circuit")}
+              >
+                Circuit
               </button>
             </div>
           ) : (
@@ -1922,6 +2085,11 @@ function TeacherDashboard() {
               {returnZone
                 ? "Utilisée uniquement pour le délai de retour en fin de partie (voir plus bas) ; sans effet pendant que la grille se joue."
                 : "Optionnelle en mode Grille : ne sert qu'au délai de retour en fin de partie (voir plus bas)."}
+            </p>
+          ) : gameMode === "circuit" ? (
+            <p className="text-sm text-muted-foreground">
+              Sans effet en mode Circuit : le classement se joue entièrement sur le temps de course.
+              Ignorez cette section.
             </p>
           ) : returnZone ? (
             <p className="text-sm text-muted-foreground">
@@ -2461,6 +2629,264 @@ function TeacherDashboard() {
           </section>
         )}
 
+        {gameMode === "circuit" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Flag className="h-4 w-4" /> Circuit
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {checkpoints.length >= 2
+                ? `Circuit dessiné : ${checkpoints.length} checkpoints, ${circuitLapCount} tour${circuitLapCount > 1 ? "s" : ""}.`
+                : "Dessinez le circuit à main levée sur la carte, comme au crayon : appuyez, tracez, relâchez."}
+            </p>
+            {isOwner && (
+              <>
+                <button
+                  className={`btn-huge ${circuitDrawing ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setCircuitDrawing((d) => !d)}
+                >
+                  <Pencil className="h-5 w-5" />
+                  {circuitDrawing
+                    ? "Dessinez sur la carte…"
+                    : checkpoints.length >= 2
+                      ? "Redessiner le circuit"
+                      : "Dessiner le circuit"}
+                </button>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Nombre de checkpoints</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le nombre de checkpoints"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitCheckpointCount(
+                          Math.max(MIN_CIRCUIT_CHECKPOINT_COUNT, circuitCheckpointCount - 1),
+                        )
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-12 text-center text-lg">
+                      {circuitCheckpointCount}
+                    </span>
+                    <button
+                      aria-label="Augmenter le nombre de checkpoints"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitCheckpointCount(
+                          Math.min(MAX_CIRCUIT_CHECKPOINT_COUNT, circuitCheckpointCount + 1),
+                        )
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Redessinez le circuit après avoir changé ce nombre : les checkpoints déjà placés
+                  ne se recalculent pas tout seuls.
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Nombre de tours</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le nombre de tours"
+                      className="icon-btn"
+                      onClick={() => void updateCircuitLapCount(Math.max(1, circuitLapCount - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-12 text-center text-lg">{circuitLapCount}</span>
+                    <button
+                      aria-label="Augmenter le nombre de tours"
+                      className="icon-btn"
+                      onClick={() => void updateCircuitLapCount(Math.min(20, circuitLapCount + 1))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Distance de passage</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la distance de passage"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitCaptureRadius(Math.max(5, circuitCaptureRadius - 1))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">
+                      {circuitCaptureRadius} m
+                    </span>
+                    <button
+                      aria-label="Augmenter la distance de passage"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitCaptureRadius(Math.min(40, circuitCaptureRadius + 1))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {gameMode === "circuit" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <span className="text-base">❓</span> Boîtes mystères &amp; objets
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Une équipe qui passe près d'une boîte reçoit un objet aléatoire. Les boîtes ne
+              disparaissent jamais : chaque équipe a son propre délai avant de pouvoir en reprendre
+              une, pour que plusieurs équipes puissent passer en même temps.
+            </p>
+            {isOwner && (
+              <>
+                <button
+                  className={`btn-huge ${placingMode === "circuit_box" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() =>
+                    setPlacingMode((p) => (p === "circuit_box" ? "none" : "circuit_box"))
+                  }
+                >
+                  {placingMode === "circuit_box"
+                    ? "Touchez la carte..."
+                    : "Ajouter une boîte mystère"}
+                </button>
+                {circuitBoxes.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {circuitBoxes.map((b, i) => (
+                      <div
+                        key={b.id}
+                        className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                      >
+                        <span className="flex-1 text-sm font-semibold">Boîte {i + 1}</span>
+                        <button className="mini-btn" onClick={() => void deleteCircuitBox(b.id)}>
+                          Supprimer
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Délai de reprise (par équipe)</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le délai"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitItemCooldown(Math.max(2, circuitItemCooldown - 2))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{circuitItemCooldown}s</span>
+                    <button
+                      aria-label="Augmenter le délai"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitItemCooldown(Math.min(60, circuitItemCooldown + 2))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{CIRCUIT_ITEM_ICONS.banana} Banane</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la pénalité banane"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitBananaPenalty(Math.max(5, circuitBananaPenalty - 5))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">
+                      +{circuitBananaPenalty}s
+                    </span>
+                    <button
+                      aria-label="Augmenter la pénalité banane"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitBananaPenalty(Math.min(60, circuitBananaPenalty + 5))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">{CIRCUIT_ITEM_ICONS.boost} Boost</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le bonus boost"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitBoostBonus(Math.max(5, circuitBoostBonus - 5))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">-{circuitBoostBonus}s</span>
+                    <button
+                      aria-label="Augmenter le bonus boost"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitBoostBonus(Math.min(60, circuitBoostBonus + 5))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">
+                    {CIRCUIT_ITEM_ICONS.lightning} Foudre
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la pénalité foudre"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitLightningPenalty(Math.max(5, circuitLightningPenalty - 5))
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">
+                      +{circuitLightningPenalty}s
+                    </span>
+                    <button
+                      aria-label="Augmenter la pénalité foudre"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateCircuitLightningPenalty(
+                          Math.min(60, circuitLightningPenalty + 5),
+                        )
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {CIRCUIT_ITEM_ICONS.shield} Bouclier : bloque le prochain malus reçu (banane ou
+                  foudre) — pas de valeur à régler.
+                </p>
+              </>
+            )}
+          </section>
+        )}
+
         {(gameMode === "territoire" || gameMode === "grille") && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
@@ -2977,9 +3403,11 @@ function TeacherDashboard() {
               </span>
               <span className="flex flex-col items-end">
                 <span className="display text-xl tabular-nums">
-                  {gameMode === "grille"
-                    ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
-                    : formatArea(teamScore(t))}
+                  {gameMode === "circuit"
+                    ? formatTeamScore(teamScore(t))
+                    : gameMode === "grille"
+                      ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
+                      : formatArea(teamScore(t))}
                 </span>
                 {gameMode === "capture_drapeau" && (
                   <span className="text-xs text-muted-foreground">🚩 {t.flags_captured}</span>
@@ -3003,9 +3431,11 @@ function TeacherDashboard() {
                   />
                   <span className="flex-1 truncate font-semibold">{t.name}</span>
                   <span className="display text-base tabular-nums line-through">
-                    {gameMode === "grille"
-                      ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
-                      : formatArea(teamScore(t))}
+                    {gameMode === "circuit"
+                      ? formatTeamScore(teamScore(t))
+                      : gameMode === "grille"
+                        ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
+                        : formatArea(teamScore(t))}
                   </span>
                 </div>
               ))}

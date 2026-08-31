@@ -45,6 +45,10 @@ export type GridZone = {
 
 export type MapGridCell = { id: string; lat: number; lng: number; sizeM: number; color: string };
 
+export type MapCheckpoint = { id: string; lat: number; lng: number; seq: number };
+export type MapCircuitBox = { id: string; lat: number; lng: number };
+export type MapBanana = { id: string; lat: number; lng: number };
+
 type Props = {
   center: [number, number] | null;
   teams: MapTeam[];
@@ -58,6 +62,9 @@ type Props = {
   flags?: MapFlag[];
   gridZone?: GridZone | null;
   gridCells?: MapGridCell[];
+  checkpoints?: MapCheckpoint[];
+  circuitBoxes?: MapCircuitBox[];
+  bananas?: MapBanana[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
   hudFrame?: boolean;
@@ -65,6 +72,10 @@ type Props = {
   onUserPan?: () => void;
   /** When provided, a "recenter on me" button appears while `follow` is false. */
   onRecenter?: () => void;
+  /** While true, dragging the map instead draws a freehand stroke (organizer sketching a Circuit track). */
+  drawingEnabled?: boolean;
+  /** Fires once, with the full drawn path, when the organizer lifts their finger/mouse. */
+  onFreehandDraw?: (path: [number, number][]) => void;
 };
 
 const METERS_PER_DEG_LAT = 111320;
@@ -133,6 +144,51 @@ const blipIcon = (color: string, spec: MapStyleSpec) =>
     iconAnchor: [22, 22],
   });
 
+const checkpointIcon = (seq: number) =>
+  L.divIcon({
+    html: `<div style="
+      display:flex; align-items:center; justify-content:center;
+      width:28px;height:28px;border-radius:50%;
+      background:${seq === 0 ? "#e9c500" : "#1d6fe0"};
+      border:3px solid #ffffff;
+      box-shadow:0 0 4px 2px rgba(0,0,0,.6);
+      font-size:13px; font-weight:800; color:#0a0a12; line-height:1;
+    ">${seq === 0 ? "🏁" : seq}</div>`,
+    className: "",
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+  });
+
+const boxIcon = () =>
+  L.divIcon({
+    html: `<div style="
+      display:flex; align-items:center; justify-content:center;
+      width:32px;height:32px;border-radius:8px;
+      background:linear-gradient(160deg, #7c3aed, #4c1d95);
+      border:2px solid #ffffff;
+      box-shadow:0 0 6px 2px rgba(124,58,237,.7);
+      font-size:17px; line-height:1;
+    ">❓</div>`,
+    className: "",
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+
+const bananaIcon = () =>
+  L.divIcon({
+    html: `<div style="
+      display:flex; align-items:center; justify-content:center;
+      width:26px;height:26px;border-radius:50%;
+      background:#1a1c05;
+      border:2px solid #e9c500;
+      box-shadow:0 0 5px 2px rgba(233,197,0,.6);
+      font-size:15px; line-height:1;
+    ">🍌</div>`,
+    className: "",
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  });
+
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 
 export default function GameMap({
@@ -148,11 +204,16 @@ export default function GameMap({
   flags = [],
   gridZone = null,
   gridCells = [],
+  checkpoints = [],
+  circuitBoxes = [],
+  bananas = [],
   onMapClick,
   mapStyle = "classic",
   hudFrame = false,
   onUserPan,
   onRecenter,
+  drawingEnabled = false,
+  onFreehandDraw,
 }: Props) {
   const spec = resolveMapStyle(mapStyle);
   const specRef = useRef(spec);
@@ -168,6 +229,10 @@ export default function GameMap({
   const flagLayer = useRef<L.LayerGroup | null>(null);
   const gridZoneLayer = useRef<L.LayerGroup | null>(null);
   const gridCellLayer = useRef<L.LayerGroup | null>(null);
+  const checkpointLayer = useRef<L.LayerGroup | null>(null);
+  const boxLayer = useRef<L.LayerGroup | null>(null);
+  const bananaLayer = useRef<L.LayerGroup | null>(null);
+  const drawLine = useRef<L.Polyline | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const didInitialFit = useRef(false);
@@ -175,6 +240,12 @@ export default function GameMap({
   onMapClickRef.current = onMapClick;
   const onUserPanRef = useRef(onUserPan);
   onUserPanRef.current = onUserPan;
+  const onFreehandDrawRef = useRef(onFreehandDraw);
+  onFreehandDrawRef.current = onFreehandDraw;
+  const drawingEnabledRef = useRef(drawingEnabled);
+  drawingEnabledRef.current = drawingEnabled;
+  const drawPathRef = useRef<[number, number][]>([]);
+  const isDrawingRef = useRef(false);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -198,23 +269,76 @@ export default function GameMap({
     flagLayer.current = L.layerGroup().addTo(map);
     gridCellLayer.current = L.layerGroup().addTo(map);
     gridZoneLayer.current = L.layerGroup().addTo(map);
+    checkpointLayer.current = L.layerGroup().addTo(map);
+    boxLayer.current = L.layerGroup().addTo(map);
+    bananaLayer.current = L.layerGroup().addTo(map);
     teamTrailLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
+    drawLine.current = L.polyline([], { color: "#f77f00", weight: 5, dashArray: "6 6" }).addTo(map);
     map.on("click", (e: L.LeafletMouseEvent) =>
       onMapClickRef.current?.(e.latlng.lat, e.latlng.lng),
     );
     // "dragstart" only fires for a manual drag, never for panTo/setView, so
     // this can't misfire from our own auto-follow recentering below.
     map.on("dragstart", () => onUserPanRef.current?.());
+
+    // Freehand circuit drawing: while enabled, a press-drag-release paints a
+    // stroke instead of panning the map (dragging is disabled for the
+    // duration so Leaflet doesn't fight the gesture).
+    const container = map.getContainer();
+    const toLatLng = (clientX: number, clientY: number): [number, number] => {
+      const rect = container.getBoundingClientRect();
+      const pt = map.containerPointToLatLng([clientX - rect.left, clientY - rect.top]);
+      return [pt.lat, pt.lng];
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (!drawingEnabledRef.current) return;
+      e.preventDefault();
+      isDrawingRef.current = true;
+      map.dragging.disable();
+      drawPathRef.current = [toLatLng(e.clientX, e.clientY)];
+      drawLine.current?.setLatLngs(drawPathRef.current);
+      container.setPointerCapture(e.pointerId);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!isDrawingRef.current) return;
+      drawPathRef.current = [...drawPathRef.current, toLatLng(e.clientX, e.clientY)];
+      drawLine.current?.setLatLngs(drawPathRef.current);
+    };
+    const onPointerUp = () => {
+      if (!isDrawingRef.current) return;
+      isDrawingRef.current = false;
+      map.dragging.enable();
+      const path = drawPathRef.current;
+      drawPathRef.current = [];
+      drawLine.current?.setLatLngs([]);
+      if (path.length >= 2) onFreehandDrawRef.current?.(path);
+    };
+    container.addEventListener("pointerdown", onPointerDown);
+    container.addEventListener("pointermove", onPointerMove);
+    container.addEventListener("pointerup", onPointerUp);
+    container.addEventListener("pointercancel", onPointerUp);
+
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
     return () => {
+      container.removeEventListener("pointerdown", onPointerDown);
+      container.removeEventListener("pointermove", onPointerMove);
+      container.removeEventListener("pointerup", onPointerUp);
+      container.removeEventListener("pointercancel", onPointerUp);
       map.remove();
       mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Dragging must stay disabled for the whole gesture even if the prop flips
+  // mid-stroke (e.g. the organizer finishes drawing) — re-enable it once we
+  // are not actively drawing.
+  useEffect(() => {
+    if (!drawingEnabled && !isDrawingRef.current) mapRef.current?.dragging.enable();
+  }, [drawingEnabled]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -368,6 +492,53 @@ export default function GameMap({
         .addTo(layer);
     }
   }, [gridZone, spec]);
+
+  useEffect(() => {
+    const layer = checkpointLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    const ordered = [...checkpoints].sort((a, b) => a.seq - b.seq);
+    if (ordered.length >= 2) {
+      L.polyline(
+        [
+          ...ordered.map((c): [number, number] => [c.lat, c.lng]),
+          [ordered[0]!.lat, ordered[0]!.lng],
+        ],
+        { color: "#1d6fe0", weight: 4, opacity: 0.7, dashArray: "3 9" },
+      ).addTo(layer);
+    }
+    for (const c of ordered) {
+      L.marker([c.lat, c.lng], { icon: checkpointIcon(c.seq) })
+        .bindTooltip(c.seq === 0 ? "Ligne de départ/arrivée" : `Checkpoint ${c.seq}`)
+        .addTo(layer);
+    }
+  }, [checkpoints]);
+
+  useEffect(() => {
+    const layer = boxLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const b of circuitBoxes) {
+      L.marker([b.lat, b.lng], { icon: boxIcon() }).bindTooltip("Boîte mystère").addTo(layer);
+    }
+  }, [circuitBoxes]);
+
+  useEffect(() => {
+    const layer = bananaLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const b of bananas) {
+      L.circle([b.lat, b.lng], {
+        radius: 10,
+        color: "#e9c500",
+        weight: 2,
+        dashArray: "4 6",
+        fillColor: "#e9c500",
+        fillOpacity: 0.15,
+      }).addTo(layer);
+      L.marker([b.lat, b.lng], { icon: bananaIcon() }).bindTooltip("Banane").addTo(layer);
+    }
+  }, [bananas]);
 
   useEffect(() => {
     const layer = teamTrailLayer.current;
