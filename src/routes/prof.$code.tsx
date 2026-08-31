@@ -1700,7 +1700,13 @@ function TeacherDashboard() {
                   ? "Touchez la carte pour placer le repère bonus"
                   : placingMode === "grid_zone"
                     ? "Touchez la carte pour placer le centre de la zone de jeu"
-                    : "Touchez la carte pour placer la zone interdite"}
+                    : placingMode === "circuit_box"
+                      ? "Touchez la carte pour placer une boîte mystère"
+                      : placingMode === "circuit_point"
+                        ? checkpoints.length === 0
+                          ? "Touchez la carte pour placer la ligne de départ/arrivée"
+                          : `Touchez la carte pour placer le checkpoint ${checkpoints.length}`
+                        : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
