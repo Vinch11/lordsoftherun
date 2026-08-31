@@ -568,7 +568,13 @@ function TeacherDashboard() {
       const graceEndsAt = new Date(Date.now() + graceMinutes * 60_000).toISOString();
       await supabase
         .from("games")
-        .update({ status: "finished", grace_ends_at: graceEndsAt })
+        // Stopping early also closes the clock, so every screen (teacher and
+        // teams) shows the same frozen 00:00 instead of a countdown that runs on.
+        .update({
+          status: "finished",
+          grace_ends_at: graceEndsAt,
+          ends_at: new Date().toISOString(),
+        })
         .eq("id", gameId);
       const consequence =
         gracePenaltyMode === "cancel"
@@ -591,7 +597,10 @@ function TeacherDashboard() {
             .eq("id", t.id),
         ),
       );
-      await supabase.from("games").update({ status: "finished" }).eq("id", gameId);
+      await supabase
+        .from("games")
+        .update({ status: "finished", ends_at: new Date().toISOString() })
+        .eq("id", gameId);
     }
     toast("Partie terminée.");
   }
