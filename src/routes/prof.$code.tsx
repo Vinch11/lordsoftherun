@@ -854,7 +854,6 @@ function TeacherDashboard() {
     }
   }
 
-
   async function onShuffleTeams() {
     if (!gameId) return;
     setRosterBusy(true);
@@ -1782,7 +1781,6 @@ function TeacherDashboard() {
               onConfirm={confirmWizard}
             />
           </section>
-
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
@@ -1901,7 +1899,6 @@ function TeacherDashboard() {
             </p>
           </div>
         )}
-
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
@@ -2944,7 +2941,6 @@ function TeacherDashboard() {
         </section>
 
         <section className="panel flex flex-col gap-1 p-4">
-
           <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
