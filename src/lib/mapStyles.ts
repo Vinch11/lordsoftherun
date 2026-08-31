@@ -28,7 +28,6 @@ const blipClassic = (color: string) => `<div class="gps-blip">
   <span class="gps-blip-dot" style="background:${color}"></span>
 </div>`;
 
-
 const OSM_TILES = {
   url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   attribution: "© OpenStreetMap contributors",

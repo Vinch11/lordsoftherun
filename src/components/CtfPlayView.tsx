@@ -307,7 +307,6 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           }
         }
       }
-
     },
     [teamId],
   );

@@ -371,7 +371,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         }
       }
 
-
       if (!runningRef.current) return;
       const trackNow = trackRef.current;
       const last = trackNow[trackNow.length - 1];
@@ -475,7 +474,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         : "Partie terminée — territoire non comptabilisé (retour hors délai)";
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
-
 
   function startLoop() {
     if (!pos) {
