@@ -372,7 +372,7 @@ function TeacherDashboard() {
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
   const [placingMode, setPlacingMode] = useState<
-    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box"
+    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box" | "circuit_point"
   >("none");
   const [circuitDrawing, setCircuitDrawing] = useState(false);
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
