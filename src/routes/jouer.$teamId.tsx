@@ -28,9 +28,9 @@ import {
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
+  armAlertSound,
   notifyMessage,
   notifyUrgent,
-  primeAlertSound,
   requestNotificationPermission,
 } from "@/lib/notify";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
@@ -162,11 +162,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   useEffect(() => {
     requestNotificationPermission();
-    // Mobile browsers only allow sound after a user gesture: arm it on the
-    // first tap so later alerts are audible even with the screen in a pocket.
-    const arm = () => primeAlertSound();
-    window.addEventListener("pointerdown", arm, { once: true });
-    return () => window.removeEventListener("pointerdown", arm);
+    return armAlertSound();
   }, []);
 
   const { game, teams, territories } = useGameState(gameId);

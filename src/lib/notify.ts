@@ -37,6 +37,22 @@ export function primeAlertSound() {
   osc.stop(c.currentTime + 0.05);
 }
 
+/**
+ * Wires `primeAlertSound` to every plausible first-interaction event —
+ * browsers vary on exactly which gesture counts as "trusted" for unlocking
+ * audio, so this doesn't gamble on a single event type or a single attempt
+ * (each call is nearly free, and re-priming an already-unlocked context is
+ * a no-op). Call once per screen; returns the cleanup for that effect.
+ */
+export function armAlertSound(): () => void {
+  const events = ["pointerdown", "touchend", "keydown"] as const;
+  const prime = () => primeAlertSound();
+  for (const ev of events) window.addEventListener(ev, prime);
+  return () => {
+    for (const ev of events) window.removeEventListener(ev, prime);
+  };
+}
+
 /** One loud siren-like tone. */
 function tone(c: AudioContext, startAt: number, freqFrom: number, freqTo: number, dur: number) {
   const osc = c.createOscillator();
