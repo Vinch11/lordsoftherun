@@ -21,9 +21,9 @@ import {
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
+  armAlertSound,
   notifyMessage,
   notifyUrgent,
-  primeAlertSound,
   requestNotificationPermission,
 } from "@/lib/notify";
 import {
@@ -72,11 +72,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   useEffect(() => {
     requestNotificationPermission();
-    // Mobile browsers only allow sound after a user gesture: arm it on the
-    // first tap so later alerts are audible even with the screen in a pocket.
-    const arm = () => primeAlertSound();
-    window.addEventListener("pointerdown", arm, { once: true });
-    return () => window.removeEventListener("pointerdown", arm);
+    return armAlertSound();
   }, []);
 
   const { game, teams } = useGameState(gameId);

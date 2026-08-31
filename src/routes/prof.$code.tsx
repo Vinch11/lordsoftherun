@@ -47,7 +47,7 @@ import {
   saveMessageTemplate,
   useMessageTemplates,
 } from "@/lib/messageTemplates";
-import { notifyMessage, primeAlertSound, requestNotificationPermission } from "@/lib/notify";
+import { armAlertSound, notifyMessage, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import {
   addLandmark,
@@ -457,11 +457,7 @@ function TeacherDashboard() {
 
   useEffect(() => {
     requestNotificationPermission();
-    // Browsers refuse to play sound outside a user gesture — without this,
-    // a team's chat message would schedule a silent alarm on a never-unlocked
-    // AudioContext the very first time it fires.
-    const arm = () => primeAlertSound();
-    window.addEventListener("pointerdown", arm, { once: true });
+    const cleanupArm = armAlertSound();
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (p) => setSelfPos([p.coords.latitude, p.coords.longitude]),
@@ -469,7 +465,7 @@ function TeacherDashboard() {
         { enableHighAccuracy: true, timeout: 10000 },
       );
     }
-    return () => window.removeEventListener("pointerdown", arm);
+    return cleanupArm;
   }, []);
 
   useEffect(() => {

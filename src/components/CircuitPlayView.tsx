@@ -30,9 +30,9 @@ import {
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
+  armAlertSound,
   notifyMessage,
   notifyUrgent,
-  primeAlertSound,
   requestNotificationPermission,
 } from "@/lib/notify";
 import {
@@ -97,9 +97,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
 
   useEffect(() => {
     requestNotificationPermission();
-    const arm = () => primeAlertSound();
-    window.addEventListener("pointerdown", arm, { once: true });
-    return () => window.removeEventListener("pointerdown", arm);
+    return armAlertSound();
   }, []);
 
   const { game, teams } = useGameState(gameId);
