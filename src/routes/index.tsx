@@ -128,7 +128,27 @@ function Home() {
     };
   }, [user]);
 
+  async function renameGame(game: MyGame) {
+    const input = window.prompt(
+      `Nom de la partie ${game.code} (laisser vide pour retirer le nom) :`,
+      game.name ?? "",
+    );
+    if (input === null) return;
+    const next = input.trim().slice(0, 80);
+    const { error } = await supabase
+      .from("games")
+      .update({ name: next || null })
+      .eq("id", game.id);
+    if (error) {
+      toast.error("Impossible de renommer cette partie.");
+      return;
+    }
+    setMyGames((prev) => prev.map((g) => (g.id === game.id ? { ...g, name: next || null } : g)));
+    toast.success("Partie renommée.");
+  }
+
   async function deleteGame(game: MyGame) {
+
     if (
       !window.confirm(
         `Supprimer définitivement la partie ${game.code} et toutes ses données (équipes, territoires, classement) ?`,
