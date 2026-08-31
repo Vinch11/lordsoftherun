@@ -1,0 +1,1 @@
+ALTER TABLE public.games ADD COLUMN grid_min_speed_kmh double precision NOT NULL DEFAULT 0;
