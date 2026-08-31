@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
+import { MapPin, Pencil, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
