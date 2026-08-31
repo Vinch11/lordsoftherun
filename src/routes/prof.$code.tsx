@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  Activity,
   ArrowLeft,
   Bike,
   Bookmark,
@@ -632,6 +633,12 @@ function TeacherDashboard() {
     [teams, gameMode, gridScoreByTeam, game, now],
   );
   const finished = game?.status === "finished";
+  const gameElapsedS = useMemo(() => {
+    if (!game?.started_at) return 0;
+    const startMs = new Date(game.started_at).getTime();
+    const endMs = game.ends_at ? Math.min(now, new Date(game.ends_at).getTime()) : now;
+    return Math.max(0, (endMs - startMs) / 1000);
+  }, [game?.started_at, game?.ends_at, now]);
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1259,10 +1266,10 @@ function TeacherDashboard() {
         </div>
 
         <div
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2 p-3"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2 p-3 lg:max-w-4xl lg:flex-row lg:items-end"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
-          <div className="panel flex max-h-40 flex-col gap-1 overflow-y-auto p-3">
+          <div className="panel flex max-h-40 flex-1 flex-col gap-1 overflow-y-auto p-3 lg:max-h-56">
             {ranked.length === 0 && (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 En attente des groupes…
@@ -1287,7 +1294,7 @@ function TeacherDashboard() {
             ))}
           </div>
           {isOwner && (
-            <div className="panel flex flex-col gap-2 p-3">
+            <div className="panel flex flex-1 flex-col gap-2 p-3">
               <select
                 className="field"
                 value={messageTarget}
@@ -2761,6 +2768,34 @@ function TeacherDashboard() {
             </button>
           )}
         </section>
+
+        {teams.length > 0 && (
+          <section className="panel flex flex-col gap-1 p-4">
+            <div className="section-title mb-2">
+              <Activity className="h-4 w-4" /> Statistiques d'équipe
+            </div>
+            {teams.map((t) => {
+              const km = t.total_distance_m / 1000;
+              const kmh = gameElapsedS > 0 ? (t.total_distance_m / gameElapsedS) * 3.6 : 0;
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-3 border-b border-border px-2 py-2 last:border-0"
+                >
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  <span className="flex-1 truncate text-sm font-semibold">{t.name}</span>
+                  <div className="text-right">
+                    <div className="display text-sm tabular-nums">{km.toFixed(2)} km</div>
+                    <div className="label-xs">{kmh.toFixed(1)} km/h moy.</div>
+                  </div>
+                </div>
+              );
+            })}
+          </section>
+        )}
 
         {ranked.length > 0 && gameMode === "territoire" && (
           <section className="panel flex flex-col gap-1 p-4">

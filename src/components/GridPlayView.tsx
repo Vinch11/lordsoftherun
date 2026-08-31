@@ -4,6 +4,7 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_VEHICLE_PENALTY_M2,
@@ -29,6 +30,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
@@ -39,6 +41,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastClaimedCellRef = useRef<string | null>(null);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const totalDistanceRef = useRef(0);
+  const totalDistanceInitRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const lastVehiclePenaltyRef = useRef(0);
   const geoFilterRef = useRef(new GeoKalmanFilter());
@@ -60,6 +64,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const meRef = useRef(me);
   meRef.current = me;
   const myColor = me?.color ?? "#e63946";
+
+  useEffect(() => {
+    if (!totalDistanceInitRef.current && me) {
+      totalDistanceRef.current = me.total_distance_m;
+      totalDistanceInitRef.current = true;
+    }
+  }, [me]);
   const myCellCount = useMemo(
     () => cells.filter((c) => c.owner_team_id === teamId).length,
     [cells, teamId],
@@ -160,6 +171,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         if (dt > 0.5 && dist > 2) {
           instSpeedRef.current = dist / dt;
           lastPosRef.current = { point, t: nowMs };
+          if (gameRef.current?.status === "running") {
+            totalDistanceRef.current += dist;
+          }
         }
       } else {
         lastPosRef.current = { point, t: nowMs };
@@ -169,9 +183,24 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         lastSync.current = Date.now();
         void supabase
           .from("teams")
-          .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+          .update({
+            lat: point[0],
+            lng: point[1],
+            total_distance_m: totalDistanceRef.current,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", teamId);
       }
+
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
+      // Position (above) and grace-return detection (just above) keep
+      // running regardless of status — the grace window only exists once
+      // the game has moved past "running" — but nothing below should score
+      // or penalize before the professor actually starts the game.
+      if (gameRef.current?.status !== "running") return;
 
       if (gameRef.current && !gameRef.current.vehicle_allowed) {
         const thresholdKmh =
@@ -192,10 +221,6 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         } else {
           vehicleAboveSinceRef.current = null;
         }
-      }
-
-      if (gameRef.current) {
-        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
       }
 
       const center = gridCenterRef.current;
@@ -230,7 +255,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
     }
     const id = navigator.geolocation.watchPosition(
       onPosition,
-      (err) => setGeoError(err.message || "Position GPS refusée."),
+      (err) => {
+        setGeoError(err.message || "Position GPS refusée.");
+        if (err.code === err.PERMISSION_DENIED) setGeoDenied(true);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -409,7 +437,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {geoError && (
+        {geoError && !geoDenied && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
@@ -440,6 +468,8 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
         {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
       </div>
+
+      {geoDenied && <GeoPermissionHelp onDismiss={() => setGeoDenied(false)} />}
     </main>
   );
 }

@@ -5,6 +5,7 @@ import { Camera, Crosshair, Flag, HelpCircle, MessageCircle, Send, Square, X } f
 import { RulesIntro } from "@/components/RulesIntro";
 import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
@@ -110,6 +111,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [distance, setDistance] = useState(0);
   const [now, setNow] = useState(() => Date.now());
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
 
   const runningRef = useRef(false);
   const trackRef = useRef<[number, number][]>([]);
@@ -119,6 +121,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const totalDistanceRef = useRef(0);
+  const totalDistanceInitRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
@@ -162,6 +166,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const myColor = me?.color ?? "#e63946";
   const meRef = useRef(me);
   meRef.current = me;
+
+  useEffect(() => {
+    if (!totalDistanceInitRef.current && me) {
+      totalDistanceRef.current = me.total_distance_m;
+      totalDistanceInitRef.current = true;
+    }
+  }, [me]);
 
   const myMessages = useMemo(
     () =>
@@ -302,6 +313,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         if (dt > 0.5 && dist > 2) {
           instSpeedRef.current = dist / dt;
           lastPosRef.current = { point, t: nowMs };
+          if (gameRef.current?.status === "running") {
+            totalDistanceRef.current += dist;
+          }
         }
       } else {
         lastPosRef.current = { point, t: nowMs };
@@ -315,10 +329,21 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             lat: point[0],
             lng: point[1],
             current_trail: trackRef.current,
+            total_distance_m: totalDistanceRef.current,
             updated_at: new Date().toISOString(),
           })
           .eq("id", teamId);
       }
+
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
+      // Position (above) and grace-return detection (just above) keep
+      // running regardless of status — the grace window only exists once
+      // the game has moved past "running" — but nothing below should score
+      // or penalize before the professor actually starts the game.
+      if (gameRef.current?.status !== "running") return;
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
         void checkLandmarkClaims(
@@ -377,10 +402,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         }
       }
 
-      if (gameRef.current) {
-        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
-      }
-
       if (!runningRef.current) return;
       const trackNow = trackRef.current;
       const last = trackNow[trackNow.length - 1];
@@ -412,7 +433,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
     const id = navigator.geolocation.watchPosition(
       onPosition,
-      (err) => setGeoError(err.message || "Position GPS refusée."),
+      (err) => {
+        setGeoError(err.message || "Position GPS refusée.");
+        if (err.code === err.PERMISSION_DENIED) setGeoDenied(true);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -646,7 +670,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {geoError && (
+        {geoError && !geoDenied && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
@@ -750,6 +774,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       )}
 
       {summary && <LoopSummary data={summary} color={myColor} onClose={() => setSummary(null)} />}
+
+      {geoDenied && <GeoPermissionHelp onDismiss={() => setGeoDenied(false)} />}
     </main>
   );
 }
