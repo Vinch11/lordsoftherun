@@ -624,6 +624,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_circuits: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          points: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          points: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          points?: Json
+        }
+        Relationships: []
+      }
       saved_points: {
         Row: {
           active_after_minutes: number
