@@ -272,6 +272,7 @@ export type Database = {
           grid_center_lat: number | null
           grid_center_lng: number | null
           grid_height_m: number
+          grid_min_speed_kmh: number
           grid_radius_m: number
           grid_shape: string
           grid_show_overlay: boolean
@@ -319,6 +320,7 @@ export type Database = {
           grid_center_lat?: number | null
           grid_center_lng?: number | null
           grid_height_m?: number
+          grid_min_speed_kmh?: number
           grid_radius_m?: number
           grid_shape?: string
           grid_show_overlay?: boolean
@@ -366,6 +368,7 @@ export type Database = {
           grid_center_lat?: number | null
           grid_center_lng?: number | null
           grid_height_m?: number
+          grid_min_speed_kmh?: number
           grid_radius_m?: number
           grid_shape?: string
           grid_show_overlay?: boolean
