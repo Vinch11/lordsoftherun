@@ -40,6 +40,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastClaimedCellRef = useRef<string | null>(null);
   const instSpeedRef = useRef(0);
   const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const lastVehiclePenaltyRef = useRef(0);
   const geoFilterRef = useRef(new GeoKalmanFilter());
@@ -196,6 +199,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       const center = gridCenterRef.current;
       if (!center) return;
+      if (finishedRef.current) return; // board frozen at the final whistle
       if (
         !isWithinGridZone(
           gridShapeRef.current,
@@ -277,6 +281,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         ? "Partie terminée — retour validé !"
         : "Partie terminée — retour hors délai";
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);

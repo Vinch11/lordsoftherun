@@ -43,6 +43,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const instSpeedRef = useRef(0);
   const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
@@ -196,6 +199,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           vehicleAboveSinceRef.current = null;
         }
       }
+
+      if (finishedRef.current) return; // scores frozen: no more bonuses or flags
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
         void checkLandmarkClaims(
@@ -375,6 +380,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         ? "Partie terminée — retour validé !"
         : "Partie terminée — retour hors délai";
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);

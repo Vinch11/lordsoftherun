@@ -120,6 +120,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const instSpeedRef = useRef(0);
   const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
@@ -233,6 +236,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closeLoop = useCallback(async () => {
     if (closing.current || !gameId) return;
     closing.current = true;
+    if (finishedRef.current) {
+      runningRef.current = false;
+      setRunning(false);
+      toast("⏱️ Partie terminée — cette boucle ne compte plus.");
+      closing.current = false;
+      return;
+    }
     const poly = polygonFromTrack(trackRef.current);
     runningRef.current = false;
     setRunning(false);
@@ -315,6 +325,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           })
           .eq("id", teamId);
       }
+
+      if (finishedRef.current) return; // scores frozen at the end of the game
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
         void checkLandmarkClaims(
@@ -454,6 +466,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);
