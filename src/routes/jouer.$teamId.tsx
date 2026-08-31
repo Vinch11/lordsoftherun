@@ -26,7 +26,7 @@ import {
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
-import { uploadTeamPhoto } from "@/lib/photoCheck";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
@@ -130,9 +130,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
   const [unread, setUnread] = useState(false);
-  const [photoSending, setPhotoSending] = useState(false);
-  const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
   const [followMe, setFollowMe] = useState(true);
@@ -200,31 +197,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       await sendTeamMessage(gameId, teamId, body);
     } catch {
       toast.error("Message non envoyé.");
-    }
-  }
-
-  const photoStorageKey = game?.photo_requested_at
-    ? `conquete:photo:${teamId}:${game.photo_requested_at}`
-    : null;
-
-  useEffect(() => {
-    if (!photoStorageKey) return;
-    setPhotoSentAt(localStorage.getItem(photoStorageKey));
-  }, [photoStorageKey]);
-
-  async function sendPhoto(file: File) {
-    if (!gameId || !photoStorageKey) return;
-    setPhotoSending(true);
-    try {
-      await uploadTeamPhoto(gameId, teamId, file);
-      const sentAt = new Date().toISOString();
-      localStorage.setItem(photoStorageKey, sentAt);
-      setPhotoSentAt(sentAt);
-      toast.success("Photo envoyée au prof !");
-    } catch {
-      toast.error("Échec de l'envoi de la photo.");
-    } finally {
-      setPhotoSending(false);
     }
   }
 
@@ -494,10 +466,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
 
-  const photoDeadlineRemaining = game?.photo_deadline
-    ? (new Date(game.photo_deadline).getTime() - now) / 1000
-    : null;
-  const photoRequestPending = !!game?.photo_requested_at && !photoSentAt;
 
   function startLoop() {
     if (!pos) {
@@ -695,38 +663,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </div>
         )}
 
-        {photoRequestPending && (
-          <div className="panel flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
-            <div className="section-title">
-              <Camera className="h-4 w-4" /> Photo demandée
-            </div>
-            <div className="text-sm font-semibold">
-              Le prof demande une photo de votre groupe
-              {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
-                ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
-                : " — délai dépassé, envoyez-la quand même"}
-            </div>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void sendPhoto(file);
-                e.target.value = "";
-              }}
-            />
-            <button
-              className="btn-huge btn-huge-accent"
-              disabled={photoSending}
-              onClick={() => photoInputRef.current?.click()}
-            >
-              <Camera className="h-6 w-6" /> {photoSending ? "Envoi..." : "Prendre la photo"}
-            </button>
-          </div>
-        )}
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
 
         {returnZone && (!finished || graceStatus?.remainingS != null) && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3">
