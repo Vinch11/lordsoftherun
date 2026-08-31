@@ -24,7 +24,14 @@ import {
   primeAlertSound,
   requestNotificationPermission,
 } from "@/lib/notify";
-import { cellCenter, claimGridCell, isWithinGridZone, pointToCell, useGridCells } from "@/lib/grid";
+import {
+  awardRunningBonusCell,
+  cellCenter,
+  claimGridCell,
+  isWithinGridZone,
+  pointToCell,
+  useGridCells,
+} from "@/lib/grid";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
@@ -91,7 +98,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       id: tm.id,
       name: tm.name,
       color: tm.color,
-      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) - tm.penalty_m2),
+      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) + (tm.bonus_cells ?? 0) - tm.penalty_m2),
     }));
   }, [cells, teams]);
   const formatCellScore = (n: number) => `${Math.round(n)} case${Math.round(n) > 1 ? "s" : ""}`;
@@ -231,7 +238,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       lastClaimedCellRef.current = key;
       const existing = cellsRef.current.find((c) => c.row === row && c.col === col);
       if (existing?.owner_team_id === teamId) return;
-      void claimGridCell(gameId, teamId, row, col);
+      const runningBonus =
+        (gameRef.current?.running_bonus_enabled ?? true) &&
+        instSpeedRef.current >=
+          kmhToMs(gameRef.current?.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH);
+      void claimGridCell(gameId, teamId, row, col).then(() => {
+        if (runningBonus) void awardRunningBonusCell(teamId);
+      });
     },
     [teamId, gameId],
   );

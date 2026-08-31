@@ -54,6 +54,7 @@ export type Team = {
   penalty_m2: number;
   validated: boolean;
   flags_captured: number;
+  bonus_cells: number;
   shield_until: string | null;
   returned_at: string | null;
   current_trail: [number, number][];

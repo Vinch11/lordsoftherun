@@ -90,6 +90,11 @@ export async function claimGridCell(gameId: string, teamId: string, row: number,
   if (error) throw error;
 }
 
+/** Grants one extra "cell point" for a cell claimed while running. */
+export async function awardRunningBonusCell(teamId: string, amount = 1) {
+  await supabase.rpc("increment_team_bonus_cells", { _team_id: teamId, _amount: amount });
+}
+
 export function useGridCells(gameId: string | null) {
   const [cells, setCells] = useState<GridCell[]>([]);
 
