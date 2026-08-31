@@ -572,6 +572,7 @@ export type Database = {
           score_m2: number
           shield_until: string | null
           total_captured_m2: number
+          total_distance_m: number
           updated_at: string
           validated: boolean
         }
@@ -592,6 +593,7 @@ export type Database = {
           score_m2?: number
           shield_until?: string | null
           total_captured_m2?: number
+          total_distance_m?: number
           updated_at?: string
           validated?: boolean
         }
@@ -612,6 +614,7 @@ export type Database = {
           score_m2?: number
           shield_until?: string | null
           total_captured_m2?: number
+          total_distance_m?: number
           updated_at?: string
           validated?: boolean
         }
