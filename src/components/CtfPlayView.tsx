@@ -200,6 +200,11 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         }
       }
 
+      if (gameRef.current) {
+        const myTeam = teamsRef.current.find((t) => t.id === teamId);
+        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
+      }
+
       if (finishedRef.current) return; // scores frozen: no more bonuses or flags
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
@@ -292,10 +297,6 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         }
       }
 
-      if (gameRef.current) {
-        const myTeam = teamsRef.current.find((t) => t.id === teamId);
-        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
-      }
     },
     [teamId],
   );

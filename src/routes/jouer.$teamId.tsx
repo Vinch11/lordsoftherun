@@ -326,6 +326,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           .eq("id", teamId);
       }
 
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
       if (finishedRef.current) return; // scores frozen at the end of the game
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
@@ -385,9 +389,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         }
       }
 
-      if (gameRef.current) {
-        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
-      }
 
       if (!runningRef.current) return;
       const trackNow = trackRef.current;
