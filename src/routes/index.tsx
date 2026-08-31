@@ -236,8 +236,15 @@ function Home() {
                   onClick={() => navigate({ to: "/prof/$code", params: { code: g.code } })}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="display text-xl tracking-[0.2em]">{g.code}</span>
+                    <span className="display truncate text-xl tracking-[0.2em]">
+                      {g.name ? (
+                        <span className="tracking-normal">{g.name}</span>
+                      ) : (
+                        g.code
+                      )}
+                    </span>
                     <span
+
                       className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                         g.status === "running"
                           ? "bg-accent text-accent-foreground"
