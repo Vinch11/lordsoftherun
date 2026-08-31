@@ -4,6 +4,7 @@ import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   CTF_CAPTURE_POINTS,
@@ -556,6 +557,14 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <span className="label-xs">Votre drapeau</span>
           <span className="text-sm font-semibold">{myFlagStatusLabel}</span>
         </div>
+
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
 
         {finished && game?.grace_ends_at && graceStatus?.remainingS != null && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
