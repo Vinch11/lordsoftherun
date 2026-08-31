@@ -33,6 +33,7 @@ export type Game = {
   grid_shape: GridShape;
   grid_width_m: number;
   grid_height_m: number;
+  grid_min_speed_kmh: number;
   grace_enabled: boolean;
   grace_minutes: number;
   grace_penalty_mode: GracePenaltyMode;

@@ -121,6 +121,7 @@ import {
   DEFAULT_GRACE_PENALTY_PER_SECOND_M2,
   DEFAULT_GRID_CELL_SIZE_M,
   DEFAULT_GRID_HEIGHT_M,
+  DEFAULT_GRID_MIN_SPEED_KMH,
   DEFAULT_GRID_RADIUS_M,
   DEFAULT_GRID_WIDTH_M,
   DEFAULT_LANDMARK_BONUS_M2,
@@ -134,6 +135,7 @@ import {
   LANDMARK_ICONS,
   MAX_CIRCUIT_CHECKPOINT_COUNT,
   MAX_GRID_CELL_SIZE_M,
+  MAX_GRID_MIN_SPEED_KMH,
   MAX_GRID_RADIUS_M,
   MAX_GRID_SIDE_M,
   MIN_CIRCUIT_CHECKPOINT_COUNT,
@@ -399,6 +401,7 @@ function TeacherDashboard() {
   const [gridHeight, setGridHeight] = useState(DEFAULT_GRID_HEIGHT_M);
   const [gridCellSize, setGridCellSize] = useState(DEFAULT_GRID_CELL_SIZE_M);
   const [gridShowOverlay, setGridShowOverlay] = useState(true);
+  const [gridMinSpeed, setGridMinSpeed] = useState(DEFAULT_GRID_MIN_SPEED_KMH);
   const [graceEnabled, setGraceEnabled] = useState(false);
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_MINUTES);
   const [gracePenaltyMode, setGracePenaltyMode] = useState<GracePenaltyMode>("cancel");
@@ -574,6 +577,7 @@ function TeacherDashboard() {
       setGridHeight(game.grid_height_m);
       setGridCellSize(game.grid_cell_size_m);
       setGridShowOverlay(game.grid_show_overlay);
+      setGridMinSpeed(game.grid_min_speed_kmh);
       setGraceEnabled(game.grace_enabled);
       setGraceMinutes(game.grace_minutes);
       setGracePenaltyMode(game.grace_penalty_mode);
@@ -1195,6 +1199,12 @@ function TeacherDashboard() {
     await supabase.from("games").update({ grid_show_overlay: next }).eq("id", gameId);
   }
 
+  async function updateGridMinSpeed(next: number) {
+    setGridMinSpeed(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_min_speed_kmh: next }).eq("id", gameId);
+  }
+
   async function clearGridZone() {
     if (!gameId || !isOwner) return;
     await supabase
@@ -1755,7 +1765,7 @@ function TeacherDashboard() {
       </div>
 
       <div
-        className={`mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:max-w-2xl lg:overflow-y-auto [&>*]:shrink-0 ${panelOpen ? "" : "lg:hidden"}`}
+        className={`mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:max-w-4xl lg:overflow-y-auto [&>*]:shrink-0 ${panelOpen ? "" : "lg:hidden"}`}
       >
         <header className="panel flex flex-col gap-4 p-4">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
@@ -2151,177 +2161,178 @@ function TeacherDashboard() {
           </div>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-between">
-            <div className="section-title">
-              <MapPin className="h-4 w-4" />{" "}
-              {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
-            </div>
-            {returnZone && isOwner && (
-              <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          {gameMode === "capture_drapeau" ? (
-            <p className="text-sm text-muted-foreground">
-              {returnZone
-                ? "Les équipes doivent ramener un drapeau capturé dans cette zone pour marquer un point."
-                : "Aucune zone définie : chaque équipe doit ramener un drapeau capturé jusqu'à sa propre base."}
-            </p>
-          ) : gameMode === "grille" ? (
-            <p className="text-sm text-muted-foreground">
-              {returnZone
-                ? "Utilisée uniquement pour le délai de retour en fin de partie (voir plus bas) ; sans effet pendant que la grille se joue."
-                : "Optionnelle en mode Grille : ne sert qu'au délai de retour en fin de partie (voir plus bas)."}
-            </p>
-          ) : gameMode === "circuit" ? (
-            <p className="text-sm text-muted-foreground">
-              Sans effet en mode Circuit : le classement se joue entièrement sur le temps de course.
-              Ignorez cette section.
-            </p>
-          ) : returnZone ? (
-            <p className="text-sm text-muted-foreground">
-              Les équipes doivent être revenues dans cette zone quand le temps s'écoule pour que
-              leur territoire compte au classement.
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Aucune zone définie : tous les territoires capturés comptent, quelle que soit la
-              position finale des équipes.
-            </p>
-          )}
-          {isOwner && (
-            <>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Rayon</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    aria-label="Réduire le rayon"
-                    className="icon-btn"
-                    onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </button>
-                  <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
-                  <button
-                    aria-label="Augmenter le rayon"
-                    className="icon-btn"
-                    onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                </div>
+        {gameMode !== "circuit" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="flex items-center justify-between">
+              <div className="section-title">
+                <MapPin className="h-4 w-4" />{" "}
+                {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
               </div>
-              <button
-                className={`btn-huge ${placingMode === "zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                onClick={() => setPlacingMode((p) => (p === "zone" ? "none" : "zone"))}
-              >
-                {placingMode === "zone"
-                  ? "Touchez la carte..."
-                  : returnZone
-                    ? "Déplacer la zone"
-                    : "Placer sur la carte"}
-              </button>
-            </>
-          )}
-        </section>
-
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="section-title">
-            <Timer className="h-4 w-4" /> Délai de retour en fin de partie
-          </div>
-          <p className="text-sm text-muted-foreground">
-            À la fin du chrono, les équipes ont un délai pour revenir dans la zone de retour
-            ci-dessus avant que leur score ne soit définitif.
-          </p>
-          {isOwner && (
-            <>
-              <label className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold">Activer</span>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 shrink-0"
-                  checked={graceEnabled}
-                  onChange={(e) => void updateGraceEnabled(e.target.checked)}
-                />
-              </label>
-              {graceEnabled && !returnZone && (
-                <p className="text-xs text-muted-foreground">
-                  ⚠️ Placez d'abord une zone de retour ci-dessus : sans elle, ce délai n'a aucun
-                  effet.
-                </p>
+              {returnZone && isOwner && (
+                <button aria-label="Supprimer la zone" className="icon-btn" onClick={clearZone}>
+                  <X className="h-4 w-4" />
+                </button>
               )}
-              {graceEnabled && (
-                <>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold">Délai</span>
-                    <div className="flex items-center gap-3">
-                      <button
-                        aria-label="Réduire le délai"
-                        className="icon-btn"
-                        onClick={() => void updateGraceMinutes(Math.max(1, graceMinutes - 1))}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="display w-16 text-center text-lg">{graceMinutes} min</span>
-                      <button
-                        aria-label="Augmenter le délai"
-                        className="icon-btn"
-                        onClick={() => void updateGraceMinutes(Math.min(30, graceMinutes + 1))}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-sm font-semibold">Si le délai est dépassé</span>
-                    <select
-                      className="field"
-                      value={gracePenaltyMode}
-                      onChange={(e) =>
-                        void updateGracePenaltyMode(e.target.value as GracePenaltyMode)
-                      }
+            </div>
+            {gameMode === "capture_drapeau" ? (
+              <p className="text-sm text-muted-foreground">
+                {returnZone
+                  ? "Les équipes doivent ramener un drapeau capturé dans cette zone pour marquer un point."
+                  : "Aucune zone définie : chaque équipe doit ramener un drapeau capturé jusqu'à sa propre base."}
+              </p>
+            ) : gameMode === "grille" ? (
+              <p className="text-sm text-muted-foreground">
+                {returnZone
+                  ? "Utilisée uniquement pour le délai de retour en fin de partie (voir plus bas) ; sans effet pendant que la grille se joue."
+                  : "Optionnelle en mode Grille : ne sert qu'au délai de retour en fin de partie (voir plus bas)."}
+              </p>
+            ) : returnZone ? (
+              <p className="text-sm text-muted-foreground">
+                Les équipes doivent être revenues dans cette zone quand le temps s'écoule pour que
+                leur territoire compte au classement.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Aucune zone définie : tous les territoires capturés comptent, quelle que soit la
+                position finale des équipes.
+              </p>
+            )}
+            {isOwner && (
+              <>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Rayon</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateZoneRadius(Math.max(10, zoneRadius - 10))}
                     >
-                      <option value="cancel">Score annulé (hors classement)</option>
-                      <option value="per_second">Pénalité par seconde de retard</option>
-                    </select>
-                  </label>
-                  {gracePenaltyMode === "per_second" && (
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{zoneRadius} m</span>
+                    <button
+                      aria-label="Augmenter le rayon"
+                      className="icon-btn"
+                      onClick={() => void updateZoneRadius(Math.min(300, zoneRadius + 10))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className={`btn-huge ${placingMode === "zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => setPlacingMode((p) => (p === "zone" ? "none" : "zone"))}
+                >
+                  {placingMode === "zone"
+                    ? "Touchez la carte..."
+                    : returnZone
+                      ? "Déplacer la zone"
+                      : "Placer sur la carte"}
+                </button>
+              </>
+            )}
+          </section>
+        )}
+
+        {gameMode !== "circuit" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Timer className="h-4 w-4" /> Délai de retour en fin de partie
+            </div>
+            <p className="text-sm text-muted-foreground">
+              À la fin du chrono, les équipes ont un délai pour revenir dans la zone de retour
+              ci-dessus avant que leur score ne soit définitif.
+            </p>
+            {isOwner && (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Activer</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 shrink-0"
+                    checked={graceEnabled}
+                    onChange={(e) => void updateGraceEnabled(e.target.checked)}
+                  />
+                </label>
+                {graceEnabled && !returnZone && (
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Placez d'abord une zone de retour ci-dessus : sans elle, ce délai n'a aucun
+                    effet.
+                  </p>
+                )}
+                {graceEnabled && (
+                  <>
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold">Pénalité</span>
+                      <span className="text-sm font-semibold">Délai</span>
                       <div className="flex items-center gap-3">
                         <button
-                          aria-label="Réduire la pénalité"
+                          aria-label="Réduire le délai"
                           className="icon-btn"
-                          onClick={() =>
-                            void updateGracePenaltyPerSecond(Math.max(1, gracePenaltyPerSecond - 1))
-                          }
+                          onClick={() => void updateGraceMinutes(Math.max(1, graceMinutes - 1))}
                         >
                           <Minus className="h-4 w-4" />
                         </button>
-                        <span className="display w-24 text-center text-lg">
-                          -{gracePenaltyPerSecond}/s
-                        </span>
+                        <span className="display w-16 text-center text-lg">{graceMinutes} min</span>
                         <button
-                          aria-label="Augmenter la pénalité"
+                          aria-label="Augmenter le délai"
                           className="icon-btn"
-                          onClick={() =>
-                            void updateGracePenaltyPerSecond(
-                              Math.min(50, gracePenaltyPerSecond + 1),
-                            )
-                          }
+                          onClick={() => void updateGraceMinutes(Math.min(30, graceMinutes + 1))}
                         >
                           <Plus className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </section>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-sm font-semibold">Si le délai est dépassé</span>
+                      <select
+                        className="field"
+                        value={gracePenaltyMode}
+                        onChange={(e) =>
+                          void updateGracePenaltyMode(e.target.value as GracePenaltyMode)
+                        }
+                      >
+                        <option value="cancel">Score annulé (hors classement)</option>
+                        <option value="per_second">Pénalité par seconde de retard</option>
+                      </select>
+                    </label>
+                    {gracePenaltyMode === "per_second" && (
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Pénalité</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateGracePenaltyPerSecond(
+                                Math.max(1, gracePenaltyPerSecond - 1),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-24 text-center text-lg">
+                            -{gracePenaltyPerSecond}/s
+                          </span>
+                          <button
+                            aria-label="Augmenter la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateGracePenaltyPerSecond(
+                                Math.min(50, gracePenaltyPerSecond + 1),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="section-title">
@@ -2577,6 +2588,36 @@ function TeacherDashboard() {
                     Les équipes ne verront plus les cases colorées sur leur carte, seulement leur
                     propre compteur de cases contrôlées : elles jouent au feeling GPS plutôt qu'en
                     regardant la grille se colorier en direct.
+                  </p>
+                )}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Vitesse minimale pour valider</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire la vitesse minimale"
+                      className="icon-btn"
+                      onClick={() => void updateGridMinSpeed(Math.max(0, gridMinSpeed - 1))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-24 text-center text-lg">
+                      {gridMinSpeed === 0 ? "Désactivée" : `${gridMinSpeed} km/h`}
+                    </span>
+                    <button
+                      aria-label="Augmenter la vitesse minimale"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridMinSpeed(Math.min(MAX_GRID_MIN_SPEED_KMH, gridMinSpeed + 1))
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                {gridMinSpeed > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Une équipe qui traverse une case en dessous de {gridMinSpeed} km/h ne la capture
+                    pas — de quoi éviter que les élèves se contentent de marcher lentement.
                   </p>
                 )}
                 <button
@@ -3116,7 +3157,7 @@ function TeacherDashboard() {
           </section>
         )}
 
-        {gameMode !== "grille" && (
+        {(gameMode === "territoire" || gameMode === "capture_drapeau") && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
               <Star className="h-4 w-4" /> Repères bonus
@@ -3282,7 +3323,7 @@ function TeacherDashboard() {
           </section>
         )}
 
-        {gameMode !== "grille" && (
+        {(gameMode === "territoire" || gameMode === "capture_drapeau") && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
               <ShieldAlert className="h-4 w-4" /> Zones interdites
