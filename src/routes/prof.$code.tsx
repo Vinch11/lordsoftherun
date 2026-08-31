@@ -47,7 +47,7 @@ import {
   saveMessageTemplate,
   useMessageTemplates,
 } from "@/lib/messageTemplates";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import { notifyMessage, primeAlertSound, requestNotificationPermission } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import {
   addLandmark,
@@ -457,6 +457,11 @@ function TeacherDashboard() {
 
   useEffect(() => {
     requestNotificationPermission();
+    // Browsers refuse to play sound outside a user gesture — without this,
+    // a team's chat message would schedule a silent alarm on a never-unlocked
+    // AudioContext the very first time it fires.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (p) => setSelfPos([p.coords.latitude, p.coords.longitude]),
@@ -464,6 +469,7 @@ function TeacherDashboard() {
         { enableHighAccuracy: true, timeout: 10000 },
       );
     }
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   useEffect(() => {
@@ -2590,36 +2596,6 @@ function TeacherDashboard() {
                     regardant la grille se colorier en direct.
                   </p>
                 )}
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Vitesse minimale pour valider</span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      aria-label="Réduire la vitesse minimale"
-                      className="icon-btn"
-                      onClick={() => void updateGridMinSpeed(Math.max(0, gridMinSpeed - 1))}
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="display w-24 text-center text-lg">
-                      {gridMinSpeed === 0 ? "Désactivée" : `${gridMinSpeed} km/h`}
-                    </span>
-                    <button
-                      aria-label="Augmenter la vitesse minimale"
-                      className="icon-btn"
-                      onClick={() =>
-                        void updateGridMinSpeed(Math.min(MAX_GRID_MIN_SPEED_KMH, gridMinSpeed + 1))
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                {gridMinSpeed > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Une équipe qui traverse une case en dessous de {gridMinSpeed} km/h ne la capture
-                    pas — de quoi éviter que les élèves se contentent de marcher lentement.
-                  </p>
-                )}
                 <button
                   className={`btn-huge ${placingMode === "grid_zone" ? "btn-huge-accent" : "btn-huge-dark"}`}
                   onClick={() => setPlacingMode((p) => (p === "grid_zone" ? "none" : "grid_zone"))}
@@ -3146,12 +3122,50 @@ function TeacherDashboard() {
                     </div>
                   </div>
                 )}
+                {gameMode === "grille" && (
+                  <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                    <span className="text-sm font-semibold">Vitesse minimale pour valider</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire la vitesse minimale"
+                        className="icon-btn"
+                        onClick={() => void updateGridMinSpeed(Math.max(0, gridMinSpeed - 1))}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-24 text-center text-lg">
+                        {gridMinSpeed === 0 ? "Désactivée" : `${gridMinSpeed} km/h`}
+                      </span>
+                      <button
+                        aria-label="Augmenter la vitesse minimale"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateGridMinSpeed(
+                            Math.min(MAX_GRID_MIN_SPEED_KMH, gridMinSpeed + 1),
+                          )
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {gameMode === "grille" && gridMinSpeed > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Une équipe qui traverse une case en dessous de {gridMinSpeed} km/h ne la capture
+                    pas du tout — distinct du bonus course ci-dessus, qui ne fait que doubler la
+                    valeur d'une case déjà capturée.
+                  </p>
+                )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {runningBonusEnabled
                   ? `Bonus actif à partir de ${runningBonusSpeedKmh} km/h.`
                   : "Bonus désactivé pour cette partie."}
+                {gameMode === "grille" &&
+                  gridMinSpeed > 0 &&
+                  ` Vitesse minimale pour capturer : ${gridMinSpeed} km/h.`}
               </p>
             )}
           </section>
