@@ -41,6 +41,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const [now, setNow] = useState(() => Date.now());
   const [geoError, setGeoError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
