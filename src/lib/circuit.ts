@@ -48,7 +48,6 @@ export function resampleToCheckpoints(path: [number, number][], count: number): 
   return points;
 }
 
-
 export function useCheckpoints(gameId: string | null) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
 

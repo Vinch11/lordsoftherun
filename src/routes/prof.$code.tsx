@@ -1353,8 +1353,6 @@ function TeacherDashboard() {
     }
   }
 
-
-
   async function placeCircuitBox(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     try {
@@ -2754,9 +2752,7 @@ function TeacherDashboard() {
                         className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
                       >
                         <span className="font-semibold">
-                          {c.seq_index === 0
-                            ? "🏁 Départ / Arrivée"
-                            : `Checkpoint ${c.seq_index}`}
+                          {c.seq_index === 0 ? "🏁 Départ / Arrivée" : `Checkpoint ${c.seq_index}`}
                         </span>
                         <button
                           className="icon-btn"
