@@ -287,23 +287,26 @@ export default function GameMap({
     // stroke instead of panning the map (dragging is disabled for the
     // duration so Leaflet doesn't fight the gesture).
     const container = map.getContainer();
-    const toLatLng = (clientX: number, clientY: number): [number, number] => {
-      const rect = container.getBoundingClientRect();
-      const pt = map.containerPointToLatLng([clientX - rect.left, clientY - rect.top]);
-      return [pt.lat, pt.lng];
+    // Reuse Leaflet's own pixel->latlng conversion (same one behind the
+    // "click" handler above) rather than hand-rolling it — it already
+    // accounts for the container's border/client offsets, so a drawn stroke
+    // lines up exactly with anything placed via a single click.
+    const toLatLng = (e: PointerEvent): [number, number] => {
+      const ll = map.mouseEventToLatLng(e as unknown as MouseEvent);
+      return [ll.lat, ll.lng];
     };
     const onPointerDown = (e: PointerEvent) => {
       if (!drawingEnabledRef.current) return;
       e.preventDefault();
       isDrawingRef.current = true;
       map.dragging.disable();
-      drawPathRef.current = [toLatLng(e.clientX, e.clientY)];
+      drawPathRef.current = [toLatLng(e)];
       drawLine.current?.setLatLngs(drawPathRef.current);
       container.setPointerCapture(e.pointerId);
     };
     const onPointerMove = (e: PointerEvent) => {
       if (!isDrawingRef.current) return;
-      drawPathRef.current = [...drawPathRef.current, toLatLng(e.clientX, e.clientY)];
+      drawPathRef.current = [...drawPathRef.current, toLatLng(e)];
       drawLine.current?.setLatLngs(drawPathRef.current);
     };
     const onPointerUp = () => {
@@ -322,7 +325,17 @@ export default function GameMap({
 
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
+
+    // Leaflet caches the container's pixel size and never re-measures it on
+    // its own — without this, toggling the desktop side panel, resizing the
+    // window, or rotating a device leaves every pixel<->latlng conversion
+    // (clicks, the freehand-drawn circuit, marker placement) silently
+    // offset from what's actually on screen until a full page reload.
+    const resizeObserver = new ResizeObserver(() => map.invalidateSize());
+    resizeObserver.observe(container);
+
     return () => {
+      resizeObserver.disconnect();
       container.removeEventListener("pointerdown", onPointerDown);
       container.removeEventListener("pointermove", onPointerMove);
       container.removeEventListener("pointerup", onPointerUp);

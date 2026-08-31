@@ -109,6 +109,10 @@ export const MIN_GRID_CELL_SIZE_M = 3;
 export const MAX_GRID_CELL_SIZE_M = 15;
 /** Below this cell size, GPS jitter alone can flip a cell's color; shown as a warning. */
 export const GRID_CELL_SIZE_WARNING_THRESHOLD_M = 5;
+/** 0 = disabled (any speed captures a cell, as before); otherwise a cell only
+ * counts while moving at least this fast, to discourage slow walking. */
+export const DEFAULT_GRID_MIN_SPEED_KMH = 0;
+export const MAX_GRID_MIN_SPEED_KMH = 15;
 
 export type GridShape = "circle" | "rectangle";
 export const DEFAULT_GRID_WIDTH_M = 80;

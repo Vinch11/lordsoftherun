@@ -52,6 +52,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
+  const [speedKmh, setSpeedKmh] = useState(0);
 
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
@@ -199,6 +200,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         Date.now(),
         haversine,
       );
+      setSpeedKmh(instSpeedRef.current * 3.6);
 
       // Separate, simpler jitter filter for the lifetime distance stat — it
       // doesn't need SpeedTracker's full smoothing, just to reject samples
@@ -276,6 +278,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         )
       )
         return;
+
+      const minSpeedKmh = gameRef.current?.grid_min_speed_kmh ?? 0;
+      if (minSpeedKmh > 0 && instSpeedRef.current < kmhToMs(minSpeedKmh)) return;
 
       const { row, col } = pointToCell(center, cellSizeRef.current, point);
       const key = `${row}:${col}`;
@@ -500,6 +505,19 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         {!gridZone && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
             En attente que le prof définisse la zone de jeu…
+          </div>
+        )}
+
+        {!finished && (game?.grid_min_speed_kmh ?? 0) > 0 && (
+          <div
+            className={`panel flex items-center justify-between px-4 py-2 text-sm font-semibold ${
+              speedKmh < (game?.grid_min_speed_kmh ?? 0) ? "text-destructive" : "text-accent"
+            }`}
+          >
+            <span>Vitesse min. pour valider une case</span>
+            <span className="display tabular-nums">
+              {speedKmh.toFixed(1)} / {game?.grid_min_speed_kmh} km/h
+            </span>
           </div>
         )}
 
