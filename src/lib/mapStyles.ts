@@ -21,11 +21,12 @@ export type MapStyleSpec = {
   zone: { weight: number; dashArray: string; fillOpacity: number };
 };
 
-const blipClassic = (color: string) => `<div style="
-  width:16px;height:16px;border-radius:50%;
-  background:${color};border:2px solid #ffffff;
-  box-shadow:0 0 4px 2px rgba(0,0,0,.6), 0 0 14px 4px ${color};
-"></div>`;
+// Google-Maps-like locator: a soft halo that pulses, a white ring and a
+// solid colored dot — instantly readable as "someone is here", even in sun.
+const blipClassic = (color: string) => `<div class="gps-blip">
+  <span class="gps-blip-halo" style="background:${color}"></span>
+  <span class="gps-blip-dot" style="background:${color}"></span>
+</div>`;
 
 const OSM_TILES = {
   url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",

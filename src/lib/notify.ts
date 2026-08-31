@@ -6,40 +6,98 @@ export function requestNotificationPermission() {
   }
 }
 
-/** Short synthesized beep so a message is noticed even without looking at the screen. */
-function playChime() {
+let ctx: AudioContext | null = null;
+
+function audioCtx(): AudioContext | null {
   try {
     const Ctx =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.35);
-    osc.onended = () => void ctx.close();
+    ctx ??= new Ctx();
+    if (ctx.state === "suspended") void ctx.resume();
+    return ctx;
   } catch {
-    /* audio not available, notification/toast still gets the message across */
+    return null;
   }
 }
 
 /**
- * Alerts the user a message arrived: always a chime, plus an OS notification
- * when the tab is in the background and permission was granted (no server or
- * service worker involved — this only fires while the tab stays open).
+ * Unlocks audio on the first user gesture. Mobile browsers refuse to play
+ * sound from a background event unless the page already played something
+ * after a tap, so we prime a silent buffer as soon as the player interacts.
  */
-export function notifyMessage(title: string, body: string) {
-  playChime();
-  if (
-    typeof Notification !== "undefined" &&
-    Notification.permission === "granted" &&
-    typeof document !== "undefined" &&
-    document.hidden
-  ) {
-    new Notification(title, { body });
+export function primeAlertSound() {
+  const c = audioCtx();
+  if (!c) return;
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  gain.gain.value = 0.0001;
+  osc.connect(gain).connect(c.destination);
+  osc.start();
+  osc.stop(c.currentTime + 0.05);
+}
+
+/** One loud siren-like tone. */
+function tone(c: AudioContext, startAt: number, freqFrom: number, freqTo: number, dur: number) {
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.type = "square";
+  osc.frequency.setValueAtTime(freqFrom, startAt);
+  osc.frequency.linearRampToValueAtTime(freqTo, startAt + dur);
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.9, startAt + 0.02);
+  gain.gain.setValueAtTime(0.9, startAt + dur - 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + dur);
+  osc.connect(gain).connect(c.destination);
+  osc.start(startAt);
+  osc.stop(startAt + dur + 0.02);
+}
+
+/**
+ * Loud alert designed to be heard outdoors while running: a rising
+ * three-note siren at full gain, repeated for urgent alerts.
+ */
+function playAlarm(urgent: boolean) {
+  const c = audioCtx();
+  if (!c) return;
+  const t0 = c.currentTime + 0.02;
+  const pattern = urgent ? [0, 0.4, 0.8, 1.4, 1.8] : [0, 0.35, 0.7];
+  pattern.forEach((offset, i) => {
+    tone(c, t0 + offset, i % 2 === 0 ? 740 : 1180, i % 2 === 0 ? 1180 : 740, 0.3);
+  });
+}
+
+function vibrate(urgent: boolean) {
+  try {
+    navigator.vibrate?.(urgent ? [300, 120, 300, 120, 600] : [200, 100, 200]);
+  } catch {
+    /* vibration unsupported — sound and toast still carry the message */
   }
+}
+
+/**
+ * Alerts the user something happened: a loud siren plus vibration every time,
+ * and an OS notification whenever permission was granted (kept on screen for
+ * urgent alerts so it isn't missed while the phone is in a pocket).
+ */
+export function notifyMessage(title: string, body: string, urgent = false) {
+  playAlarm(urgent);
+  vibrate(urgent);
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try {
+      new Notification(title, {
+        body,
+        tag: title,
+        requireInteraction: urgent,
+        silent: false,
+      });
+    } catch {
+      /* some mobile browsers only allow notifications from a service worker */
+    }
+  }
+}
+
+/** Highest-priority alert (photo demandée, fin de partie, territoire perdu). */
+export function notifyUrgent(title: string, body: string) {
+  notifyMessage(title, body, true);
 }

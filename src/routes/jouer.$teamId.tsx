@@ -25,12 +25,18 @@ import {
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
-import { uploadTeamPhoto } from "@/lib/photoCheck";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
+import { SpeedTracker } from "@/lib/speed";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
@@ -117,8 +123,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const loopStartRef = useRef(0);
   const lastSync = useRef(0);
   const closing = useRef(false);
-  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
@@ -126,9 +135,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [chatBody, setChatBody] = useState("");
   const seenMessageCount = useRef<number | null>(null);
   const [unread, setUnread] = useState(false);
-  const [photoSending, setPhotoSending] = useState(false);
-  const [photoSentAt, setPhotoSentAt] = useState<string | null>(null);
-  const photoInputRef = useRef<HTMLInputElement | null>(null);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
   const [followMe, setFollowMe] = useState(true);
@@ -145,6 +151,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams, territories } = useGameState(gameId);
@@ -178,11 +189,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       } else if (latest?.sender === "system") {
         toast.error(latest.body, { duration: 8000 });
-        notifyMessage("⚠️ Territoire perdu !", latest.body);
+        notifyUrgent("⚠️ Territoire perdu !", latest.body);
       }
     }
     seenMessageCount.current = myMessages.length;
@@ -199,31 +210,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
   }
 
-  const photoStorageKey = game?.photo_requested_at
-    ? `conquete:photo:${teamId}:${game.photo_requested_at}`
-    : null;
-
-  useEffect(() => {
-    if (!photoStorageKey) return;
-    setPhotoSentAt(localStorage.getItem(photoStorageKey));
-  }, [photoStorageKey]);
-
-  async function sendPhoto(file: File) {
-    if (!gameId || !photoStorageKey) return;
-    setPhotoSending(true);
-    try {
-      await uploadTeamPhoto(gameId, teamId, file);
-      const sentAt = new Date().toISOString();
-      localStorage.setItem(photoStorageKey, sentAt);
-      setPhotoSentAt(sentAt);
-      toast.success("Photo envoyée au prof !");
-    } catch {
-      toast.error("Échec de l'envoi de la photo.");
-    } finally {
-      setPhotoSending(false);
-    }
-  }
-
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
@@ -232,6 +218,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closeLoop = useCallback(async () => {
     if (closing.current || !gameId) return;
     closing.current = true;
+    if (finishedRef.current) {
+      runningRef.current = false;
+      setRunning(false);
+      toast("⏱️ Partie terminée — cette boucle ne compte plus.");
+      closing.current = false;
+      return;
+    }
     const poly = polygonFromTrack(trackRef.current);
     runningRef.current = false;
     setRunning(false);
@@ -292,20 +285,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
-      const prevPos = lastPosRef.current;
-      const nowMs = Date.now();
-      if (prevPos) {
-        const dt = (nowMs - prevPos.t) / 1000;
-        const dist = haversine(prevPos.point, point);
-        // Ignore samples too close together in time/space: GPS jitter would
-        // otherwise produce wildly inflated instantaneous speed readings.
-        if (dt > 0.5 && dist > 2) {
-          instSpeedRef.current = dist / dt;
-          lastPosRef.current = { point, t: nowMs };
-        }
-      } else {
-        lastPosRef.current = { point, t: nowMs };
-      }
+      // Speed comes from a tracker that discards imprecise fixes and smooths
+      // the rest, so a single GPS glitch can never trigger a vehicle penalty.
+      instSpeedRef.current = speedTrackerRef.current.update(
+        point,
+        p.coords.accuracy ?? null,
+        p.coords.speed ?? null,
+        Date.now(),
+        haversine,
+      );
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
@@ -319,6 +307,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           })
           .eq("id", teamId);
       }
+
+      if (gameRef.current) {
+        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
+      }
+
+      if (finishedRef.current) return; // scores frozen at the end of the game
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
         void checkLandmarkClaims(
@@ -375,10 +369,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         } else {
           vehicleAboveSinceRef.current = null;
         }
-      }
-
-      if (gameRef.current) {
-        checkGraceArrival(gameRef.current, teamId, meRef.current?.returned_at != null, point);
       }
 
       if (!runningRef.current) return;
@@ -458,13 +448,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
@@ -483,11 +474,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         : "Partie terminée — territoire non comptabilisé (retour hors délai)";
 
   const toStart = track[0] && pos ? haversine(track[0], pos) : null;
-
-  const photoDeadlineRemaining = game?.photo_deadline
-    ? (new Date(game.photo_deadline).getTime() - now) / 1000
-    : null;
-  const photoRequestPending = !!game?.photo_requested_at && !photoSentAt;
 
   function startLoop() {
     if (!pos) {
@@ -685,38 +671,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </div>
         )}
 
-        {photoRequestPending && (
-          <div className="panel flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
-            <div className="section-title">
-              <Camera className="h-4 w-4" /> Photo demandée
-            </div>
-            <div className="text-sm font-semibold">
-              Le prof demande une photo de votre groupe
-              {photoDeadlineRemaining !== null && photoDeadlineRemaining > 0
-                ? ` — il reste ${formatClock(photoDeadlineRemaining)}`
-                : " — délai dépassé, envoyez-la quand même"}
-            </div>
-            <input
-              ref={photoInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void sendPhoto(file);
-                e.target.value = "";
-              }}
-            />
-            <button
-              className="btn-huge btn-huge-accent"
-              disabled={photoSending}
-              onClick={() => photoInputRef.current?.click()}
-            >
-              <Camera className="h-6 w-6" /> {photoSending ? "Envoi..." : "Prendre la photo"}
-            </button>
-          </div>
-        )}
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
 
         {returnZone && (!finished || graceStatus?.remainingS != null) && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3">

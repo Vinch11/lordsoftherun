@@ -4,6 +4,7 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_VEHICLE_PENALTY_M2,
@@ -16,11 +17,17 @@ import {
   kmhToMs,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
 import { cellCenter, claimGridCell, isWithinGridZone, pointToCell, useGridCells } from "@/lib/grid";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
+import { SpeedTracker } from "@/lib/speed";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -37,8 +44,11 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastClaimedCellRef = useRef<string | null>(null);
-  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const lastVehiclePenaltyRef = useRef(0);
   const geoFilterRef = useRef(new GeoKalmanFilter());
@@ -46,6 +56,11 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams } = useGameState(gameId);
@@ -94,7 +109,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       }
     }
@@ -150,20 +165,15 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
-      const prevPos = lastPosRef.current;
-      const nowMs = Date.now();
-      if (prevPos) {
-        const dt = (nowMs - prevPos.t) / 1000;
-        const dist = haversine(prevPos.point, point);
-        // Ignore samples too close together in time/space: GPS jitter would
-        // otherwise produce wildly inflated instantaneous speed readings.
-        if (dt > 0.5 && dist > 2) {
-          instSpeedRef.current = dist / dt;
-          lastPosRef.current = { point, t: nowMs };
-        }
-      } else {
-        lastPosRef.current = { point, t: nowMs };
-      }
+      // Speed comes from a tracker that discards imprecise fixes and smooths
+      // the rest, so a single GPS glitch can never trigger a vehicle penalty.
+      instSpeedRef.current = speedTrackerRef.current.update(
+        point,
+        p.coords.accuracy ?? null,
+        p.coords.speed ?? null,
+        Date.now(),
+        haversine,
+      );
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
@@ -200,6 +210,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       const center = gridCenterRef.current;
       if (!center) return;
+      if (finishedRef.current) return; // board frozen at the final whistle
       if (
         !isWithinGridZone(
           gridShapeRef.current,
@@ -281,13 +292,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         ? "Partie terminée — retour validé !"
         : "Partie terminée — retour hors délai";
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
@@ -427,6 +439,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             En attente que le prof définisse la zone de jeu…
           </div>
         )}
+
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
 
         {finished && returnZone && graceStatus?.remainingS != null && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
