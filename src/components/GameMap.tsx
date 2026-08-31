@@ -335,10 +335,15 @@ export default function GameMap({
 
   // Dragging must stay disabled for the whole gesture even if the prop flips
   // mid-stroke (e.g. the organizer finishes drawing) — re-enable it once we
-  // are not actively drawing.
+  // are not actively drawing. While drawing is armed we also kill the
+  // browser's own touch gestures (scroll/zoom), otherwise a finger drag fires
+  // pointercancel after one point and the stroke ends up "too short".
   useEffect(() => {
     if (!drawingEnabled && !isDrawingRef.current) mapRef.current?.dragging.enable();
+    const container = mapRef.current?.getContainer();
+    if (container) container.style.touchAction = drawingEnabled ? "none" : "";
   }, [drawingEnabled]);
+
 
   useEffect(() => {
     const el = containerRef.current;
