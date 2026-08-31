@@ -448,7 +448,33 @@ function TeacherDashboard() {
     };
   }, [code]);
 
-  const { game, teams, territories } = useGameState(gameId);
+  const { game, teams, territories, refresh } = useGameState(gameId);
+  const [gameNameDraft, setGameNameDraft] = useState("");
+  const gameNameRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!game) return;
+    if (gameNameRef.current !== game.name) {
+      gameNameRef.current = game.name;
+      setGameNameDraft(game.name ?? "");
+    }
+  }, [game]);
+  async function saveGameName() {
+    if (!gameId) return;
+    const next = gameNameDraft.trim();
+    if (next === (game?.name ?? "")) return;
+    const { error } = await supabase
+      .from("games")
+      .update({ name: next || null })
+      .eq("id", gameId);
+    if (error) {
+      toast.error("Impossible d'enregistrer le nom.");
+      return;
+    }
+    gameNameRef.current = next || null;
+    toast.success("Nom enregistré.");
+    await refresh();
+  }
+
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
@@ -1487,10 +1513,26 @@ function TeacherDashboard() {
               <div className="pill">
                 <MapPin className="h-3.5 w-3.5" /> Tableau de bord
               </div>
-              <h1 className="page-title mt-3 truncate text-3xl">
+              {isOwner ? (
+                <input
+                  className="field mt-3 text-xl font-bold"
+                  placeholder="Nom de la partie (ex. 2e année — mardi)"
+                  maxLength={80}
+                  value={gameNameDraft}
+                  onChange={(e) => setGameNameDraft(e.target.value)}
+                  onBlur={() => void saveGameName()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              ) : (
+                game?.name && <h2 className="mt-3 truncate text-xl font-bold">{game.name}</h2>
+              )}
+              <h1 className="page-title mt-2 truncate text-3xl">
                 Partie <em>{code}</em>
               </h1>
             </div>
+
             <span className={`chip ${running ? "chip-accent" : finished ? "chip-muted" : ""}`}>
               {running ? "En cours" : finished ? "Terminée" : "Lobby"}
             </span>
