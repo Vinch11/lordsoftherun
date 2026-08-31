@@ -1311,6 +1311,41 @@ function TeacherDashboard() {
     }
   }
 
+  async function placeCheckpoint(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    try {
+      await appendCheckpoint(gameId, lat, lng, checkpoints.length);
+      toast.success(
+        checkpoints.length === 0
+          ? "Ligne de départ/arrivée placée !"
+          : `Checkpoint ${checkpoints.length} placé !`,
+      );
+    } catch {
+      toast.error("Impossible de placer le checkpoint.");
+    }
+  }
+
+  async function removeCheckpoint(id: string) {
+    if (!gameId || !isOwner) return;
+    try {
+      await deleteCheckpoint(gameId, id);
+    } catch {
+      toast.error("Impossible de supprimer le checkpoint.");
+    }
+  }
+
+  async function resetCircuit() {
+    if (!gameId || !isOwner) return;
+    try {
+      await clearCheckpoints(gameId);
+      toast.success("Circuit effacé.");
+    } catch {
+      toast.error("Impossible d'effacer le circuit.");
+    }
+  }
+
+
+
   async function placeCircuitBox(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     try {
