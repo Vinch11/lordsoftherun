@@ -62,8 +62,11 @@ import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
 import {
   addCircuitBox,
+  appendCheckpoint,
   circuitFormatRank,
   circuitRankMetric,
+  clearCheckpoints,
+  deleteCheckpoint,
   removeCircuitBox,
   resampleToCheckpoints,
   setCheckpoints,
@@ -369,7 +372,7 @@ function TeacherDashboard() {
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
   const [placingMode, setPlacingMode] = useState<
-    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box"
+    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box" | "circuit_point"
   >("none");
   const [circuitDrawing, setCircuitDrawing] = useState(false);
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
@@ -1308,6 +1311,41 @@ function TeacherDashboard() {
     }
   }
 
+  async function placeCheckpoint(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    try {
+      await appendCheckpoint(gameId, lat, lng, checkpoints.length);
+      toast.success(
+        checkpoints.length === 0
+          ? "Ligne de départ/arrivée placée !"
+          : `Checkpoint ${checkpoints.length} placé !`,
+      );
+    } catch {
+      toast.error("Impossible de placer le checkpoint.");
+    }
+  }
+
+  async function removeCheckpoint(id: string) {
+    if (!gameId || !isOwner) return;
+    try {
+      await deleteCheckpoint(gameId, id);
+    } catch {
+      toast.error("Impossible de supprimer le checkpoint.");
+    }
+  }
+
+  async function resetCircuit() {
+    if (!gameId || !isOwner) return;
+    try {
+      await clearCheckpoints(gameId);
+      toast.success("Circuit effacé.");
+    } catch {
+      toast.error("Impossible d'effacer le circuit.");
+    }
+  }
+
+
+
   async function placeCircuitBox(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     try {
@@ -1597,7 +1635,9 @@ function TeacherDashboard() {
                       ? placeGridZone
                       : placingMode === "circuit_box"
                         ? placeCircuitBox
-                        : undefined
+                        : placingMode === "circuit_point"
+                          ? placeCheckpoint
+                          : undefined
           }
         />
         <div
@@ -1660,7 +1700,13 @@ function TeacherDashboard() {
                   ? "Touchez la carte pour placer le repère bonus"
                   : placingMode === "grid_zone"
                     ? "Touchez la carte pour placer le centre de la zone de jeu"
-                    : "Touchez la carte pour placer la zone interdite"}
+                    : placingMode === "circuit_box"
+                      ? "Touchez la carte pour placer une boîte mystère"
+                      : placingMode === "circuit_point"
+                        ? checkpoints.length === 0
+                          ? "Touchez la carte pour placer la ligne de départ/arrivée"
+                          : `Touchez la carte pour placer le checkpoint ${checkpoints.length}`
+                        : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
@@ -2636,22 +2682,69 @@ function TeacherDashboard() {
             </div>
             <p className="text-sm text-muted-foreground">
               {checkpoints.length >= 2
-                ? `Circuit dessiné : ${checkpoints.length} checkpoints, ${circuitLapCount} tour${circuitLapCount > 1 ? "s" : ""}.`
-                : "Dessinez le circuit à main levée sur la carte, comme au crayon : appuyez, tracez, relâchez."}
+                ? `Circuit : ${checkpoints.length} checkpoints, ${circuitLapCount} tour${circuitLapCount > 1 ? "s" : ""}.`
+                : "Placez les checkpoints un par un sur la carte pour une précision maximale, ou dessinez le circuit à main levée."}
             </p>
             {isOwner && (
               <>
                 <button
+                  className={`btn-huge ${placingMode === "circuit_point" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                  onClick={() => {
+                    setCircuitDrawing(false);
+                    setPlacingMode((p) => (p === "circuit_point" ? "none" : "circuit_point"));
+                  }}
+                >
+                  <MapPin className="h-5 w-5" />
+                  {placingMode === "circuit_point"
+                    ? "Terminer le placement"
+                    : checkpoints.length === 0
+                      ? "Placer le départ/arrivée"
+                      : "Ajouter un checkpoint"}
+                </button>
+                {checkpoints.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    {checkpoints.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm"
+                      >
+                        <span className="font-semibold">
+                          {c.seq_index === 0
+                            ? "🏁 Départ / Arrivée"
+                            : `Checkpoint ${c.seq_index}`}
+                        </span>
+                        <button
+                          className="icon-btn"
+                          aria-label={`Supprimer le checkpoint ${c.seq_index}`}
+                          onClick={() => void removeCheckpoint(c.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      className="btn-huge btn-huge-dark mt-1"
+                      onClick={() => void resetCircuit()}
+                    >
+                      <X className="h-5 w-5" /> Effacer le circuit
+                    </button>
+                  </div>
+                )}
+                <button
                   className={`btn-huge ${circuitDrawing ? "btn-huge-accent" : "btn-huge-dark"}`}
-                  onClick={() => setCircuitDrawing((d) => !d)}
+                  onClick={() => {
+                    setPlacingMode("none");
+                    setCircuitDrawing((d) => !d);
+                  }}
                 >
                   <Pencil className="h-5 w-5" />
                   {circuitDrawing
                     ? "Dessinez sur la carte…"
                     : checkpoints.length >= 2
-                      ? "Redessiner le circuit"
-                      : "Dessiner le circuit"}
+                      ? "Redessiner à main levée"
+                      : "Dessiner à main levée"}
                 </button>
+
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold">Nombre de checkpoints</span>
                   <div className="flex items-center gap-3">

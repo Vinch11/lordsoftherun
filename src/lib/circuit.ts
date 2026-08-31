@@ -94,6 +94,37 @@ export async function setCheckpoints(gameId: string, points: [number, number][])
   if (error) throw error;
 }
 
+/** Adds one checkpoint at the end of the sequence (manual, precise placement). */
+export async function appendCheckpoint(
+  gameId: string,
+  lat: number,
+  lng: number,
+  seqIndex: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from("circuit_checkpoints")
+    .insert({ game_id: gameId, seq_index: seqIndex, lat, lng });
+  if (error) throw error;
+}
+
+/** Deletes one checkpoint and renumbers the remaining ones to stay contiguous. */
+export async function deleteCheckpoint(gameId: string, id: string): Promise<void> {
+  await supabase.from("circuit_checkpoints").delete().eq("id", id);
+  const { data } = await supabase
+    .from("circuit_checkpoints")
+    .select("id")
+    .eq("game_id", gameId)
+    .order("seq_index");
+  const rows = (data ?? []) as { id: string }[];
+  for (let i = 0; i < rows.length; i++) {
+    await supabase.from("circuit_checkpoints").update({ seq_index: i }).eq("id", rows[i]!.id);
+  }
+}
+
+export async function clearCheckpoints(gameId: string): Promise<void> {
+  await supabase.from("circuit_checkpoints").delete().eq("game_id", gameId);
+}
+
 export function useCircuitBoxes(gameId: string | null) {
   const [boxes, setBoxes] = useState<CircuitBox[]>([]);
 
