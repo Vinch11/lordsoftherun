@@ -789,49 +789,54 @@
   }
 }
 
-/* GPS locator marker: colored dot + pulsing halo, like a phone map app. */
+/* GPS locator marker: colored dot + pulsing halo, like a phone map app. Sized
+   and saturated to win against team trails and territory fills, including
+   outdoors in direct sun where this app is actually used. */
 .gps-blip {
   position: relative;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
 }
 
 .gps-blip-ring {
   position: absolute;
   inset: 6px;
   border-radius: 9999px;
-  border: 2px solid;
-  opacity: 0.55;
+  border: 3px solid;
+  opacity: 0.9;
+  box-shadow: 0 0 6px 1px rgba(0, 0, 0, 0.35);
 }
 
 .gps-blip-halo {
   position: absolute;
   inset: 0;
   border-radius: 9999px;
-  opacity: 0.28;
+  opacity: 0.5;
   transform: scale(1);
-  animation: gps-blip-pulse 2s ease-out infinite;
+  animation: gps-blip-pulse 1.8s ease-out infinite;
 }
 
 .gps-blip-dot {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
+  width: 24px;
+  height: 24px;
+  margin: -12px 0 0 -12px;
   border-radius: 9999px;
-  border: 2.5px solid #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+  border: 3px solid #ffffff;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.6),
+    0 0 10px 2px rgba(0, 0, 0, 0.35);
 }
 
 @keyframes gps-blip-pulse {
   0% {
     transform: scale(0.6);
-    opacity: 0.45;
+    opacity: 0.65;
   }
   100% {
-    transform: scale(2.2);
+    transform: scale(2.4);
     opacity: 0;
   }
 }

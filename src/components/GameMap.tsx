@@ -129,8 +129,8 @@ const blipIcon = (color: string, spec: MapStyleSpec) =>
   L.divIcon({
     html: spec.blip(color),
     className: "",
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
