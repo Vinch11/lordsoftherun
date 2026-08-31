@@ -41,6 +41,13 @@ export type Game = {
   vehicle_allowed: boolean;
   vehicle_speed_threshold_kmh: number;
   vehicle_penalty_m2: number;
+  circuit_checkpoint_count: number;
+  circuit_lap_count: number;
+  circuit_capture_radius_m: number;
+  circuit_item_cooldown_s: number;
+  circuit_banana_penalty_s: number;
+  circuit_boost_bonus_s: number;
+  circuit_lightning_penalty_s: number;
 };
 
 export type Team = {
@@ -60,6 +67,12 @@ export type Team = {
   returned_at: string | null;
   current_trail: [number, number][];
   total_distance_m: number;
+  circuit_lap: number;
+  circuit_next_checkpoint: number;
+  circuit_time_adjustment_s: number;
+  circuit_finished_at: string | null;
+  circuit_held_item: string | null;
+  circuit_shielded: boolean;
 };
 
 export type Territory = {

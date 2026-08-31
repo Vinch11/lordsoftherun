@@ -35,12 +35,13 @@ export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
 /** Re-entering an already-penalized forbidden zone only counts again after this long. */
 export const FORBIDDEN_PENALTY_COOLDOWN_MS = 30_000;
 
-export type GameMode = "territoire" | "capture_drapeau" | "grille";
+export type GameMode = "territoire" | "capture_drapeau" | "grille" | "circuit";
 
 export const GAME_MODE_LABELS: Record<GameMode, string> = {
   territoire: "Territoire",
   capture_drapeau: "Capture du drapeau",
   grille: "Grille",
+  circuit: "Circuit",
 };
 
 export const GAME_MODE_DESCRIPTIONS: Record<GameMode, string> = {
@@ -49,7 +50,39 @@ export const GAME_MODE_DESCRIPTIONS: Record<GameMode, string> = {
     "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt.",
   grille:
     "La zone de jeu est divisée en cases : chaque case prend la couleur de la dernière équipe qui l'a traversée.",
+  circuit:
+    "Course chronométrée façon Mario Kart : bouclez le circuit dessiné par le prof, ramassez des objets, le temps le plus rapide gagne.",
 };
+
+export type CircuitItemKind = "shield" | "boost" | "banana" | "lightning";
+
+export const CIRCUIT_ITEM_KINDS: CircuitItemKind[] = ["shield", "boost", "banana", "lightning"];
+
+export const CIRCUIT_ITEM_LABELS: Record<CircuitItemKind, string> = {
+  shield: "Bouclier",
+  boost: "Boost",
+  banana: "Banane",
+  lightning: "Foudre",
+};
+
+export const CIRCUIT_ITEM_ICONS: Record<CircuitItemKind, string> = {
+  shield: "🛡️",
+  boost: "🚀",
+  banana: "🍌",
+  lightning: "⚡",
+};
+
+export const DEFAULT_CIRCUIT_CHECKPOINT_COUNT = 8;
+export const MIN_CIRCUIT_CHECKPOINT_COUNT = 4;
+export const MAX_CIRCUIT_CHECKPOINT_COUNT = 20;
+export const DEFAULT_CIRCUIT_LAP_COUNT = 3;
+export const DEFAULT_CIRCUIT_CAPTURE_RADIUS_M = 12;
+export const DEFAULT_CIRCUIT_ITEM_COOLDOWN_S = 8;
+export const DEFAULT_CIRCUIT_BANANA_PENALTY_S = 15;
+export const DEFAULT_CIRCUIT_BOOST_BONUS_S = 10;
+export const DEFAULT_CIRCUIT_LIGHTNING_PENALTY_S = 20;
+/** How close a team must get to a mystery box or a dropped banana to trigger it. */
+export const CIRCUIT_ITEM_RADIUS_M = 10;
 
 export type CaptureConsequence =
   "time_penalty" | "return_to_base" | "flag_dropped" | "organizer_replaces";

@@ -41,6 +41,7 @@ import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
+import { CircuitPlayView } from "@/components/CircuitPlayView";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -106,6 +107,9 @@ function PlayView() {
   }
   if (game.mode === "grille") {
     return <GridPlayView gameId={gameId} teamId={teamId} />;
+  }
+  if (game.mode === "circuit") {
+    return <CircuitPlayView gameId={gameId} teamId={teamId} />;
   }
   return <TerritoryPlayView gameId={gameId} teamId={teamId} />;
 }
