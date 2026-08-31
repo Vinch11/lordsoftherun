@@ -25,7 +25,12 @@ import {
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
@@ -146,6 +151,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams, territories } = useGameState(gameId);
@@ -179,11 +189,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       } else if (latest?.sender === "system") {
         toast.error(latest.body, { duration: 8000 });
-        notifyMessage("⚠️ Territoire perdu !", latest.body);
+        notifyUrgent("⚠️ Territoire perdu !", latest.body);
       }
     }
     seenMessageCount.current = myMessages.length;
@@ -446,7 +456,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);

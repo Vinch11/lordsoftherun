@@ -19,7 +19,12 @@ import {
   kmhToMs,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
@@ -53,6 +58,11 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams } = useGameState(gameId);
@@ -113,7 +123,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       }
     }
@@ -389,7 +399,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
