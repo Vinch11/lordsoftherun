@@ -14,6 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
+      circuit_bananas: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_bananas_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circuit_bananas_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circuit_box_pickups: {
+        Row: {
+          box_id: string
+          id: string
+          picked_at: string
+          team_id: string
+        }
+        Insert: {
+          box_id: string
+          id?: string
+          picked_at?: string
+          team_id: string
+        }
+        Update: {
+          box_id?: string
+          id?: string
+          picked_at?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_box_pickups_box_id_fkey"
+            columns: ["box_id"]
+            isOneToOne: false
+            referencedRelation: "circuit_boxes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circuit_box_pickups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circuit_boxes: {
+        Row: {
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_boxes_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circuit_checkpoints: {
+        Row: {
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+          seq_index: number
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+          seq_index: number
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          seq_index?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_checkpoints_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flags: {
         Row: {
           carried_by_team_id: string | null
@@ -109,6 +248,13 @@ export type Database = {
       }
       games: {
         Row: {
+          circuit_banana_penalty_s: number
+          circuit_boost_bonus_s: number
+          circuit_capture_radius_m: number
+          circuit_checkpoint_count: number
+          circuit_item_cooldown_s: number
+          circuit_lap_count: number
+          circuit_lightning_penalty_s: number
           code: string
           created_at: string
           ctf_capture_consequence: string
@@ -149,6 +295,13 @@ export type Database = {
           vehicle_speed_threshold_kmh: number
         }
         Insert: {
+          circuit_banana_penalty_s?: number
+          circuit_boost_bonus_s?: number
+          circuit_capture_radius_m?: number
+          circuit_checkpoint_count?: number
+          circuit_item_cooldown_s?: number
+          circuit_lap_count?: number
+          circuit_lightning_penalty_s?: number
           code: string
           created_at?: string
           ctf_capture_consequence?: string
@@ -189,6 +342,13 @@ export type Database = {
           vehicle_speed_threshold_kmh?: number
         }
         Update: {
+          circuit_banana_penalty_s?: number
+          circuit_boost_bonus_s?: number
+          circuit_capture_radius_m?: number
+          circuit_checkpoint_count?: number
+          circuit_item_cooldown_s?: number
+          circuit_lap_count?: number
+          circuit_lightning_penalty_s?: number
           code?: string
           created_at?: string
           ctf_capture_consequence?: string
@@ -556,6 +716,12 @@ export type Database = {
       }
       teams: {
         Row: {
+          circuit_finished_at: string | null
+          circuit_held_item: string | null
+          circuit_lap: number
+          circuit_next_checkpoint: number
+          circuit_shielded: boolean
+          circuit_time_adjustment_s: number
           claimed_by: string | null
           color: string
           created_at: string
@@ -577,6 +743,12 @@ export type Database = {
           validated: boolean
         }
         Insert: {
+          circuit_finished_at?: string | null
+          circuit_held_item?: string | null
+          circuit_lap?: number
+          circuit_next_checkpoint?: number
+          circuit_shielded?: boolean
+          circuit_time_adjustment_s?: number
           claimed_by?: string | null
           color: string
           created_at?: string
@@ -598,6 +770,12 @@ export type Database = {
           validated?: boolean
         }
         Update: {
+          circuit_finished_at?: string | null
+          circuit_held_item?: string | null
+          circuit_lap?: number
+          circuit_next_checkpoint?: number
+          circuit_shielded?: boolean
+          circuit_time_adjustment_s?: number
           claimed_by?: string | null
           color?: string
           created_at?: string
