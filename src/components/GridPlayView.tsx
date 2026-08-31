@@ -4,6 +4,7 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_VEHICLE_PENALTY_M2,
@@ -428,6 +429,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             En attente que le prof définisse la zone de jeu…
           </div>
         )}
+
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
 
         {finished && returnZone && graceStatus?.remainingS != null && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
