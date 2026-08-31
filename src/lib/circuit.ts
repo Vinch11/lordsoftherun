@@ -27,10 +27,18 @@ export type Banana = {
  * start/finish line.
  */
 export function resampleToCheckpoints(path: [number, number][], count: number): [number, number][] {
-  if (path.length < 2 || count < 2) return [];
-  const line = lineString(path.map(([lat, lng]) => [lng, lat]));
+  if (count < 2) return [];
+  // Drop consecutive duplicates: a slow finger emits many identical points and
+  // turf then reports a zero-length line even though the stroke is fine.
+  const clean: [number, number][] = [];
+  for (const p of path) {
+    const last = clean[clean.length - 1];
+    if (!last || Math.abs(last[0] - p[0]) > 1e-9 || Math.abs(last[1] - p[1]) > 1e-9) clean.push(p);
+  }
+  if (clean.length < 2) return [];
+  const line = lineString(clean.map(([lat, lng]) => [lng, lat]));
   const totalKm = length(line, { units: "kilometers" });
-  if (totalKm === 0) return [];
+  if (totalKm <= 0) return [];
   const points: [number, number][] = [];
   for (let i = 0; i < count; i++) {
     const pt = along(line, (totalKm * i) / count, { units: "kilometers" });
@@ -39,6 +47,7 @@ export function resampleToCheckpoints(path: [number, number][], count: number): 
   }
   return points;
 }
+
 
 export function useCheckpoints(gameId: string | null) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -83,6 +92,37 @@ export async function setCheckpoints(gameId: string, points: [number, number][])
     .from("circuit_checkpoints")
     .insert(points.map(([lat, lng], seq_index) => ({ game_id: gameId, seq_index, lat, lng })));
   if (error) throw error;
+}
+
+/** Adds one checkpoint at the end of the sequence (manual, precise placement). */
+export async function appendCheckpoint(
+  gameId: string,
+  lat: number,
+  lng: number,
+  seqIndex: number,
+): Promise<void> {
+  const { error } = await supabase
+    .from("circuit_checkpoints")
+    .insert({ game_id: gameId, seq_index: seqIndex, lat, lng });
+  if (error) throw error;
+}
+
+/** Deletes one checkpoint and renumbers the remaining ones to stay contiguous. */
+export async function deleteCheckpoint(gameId: string, id: string): Promise<void> {
+  await supabase.from("circuit_checkpoints").delete().eq("id", id);
+  const { data } = await supabase
+    .from("circuit_checkpoints")
+    .select("id")
+    .eq("game_id", gameId)
+    .order("seq_index");
+  const rows = (data ?? []) as { id: string }[];
+  for (let i = 0; i < rows.length; i++) {
+    await supabase.from("circuit_checkpoints").update({ seq_index: i }).eq("id", rows[i]!.id);
+  }
+}
+
+export async function clearCheckpoints(gameId: string): Promise<void> {
+  await supabase.from("circuit_checkpoints").delete().eq("game_id", gameId);
 }
 
 export function useCircuitBoxes(gameId: string | null) {
