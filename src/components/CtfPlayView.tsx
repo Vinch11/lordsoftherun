@@ -24,6 +24,7 @@ import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
+import { SpeedTracker } from "@/lib/speed";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -40,8 +41,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
-  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const speedTrackerRef = useRef(new SpeedTracker());
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
@@ -156,20 +157,15 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
-      const prevPos = lastPosRef.current;
-      const nowMs = Date.now();
-      if (prevPos) {
-        const dt = (nowMs - prevPos.t) / 1000;
-        const dist = haversine(prevPos.point, point);
-        // Ignore samples too close together in time/space: GPS jitter would
-        // otherwise produce wildly inflated instantaneous speed readings.
-        if (dt > 0.5 && dist > 2) {
-          instSpeedRef.current = dist / dt;
-          lastPosRef.current = { point, t: nowMs };
-        }
-      } else {
-        lastPosRef.current = { point, t: nowMs };
-      }
+      // Speed comes from a tracker that discards imprecise fixes and smooths
+      // the rest, so a single GPS glitch can never trigger a vehicle penalty.
+      instSpeedRef.current = speedTrackerRef.current.update(
+        point,
+        p.coords.accuracy ?? null,
+        p.coords.speed ?? null,
+        Date.now(),
+        haversine,
+      );
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
