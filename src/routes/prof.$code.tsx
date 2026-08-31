@@ -26,6 +26,7 @@ import {
   Shield,
   ShieldAlert,
   Shuffle,
+  Smartphone,
   Star,
   Timer,
   Trophy,
@@ -62,14 +63,21 @@ import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
+  addStudent,
+  applyRosterComposition,
   assignStudentTeam,
   downloadCsv,
   importRoster,
   parseIdoceoRoster,
+  parseRosterCsv,
+  removeStudent,
   setStudentPresent,
   shuffleTeams,
   useStudents,
+  type ParsedStudent,
 } from "@/lib/students";
+import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
+
 import {
   applySavedPoint,
   deleteSavedPoint,
@@ -331,6 +339,7 @@ function TeacherDashboard() {
   const t = getTerminology(profile?.terminology);
   const [creatingGame, setCreatingGame] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
+  const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
 
   const [gameId, setGameId] = useState<string | null>(null);
@@ -386,6 +395,10 @@ function TeacherDashboard() {
   const [view, setView] = useState<"dashboard" | "overview">("dashboard");
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
+  const [newStudentName, setNewStudentName] = useState("");
+  const [wizardPlayers, setWizardPlayers] = useState<ParsedStudent[]>([]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+
   const stoppedRef = useRef(false);
   const radiusInitRef = useRef(false);
   const runningConfigInitRef = useRef(false);
@@ -436,14 +449,40 @@ function TeacherDashboard() {
     };
   }, [code]);
 
-  const { game, teams, territories } = useGameState(gameId);
+  const { game, teams, territories, refresh } = useGameState(gameId);
+  const [gameNameDraft, setGameNameDraft] = useState("");
+  const gameNameRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!game) return;
+    if (gameNameRef.current !== game.name) {
+      gameNameRef.current = game.name;
+      setGameNameDraft(game.name ?? "");
+    }
+  }, [game]);
+  async function saveGameName() {
+    if (!gameId) return;
+    const next = gameNameDraft.trim();
+    if (next === (game?.name ?? "")) return;
+    const { error } = await supabase
+      .from("games")
+      .update({ name: next || null })
+      .eq("id", gameId);
+    if (error) {
+      toast.error("Impossible d'enregistrer le nom.");
+      return;
+    }
+    gameNameRef.current = next || null;
+    toast.success("Nom enregistré.");
+    await refresh();
+  }
+
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
-  const { students } = useStudents(gameId);
+  const { students, refresh: refreshStudents } = useStudents(gameId);
   const { points: landmarkTemplates, refresh: refreshLandmarkTemplates } = useSavedPoints(
     user?.id ?? null,
     "landmark",
@@ -556,7 +595,13 @@ function TeacherDashboard() {
       const graceEndsAt = new Date(Date.now() + graceMinutes * 60_000).toISOString();
       await supabase
         .from("games")
-        .update({ status: "finished", grace_ends_at: graceEndsAt })
+        // Stopping early also closes the clock, so every screen (teacher and
+        // teams) shows the same frozen 00:00 instead of a countdown that runs on.
+        .update({
+          status: "finished",
+          grace_ends_at: graceEndsAt,
+          ends_at: new Date().toISOString(),
+        })
         .eq("id", gameId);
       const consequence =
         gracePenaltyMode === "cancel"
@@ -579,7 +624,10 @@ function TeacherDashboard() {
             .eq("id", t.id),
         ),
       );
-      await supabase.from("games").update({ status: "finished" }).eq("id", gameId);
+      await supabase
+        .from("games")
+        .update({ status: "finished", ends_at: new Date().toISOString() })
+        .eq("id", gameId);
     }
     toast("Partie terminée.");
   }
@@ -624,7 +672,9 @@ function TeacherDashboard() {
     // penalties (vehicle check) — so it has to be subtracted here instead
     // of relying on score_m2 already reflecting it, unlike territoire/CTF.
     const base =
-      gameMode === "grille" ? (gridScoreByTeam.get(t.id) ?? 0) - t.penalty_m2 : t.score_m2;
+      gameMode === "grille"
+        ? (gridScoreByTeam.get(t.id) ?? 0) + (t.landmark_bonus_m2 ?? 0) - t.penalty_m2
+        : t.score_m2;
     return Math.max(0, base - graceStatusFor(t).penalty);
   };
   const ranked = useMemo(
@@ -765,28 +815,57 @@ function TeacherDashboard() {
     if (!gameId) return;
     setRosterBusy(true);
     try {
-      const names = parseIdoceoRoster(await file.text());
-      if (names.length === 0) {
+      const parsed = parseRosterCsv(await file.text());
+      if (parsed.length === 0) {
         toast.error("Aucun élève trouvé dans ce fichier.");
         return;
       }
-      await importRoster(gameId, names);
-      toast.success(`${names.length} élèves importés.`);
-    } catch {
-      toast.error("Échec de l'import du CSV.");
+      setWizardPlayers(parsed);
+      setWizardOpen(true);
+    } catch (e) {
+      toast.error(
+        `Échec de l'import du CSV : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
     } finally {
       setRosterBusy(false);
     }
   }
+
+  async function confirmWizard(
+    roster: { name: string; present: boolean }[],
+    composed: ComposedTeam[],
+  ) {
+    if (!gameId) return;
+    setRosterBusy(true);
+    try {
+      await applyRosterComposition(gameId, roster, composed);
+      await refreshStudents();
+      setWizardOpen(false);
+      setWizardPlayers([]);
+      toast.success(
+        `${roster.filter((r) => r.present).length} élèves répartis en ${composed.length} équipes.`,
+      );
+    } catch (e) {
+      toast.error(
+        `Échec de la création des équipes : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
+    } finally {
+      setRosterBusy(false);
+    }
+  }
+
 
   async function onShuffleTeams() {
     if (!gameId) return;
     setRosterBusy(true);
     try {
       await shuffleTeams(gameId, students, teamCount);
+      await refreshStudents();
       toast.success(`${teamCount} équipes créées.`);
-    } catch {
-      toast.error("Échec de la répartition.");
+    } catch (e) {
+      toast.error(
+        `Échec de la répartition : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
     } finally {
       setRosterBusy(false);
     }
@@ -822,8 +901,15 @@ function TeacherDashboard() {
         duration_minutes: durationMinutes,
         started_at: new Date().toISOString(),
         ends_at: ends,
+        // A relaunch must clear the end-of-game return window, otherwise teams
+        // stay flagged late/cancelled from the previous round.
+        grace_ends_at: null,
       })
       .eq("id", gameId);
+    await supabase
+      .from("teams")
+      .update({ returned_at: null, validated: false })
+      .eq("game_id", gameId);
     toast.success("Partie démarrée !");
   }
 
@@ -1434,10 +1520,26 @@ function TeacherDashboard() {
               <div className="pill">
                 <MapPin className="h-3.5 w-3.5" /> Tableau de bord
               </div>
-              <h1 className="page-title mt-3 truncate text-3xl">
+              {isOwner ? (
+                <input
+                  className="field mt-3 text-xl font-bold"
+                  placeholder="Nom de la partie (ex. 2e année — mardi)"
+                  maxLength={80}
+                  value={gameNameDraft}
+                  onChange={(e) => setGameNameDraft(e.target.value)}
+                  onBlur={() => void saveGameName()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              ) : (
+                game?.name && <h2 className="mt-3 truncate text-xl font-bold">{game.name}</h2>
+              )}
+              <h1 className="page-title mt-2 truncate text-3xl">
                 Partie <em>{code}</em>
               </h1>
             </div>
+
             <span className={`chip ${running ? "chip-accent" : finished ? "chip-muted" : ""}`}>
               {running ? "En cours" : finished ? "Terminée" : "Lobby"}
             </span>
@@ -1524,7 +1626,9 @@ function TeacherDashboard() {
                     <input
                       type="checkbox"
                       checked={s.present}
-                      onChange={(e) => void setStudentPresent(s.id, e.target.checked)}
+                      onChange={(e) => {
+                        void setStudentPresent(s.id, e.target.checked).then(refreshStudents);
+                      }}
                     />
                     <span
                       className={`flex-1 truncate text-sm ${
@@ -1537,7 +1641,11 @@ function TeacherDashboard() {
                       <select
                         className="field w-28 py-1 text-xs"
                         value={s.team_id ?? ""}
-                        onChange={(e) => void assignStudentTeam(s.id, e.target.value || null)}
+                        onChange={(e) => {
+                          void assignStudentTeam(s.id, e.target.value || null).then(
+                            refreshStudents,
+                          );
+                        }}
                       >
                         <option value="">—</option>
                         {teams.map((tm) => (
@@ -1547,10 +1655,66 @@ function TeacherDashboard() {
                         ))}
                       </select>
                     )}
+                    <button
+                      type="button"
+                      aria-label={`Retirer ${s.name}`}
+                      className="icon-btn h-7 w-7"
+                      onClick={() => void removeStudent(s.id).then(refreshStudents)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
                   </div>
                 ))}
               </div>
             )}
+
+            {students.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className="seg-btn"
+                  onClick={() =>
+                    void Promise.all(students.map((s) => setStudentPresent(s.id, true))).then(
+                      refreshStudents,
+                    )
+                  }
+                >
+                  Tous présents
+                </button>
+                <button
+                  className="seg-btn"
+                  onClick={() =>
+                    void Promise.all(students.map((s) => setStudentPresent(s.id, false))).then(
+                      refreshStudents,
+                    )
+                  }
+                >
+                  Tous absents
+                </button>
+              </div>
+            )}
+
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newStudentName.trim();
+                if (!name || !gameId) return;
+                setNewStudentName("");
+                void addStudent(gameId, name)
+                  .then(refreshStudents)
+                  .catch(() => toast.error("Ajout impossible."));
+              }}
+            >
+              <input
+                className="field flex-1 py-2 text-sm"
+                placeholder="Ajouter un élève"
+                value={newStudentName}
+                onChange={(e) => setNewStudentName(e.target.value)}
+              />
+              <button type="submit" className="icon-btn" aria-label="Ajouter l'élève">
+                <Plus className="h-4 w-4" />
+              </button>
+            </form>
 
             <label className="btn-huge btn-huge-dark cursor-pointer">
               <Upload className="h-5 w-5" />
@@ -1597,9 +1761,28 @@ function TeacherDashboard() {
                 >
                   <Shuffle className="h-5 w-5" /> Répartir aléatoirement en {teamCount} équipes
                 </button>
+                <button
+                  className="seg-btn"
+                  disabled={rosterBusy}
+                  onClick={() => {
+                    setWizardPlayers(students.map((s) => ({ name: s.name })));
+                    setWizardOpen(true);
+                  }}
+                >
+                  <Users className="h-4 w-4" /> Assistant présences & équipes
+                </button>
               </>
             )}
+
+            <RosterWizard
+              open={wizardOpen}
+              players={wizardPlayers}
+              busy={rosterBusy}
+              onClose={() => setWizardOpen(false)}
+              onConfirm={confirmWizard}
+            />
           </section>
+
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
@@ -1651,7 +1834,7 @@ function TeacherDashboard() {
           )}
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
-              {running ? "Relancer" : "Démarrer"}
+              {running || finished ? "Relancer" : "Démarrer"}
             </button>
             <button className="btn-huge" disabled={!isOwner} onClick={stop}>
               Terminer
@@ -1689,6 +1872,36 @@ function TeacherDashboard() {
             <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
           </div>
         )}
+
+        {previewTeamId && (
+          <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-background/95 p-4">
+            <div className="flex w-full max-w-[380px] items-center justify-between">
+              <span className="section-title">
+                <Smartphone className="h-4 w-4" /> Aperçu :{" "}
+                {teams.find((tm) => tm.id === previewTeamId)?.name ?? ""}
+              </span>
+              <button
+                aria-label="Fermer l'aperçu"
+                className="icon-btn"
+                onClick={() => setPreviewTeamId(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
+              <iframe
+                title="Aperçu de la vue élève"
+                src={`/jouer/${previewTeamId}`}
+                className="h-full w-full"
+                allow="geolocation"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Aperçu en direct — la position affichée est celle de votre appareil.
+            </p>
+          </div>
+        )}
+
 
         <section className="panel flex flex-col gap-3 p-4">
           <div className="flex items-center justify-between">
@@ -2252,13 +2465,15 @@ function TeacherDashboard() {
           </section>
         )}
 
-        {gameMode === "territoire" && (
+        {(gameMode === "territoire" || gameMode === "grille") && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
               <Flag className="h-4 w-4" /> Bonus course
             </div>
             <p className="text-sm text-muted-foreground">
-              Une boucle fermée en courant rapporte plus de points qu'une boucle marchée.
+              {gameMode === "grille"
+                ? "Une case conquise en courant compte double."
+                : "Une boucle fermée en courant rapporte plus de points qu'une boucle marchée."}
             </p>
             {isOwner ? (
               <>
@@ -2695,7 +2910,41 @@ function TeacherDashboard() {
           )}
         </section>
 
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Smartphone className="h-4 w-4" /> Aperçu élève
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Ouvrez l'écran tel que le voit un groupe (carte, bouton de boucle, messages). En lecture
+            seule côté prof : évitez de lancer une boucle depuis cet aperçu.
+          </p>
+          {teams.length === 0 ? (
+            <p className="py-2 text-center text-sm text-muted-foreground">
+              En attente des groupes…
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {teams.map((tm) => (
+                <div
+                  key={tm.id}
+                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
+                >
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                    style={{ backgroundColor: tm.color }}
+                  />
+                  <span className="flex-1 truncate text-sm font-semibold">{tm.name}</span>
+                  <button className="mini-btn" onClick={() => setPreviewTeamId(tm.id)}>
+                    Aperçu
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         <section className="panel flex flex-col gap-1 p-4">
+
           <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>

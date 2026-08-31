@@ -5,7 +5,9 @@ import type { CaptureConsequence, GameMode, GracePenaltyMode, GridShape } from "
 export type Game = {
   id: string;
   code: string;
+  name: string | null;
   status: string;
+
   duration_minutes: number;
   started_at: string | null;
   ends_at: string | null;

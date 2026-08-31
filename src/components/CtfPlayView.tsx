@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
+import { FinalResults } from "@/components/FinalResults";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   CTF_CAPTURE_POINTS,
@@ -19,12 +21,18 @@ import {
   kmhToMs,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
+import { SpeedTracker } from "@/lib/speed";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -35,6 +43,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
@@ -42,16 +51,25 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
-  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const totalDistanceRef = useRef(0);
   const totalDistanceInitRef = useRef(false);
+  const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams } = useGameState(gameId);
@@ -119,7 +137,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       }
     }
@@ -167,15 +185,25 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
+      // Speed comes from a tracker that discards imprecise fixes and smooths
+      // the rest, so a single GPS glitch can never trigger a vehicle penalty.
+      instSpeedRef.current = speedTrackerRef.current.update(
+        point,
+        p.coords.accuracy ?? null,
+        p.coords.speed ?? null,
+        Date.now(),
+        haversine,
+      );
+
+      // Separate, simpler jitter filter for the lifetime distance stat — it
+      // doesn't need SpeedTracker's full smoothing, just to reject samples
+      // too close together in time/space to be real movement.
       const prevPos = lastPosRef.current;
       const nowMs = Date.now();
       if (prevPos) {
         const dt = (nowMs - prevPos.t) / 1000;
         const dist = haversine(prevPos.point, point);
-        // Ignore samples too close together in time/space: GPS jitter would
-        // otherwise produce wildly inflated instantaneous speed readings.
         if (dt > 0.5 && dist > 2) {
-          instSpeedRef.current = dist / dt;
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
             totalDistanceRef.current += dist;
@@ -230,6 +258,13 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           vehicleAboveSinceRef.current = null;
         }
       }
+
+      if (gameRef.current) {
+        const myTeam = teamsRef.current.find((t) => t.id === teamId);
+        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
+      }
+
+      if (finishedRef.current) return; // scores frozen: no more bonuses or flags
 
       if (landmarksRef.current.some((l) => !l.claimed_by_team_id)) {
         void checkLandmarkClaims(
@@ -407,13 +442,14 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         ? "Partie terminée — retour validé !"
         : "Partie terminée — retour hors délai";
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
@@ -582,6 +618,14 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <span className="text-sm font-semibold">{myFlagStatusLabel}</span>
         </div>
 
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
+
         {finished && game?.grace_ends_at && graceStatus?.remainingS != null && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
             <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
@@ -591,10 +635,25 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           </div>
         )}
 
-        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
+        {finished && (
+          <button className="btn-huge btn-huge-accent" onClick={() => setResultsOpen(true)}>
+            🏁 Voir le classement final
+          </button>
+        )}
+        {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
 
       {geoDenied && <GeoPermissionHelp onDismiss={() => setGeoDenied(false)} />}
+
+      {resultsOpen && (
+        <FinalResults
+          teams={scoreStripTeams}
+          myTeamId={teamId}
+          formatScore={formatArea}
+          statusLabel={endgameLabel}
+          onClose={() => setResultsOpen(false)}
+        />
+      )}
     </main>
   );
 }

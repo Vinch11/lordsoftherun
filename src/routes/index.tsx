@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
+import { MapPin, Pencil, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,12 +12,14 @@ import { formatArea, randomCode } from "@/lib/conquete";
 type MyGame = {
   id: string;
   code: string;
+  name: string | null;
   status: string;
   created_at: string;
   teamCount: number;
   topTeam: string | null;
   topScore: number;
 };
+
 
 type ResumeTeam = { teamId: string; teamName: string; code: string };
 
@@ -94,7 +96,7 @@ function Home() {
     let active = true;
     void supabase
       .from("games")
-      .select("id, code, status, created_at")
+      .select("id, code, name, status, created_at")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20)
@@ -126,7 +128,27 @@ function Home() {
     };
   }, [user]);
 
+  async function renameGame(game: MyGame) {
+    const input = window.prompt(
+      `Nom de la partie ${game.code} (laisser vide pour retirer le nom) :`,
+      game.name ?? "",
+    );
+    if (input === null) return;
+    const next = input.trim().slice(0, 80);
+    const { error } = await supabase
+      .from("games")
+      .update({ name: next || null })
+      .eq("id", game.id);
+    if (error) {
+      toast.error("Impossible de renommer cette partie.");
+      return;
+    }
+    setMyGames((prev) => prev.map((g) => (g.id === game.id ? { ...g, name: next || null } : g)));
+    toast.success("Partie renommée.");
+  }
+
   async function deleteGame(game: MyGame) {
+
     if (
       !window.confirm(
         `Supprimer définitivement la partie ${game.code} et toutes ses données (équipes, territoires, classement) ?`,
@@ -234,8 +256,15 @@ function Home() {
                   onClick={() => navigate({ to: "/prof/$code", params: { code: g.code } })}
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="display text-xl tracking-[0.2em]">{g.code}</span>
+                    <span className="display truncate text-xl tracking-[0.2em]">
+                      {g.name ? (
+                        <span className="tracking-normal">{g.name}</span>
+                      ) : (
+                        g.code
+                      )}
+                    </span>
                     <span
+
                       className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                         g.status === "running"
                           ? "bg-accent text-accent-foreground"
@@ -253,6 +282,7 @@ function Home() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
+                      {g.name && <span className="font-bold">#{g.code} · </span>}
                       {new Date(g.created_at).toLocaleDateString("fr-FR", {
                         day: "numeric",
                         month: "short",
@@ -267,12 +297,20 @@ function Home() {
                   </div>
                 </button>
                 <button
+                  aria-label={`Renommer la partie ${g.code}`}
+                  className="icon-btn p-3"
+                  onClick={() => void renameGame(g)}
+                >
+                  <Pencil className="h-5 w-5" />
+                </button>
+                <button
                   aria-label={`Afficher le QR code de la partie ${g.code}`}
                   className="icon-btn p-3"
                   onClick={() => setQrCodeGame(g.code)}
                 >
                   <QrCode className="h-5 w-5" />
                 </button>
+
                 <button
                   aria-label={`Supprimer la partie ${g.code}`}
                   className="icon-btn p-3 text-destructive"

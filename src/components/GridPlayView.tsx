@@ -5,8 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
+import { FinalResults } from "@/components/FinalResults";
+import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
+  DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
@@ -17,11 +20,24 @@ import {
   kmhToMs,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
-import { notifyMessage, requestNotificationPermission } from "@/lib/notify";
-import { cellCenter, claimGridCell, isWithinGridZone, pointToCell, useGridCells } from "@/lib/grid";
+import {
+  notifyMessage,
+  notifyUrgent,
+  primeAlertSound,
+  requestNotificationPermission,
+} from "@/lib/notify";
+import {
+  awardRunningBonusCell,
+  cellCenter,
+  claimGridCell,
+  isWithinGridZone,
+  pointToCell,
+  useGridCells,
+} from "@/lib/grid";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
+import { SpeedTracker } from "@/lib/speed";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -32,6 +48,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [geoError, setGeoError] = useState<string | null>(null);
   const [geoDenied, setGeoDenied] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
@@ -39,10 +56,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastSync = useRef(0);
   const seenMessageCount = useRef<number | null>(null);
   const lastClaimedCellRef = useRef<string | null>(null);
-  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const instSpeedRef = useRef(0);
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const totalDistanceRef = useRef(0);
   const totalDistanceInitRef = useRef(false);
+  const speedTrackerRef = useRef(new SpeedTracker());
+  // Scores freeze the instant the timer hits zero: during the return grace
+  // period players are still moving, but nothing they do may change the board.
+  const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
   const lastVehiclePenaltyRef = useRef(0);
   const geoFilterRef = useRef(new GeoKalmanFilter());
@@ -50,6 +71,11 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
   useEffect(() => {
     requestNotificationPermission();
+    // Mobile browsers only allow sound after a user gesture: arm it on the
+    // first tap so later alerts are audible even with the screen in a pocket.
+    const arm = () => primeAlertSound();
+    window.addEventListener("pointerdown", arm, { once: true });
+    return () => window.removeEventListener("pointerdown", arm);
   }, []);
 
   const { game, teams } = useGameState(gameId);
@@ -85,7 +111,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       id: tm.id,
       name: tm.name,
       color: tm.color,
-      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) - tm.penalty_m2),
+      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) + (tm.landmark_bonus_m2 ?? 0) - tm.penalty_m2),
     }));
   }, [cells, teams]);
   const formatCellScore = (n: number) => `${Math.round(n)} case${Math.round(n) > 1 ? "s" : ""}`;
@@ -105,7 +131,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyMessage("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body);
         if (!chatOpen) setUnread(true);
       }
     }
@@ -161,15 +187,25 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       setAccuracy(p.coords.accuracy);
       setGeoError(null);
 
+      // Speed comes from a tracker that discards imprecise fixes and smooths
+      // the rest, so a single GPS glitch can never trigger a vehicle penalty.
+      instSpeedRef.current = speedTrackerRef.current.update(
+        point,
+        p.coords.accuracy ?? null,
+        p.coords.speed ?? null,
+        Date.now(),
+        haversine,
+      );
+
+      // Separate, simpler jitter filter for the lifetime distance stat — it
+      // doesn't need SpeedTracker's full smoothing, just to reject samples
+      // too close together in time/space to be real movement.
       const prevPos = lastPosRef.current;
       const nowMs = Date.now();
       if (prevPos) {
         const dt = (nowMs - prevPos.t) / 1000;
         const dist = haversine(prevPos.point, point);
-        // Ignore samples too close together in time/space: GPS jitter would
-        // otherwise produce wildly inflated instantaneous speed readings.
         if (dt > 0.5 && dist > 2) {
-          instSpeedRef.current = dist / dt;
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
             totalDistanceRef.current += dist;
@@ -225,6 +261,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       const center = gridCenterRef.current;
       if (!center) return;
+      if (finishedRef.current) return; // board frozen at the final whistle
       if (
         !isWithinGridZone(
           gridShapeRef.current,
@@ -243,7 +280,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       lastClaimedCellRef.current = key;
       const existing = cellsRef.current.find((c) => c.row === row && c.col === col);
       if (existing?.owner_team_id === teamId) return;
-      void claimGridCell(gameId, teamId, row, col);
+      const runningBonus =
+        (gameRef.current?.running_bonus_enabled ?? true) &&
+        instSpeedRef.current >=
+          kmhToMs(gameRef.current?.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH);
+      void claimGridCell(gameId, teamId, row, col).then(() => {
+        if (runningBonus) void awardRunningBonusCell(teamId);
+      });
     },
     [teamId, gameId],
   );
@@ -309,13 +352,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         ? "Partie terminée — retour validé !"
         : "Partie terminée — retour hors délai";
 
+  finishedRef.current = finished;
   useWakeLock(!finished);
 
   const prevFinishedRef = useRef(finished);
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyMessage("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
@@ -456,6 +500,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           </div>
         )}
 
+        <PhotoRequestCard
+          gameId={gameId}
+          teamId={teamId}
+          requestedAt={game?.photo_requested_at}
+          photoDeadline={game?.photo_deadline}
+          nowMs={now}
+        />
+
         {finished && returnZone && graceStatus?.remainingS != null && (
           <div className="panel flex items-center justify-between gap-3 px-4 py-3 ring-2 ring-accent">
             <span className="text-sm font-semibold">⏳ Revenez dans la zone avant</span>
@@ -466,10 +518,25 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           </div>
         )}
 
-        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
+        {finished && (
+          <button className="btn-huge btn-huge-accent" onClick={() => setResultsOpen(true)}>
+            🏁 Voir le classement final
+          </button>
+        )}
+        {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
 
       {geoDenied && <GeoPermissionHelp onDismiss={() => setGeoDenied(false)} />}
+
+      {resultsOpen && (
+        <FinalResults
+          teams={scoreStripTeams}
+          myTeamId={teamId}
+          formatScore={formatCellScore}
+          statusLabel={endgameLabel}
+          onClose={() => setResultsOpen(false)}
+        />
+      )}
     </main>
   );
 }

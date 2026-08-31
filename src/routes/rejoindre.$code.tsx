@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
 
@@ -207,10 +207,10 @@ function Join() {
             </section>
             <button
               type="button"
-              className="text-center text-sm text-muted-foreground underline"
+              className="btn-huge-dark"
               onClick={() => setCreatingNew(true)}
             >
-              Créer une nouvelle équipe à la place
+              <Plus className="h-5 w-5" /> Créer une nouvelle équipe
             </button>
           </>
         ) : (

@@ -788,3 +788,57 @@
     box-shadow: 0 -18px 50px -20px oklch(0 0 0 / 0.85);
   }
 }
+
+/* GPS locator marker: colored dot + pulsing halo, like a phone map app. */
+.gps-blip {
+  position: relative;
+  width: 34px;
+  height: 34px;
+}
+
+.gps-blip-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 9999px;
+  border: 2px solid;
+  opacity: 0.55;
+}
+
+.gps-blip-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  opacity: 0.28;
+  transform: scale(1);
+  animation: gps-blip-pulse 2s ease-out infinite;
+}
+
+.gps-blip-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 9999px;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes gps-blip-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gps-blip-halo {
+    animation: none;
+    opacity: 0.25;
+  }
+}

@@ -133,6 +133,7 @@ export type Database = {
           id: string
           map_style: string
           mode: string
+          name: string | null
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
@@ -172,6 +173,7 @@ export type Database = {
           id?: string
           map_style?: string
           mode?: string
+          name?: string | null
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           id?: string
           map_style?: string
           mode?: string
+          name?: string | null
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
