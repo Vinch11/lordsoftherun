@@ -8,6 +8,7 @@ import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
+  DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
