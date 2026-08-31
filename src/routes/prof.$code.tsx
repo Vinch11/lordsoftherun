@@ -645,7 +645,9 @@ function TeacherDashboard() {
     // penalties (vehicle check) — so it has to be subtracted here instead
     // of relying on score_m2 already reflecting it, unlike territoire/CTF.
     const base =
-      gameMode === "grille" ? (gridScoreByTeam.get(t.id) ?? 0) - t.penalty_m2 : t.score_m2;
+      gameMode === "grille"
+        ? (gridScoreByTeam.get(t.id) ?? 0) + (t.landmark_bonus_m2 ?? 0) - t.penalty_m2
+        : t.score_m2;
     return Math.max(0, base - graceStatusFor(t).penalty);
   };
   const ranked = useMemo(
@@ -2414,13 +2416,15 @@ function TeacherDashboard() {
           </section>
         )}
 
-        {gameMode === "territoire" && (
+        {(gameMode === "territoire" || gameMode === "grille") && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
               <Flag className="h-4 w-4" /> Bonus course
             </div>
             <p className="text-sm text-muted-foreground">
-              Une boucle fermée en courant rapporte plus de points qu'une boucle marchée.
+              {gameMode === "grille"
+                ? "Une case conquise en courant compte double."
+                : "Une boucle fermée en courant rapporte plus de points qu'une boucle marchée."}
             </p>
             {isOwner ? (
               <>

@@ -90,6 +90,24 @@ export async function claimGridCell(gameId: string, teamId: string, row: number,
   if (error) throw error;
 }
 
+/**
+ * Grants one extra "cell point" for a cell claimed while running.
+ * In grille mode landmarks are disabled, so `landmark_bonus_m2` is free to
+ * hold the running-bonus cell count for the team.
+ */
+export async function awardRunningBonusCell(teamId: string, amount = 1) {
+  const { data } = await supabase
+    .from("teams")
+    .select("landmark_bonus_m2")
+    .eq("id", teamId)
+    .maybeSingle();
+  if (!data) return;
+  await supabase
+    .from("teams")
+    .update({ landmark_bonus_m2: (data.landmark_bonus_m2 ?? 0) + amount })
+    .eq("id", teamId);
+}
+
 export function useGridCells(gameId: string | null) {
   const [cells, setCells] = useState<GridCell[]>([]);
 
