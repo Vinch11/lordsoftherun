@@ -467,6 +467,16 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         )}
         {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
+
+      {resultsOpen && (
+        <FinalResults
+          teams={scoreStripTeams}
+          myTeamId={teamId}
+          formatScore={formatCellScore}
+          statusLabel={endgameLabel}
+          onClose={() => setResultsOpen(false)}
+        />
+      )}
     </main>
   );
 }

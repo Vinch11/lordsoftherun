@@ -718,6 +718,16 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       )}
 
       {summary && <LoopSummary data={summary} color={myColor} onClose={() => setSummary(null)} />}
+
+      {resultsOpen && (
+        <FinalResults
+          teams={scoreStripTeams}
+          myTeamId={teamId}
+          formatScore={formatArea}
+          statusLabel={endgameLabel}
+          onClose={() => setResultsOpen(false)}
+        />
+      )}
     </main>
   );
 }

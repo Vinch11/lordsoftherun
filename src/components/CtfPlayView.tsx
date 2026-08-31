@@ -593,6 +593,16 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         )}
         {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
+
+      {resultsOpen && (
+        <FinalResults
+          teams={scoreStripTeams}
+          myTeamId={teamId}
+          formatScore={formatArea}
+          statusLabel={endgameLabel}
+          onClose={() => setResultsOpen(false)}
+        />
+      )}
     </main>
   );
 }
