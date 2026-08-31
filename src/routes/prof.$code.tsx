@@ -866,8 +866,15 @@ function TeacherDashboard() {
         duration_minutes: durationMinutes,
         started_at: new Date().toISOString(),
         ends_at: ends,
+        // A relaunch must clear the end-of-game return window, otherwise teams
+        // stay flagged late/cancelled from the previous round.
+        grace_ends_at: null,
       })
       .eq("id", gameId);
+    await supabase
+      .from("teams")
+      .update({ returned_at: null, validated: false })
+      .eq("game_id", gameId);
     toast.success("Partie démarrée !");
   }
 
@@ -1776,7 +1783,7 @@ function TeacherDashboard() {
           )}
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
-              {running ? "Relancer" : "Démarrer"}
+              {running || finished ? "Relancer" : "Démarrer"}
             </button>
             <button className="btn-huge" disabled={!isOwner} onClick={stop}>
               Terminer
