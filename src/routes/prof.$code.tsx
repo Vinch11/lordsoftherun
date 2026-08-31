@@ -1635,7 +1635,9 @@ function TeacherDashboard() {
                       ? placeGridZone
                       : placingMode === "circuit_box"
                         ? placeCircuitBox
-                        : undefined
+                        : placingMode === "circuit_point"
+                          ? placeCheckpoint
+                          : undefined
           }
         />
         <div
