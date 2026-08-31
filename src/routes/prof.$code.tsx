@@ -71,6 +71,12 @@ import {
   useCheckpoints,
   useCircuitBoxes,
 } from "@/lib/circuit";
+import {
+  applySavedCircuit,
+  deleteSavedCircuit,
+  saveSavedCircuit,
+  useSavedCircuits,
+} from "@/lib/savedCircuits";
 import { resolveGraceStatus } from "@/lib/grace";
 import {
   addStudent,
@@ -531,6 +537,9 @@ function TeacherDashboard() {
     "forbidden",
   );
   const { templates: messageTemplates, refresh: refreshMessageTemplates } = useMessageTemplates(
+    user?.id ?? null,
+  );
+  const { circuits: savedCircuits, refresh: refreshSavedCircuits } = useSavedCircuits(
     user?.id ?? null,
   );
 
@@ -1324,6 +1333,42 @@ function TeacherDashboard() {
       await removeCircuitBox(id);
     } catch {
       toast.error("Impossible de supprimer la boîte.");
+    }
+  }
+
+  async function saveCircuitTemplate() {
+    if (!user || checkpoints.length < 2) return;
+    const name = window.prompt("Nom du circuit à enregistrer :");
+    if (!name || !name.trim()) return;
+    try {
+      await saveSavedCircuit(
+        user.id,
+        name.trim(),
+        checkpoints.map((c): [number, number] => [c.lat, c.lng]),
+      );
+      toast.success("Circuit enregistré !");
+      void refreshSavedCircuits();
+    } catch {
+      toast.error("Impossible d'enregistrer le circuit.");
+    }
+  }
+
+  async function applyCircuitTemplate(circuit: (typeof savedCircuits)[number]) {
+    if (!gameId) return;
+    try {
+      await applySavedCircuit(gameId, circuit);
+      toast.success(`« ${circuit.name} » appliqué au circuit.`);
+    } catch {
+      toast.error("Impossible d'appliquer ce circuit.");
+    }
+  }
+
+  async function deleteCircuitTemplate(id: string) {
+    try {
+      await deleteSavedCircuit(id);
+      void refreshSavedCircuits();
+    } catch {
+      toast.error("Impossible de supprimer le circuit.");
     }
   }
 
@@ -2641,17 +2686,53 @@ function TeacherDashboard() {
             </p>
             {isOwner && (
               <>
-                <button
-                  className={`btn-huge ${circuitDrawing ? "btn-huge-accent" : "btn-huge-dark"}`}
-                  onClick={() => setCircuitDrawing((d) => !d)}
-                >
-                  <Pencil className="h-5 w-5" />
-                  {circuitDrawing
-                    ? "Dessinez sur la carte…"
-                    : checkpoints.length >= 2
-                      ? "Redessiner le circuit"
-                      : "Dessiner le circuit"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    className={`btn-huge flex-1 ${circuitDrawing ? "btn-huge-accent" : "btn-huge-dark"}`}
+                    onClick={() => setCircuitDrawing((d) => !d)}
+                  >
+                    <Pencil className="h-5 w-5" />
+                    {circuitDrawing
+                      ? "Dessinez sur la carte…"
+                      : checkpoints.length >= 2
+                        ? "Redessiner le circuit"
+                        : "Dessiner le circuit"}
+                  </button>
+                  {checkpoints.length >= 2 && (
+                    <button
+                      aria-label="Enregistrer comme modèle"
+                      className="icon-btn h-12 w-12 shrink-0"
+                      onClick={() => void saveCircuitTemplate()}
+                    >
+                      <Bookmark className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+                {savedCircuits.length > 0 && (
+                  <div className="flex flex-col gap-1 border-t border-border pt-2">
+                    <span className="label-xs">Mes circuits</span>
+                    {savedCircuits.map((c) => (
+                      <div key={c.id} className="flex items-center gap-3 py-1">
+                        <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span className="flex-1 truncate text-sm">
+                          {c.name}{" "}
+                          <span className="text-muted-foreground">
+                            ({c.points.length} checkpoints)
+                          </span>
+                        </span>
+                        <button className="mini-btn" onClick={() => void applyCircuitTemplate(c)}>
+                          Réutiliser
+                        </button>
+                        <button
+                          aria-label="Supprimer le circuit"
+                          onClick={() => void deleteCircuitTemplate(c.id)}
+                        >
+                          <X className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold">Nombre de checkpoints</span>
                   <div className="flex items-center gap-3">
