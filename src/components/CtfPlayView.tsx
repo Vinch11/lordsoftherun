@@ -4,6 +4,7 @@ import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
@@ -584,7 +585,12 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           </div>
         )}
 
-        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
+        {finished && (
+          <button className="btn-huge btn-huge-accent" onClick={() => setResultsOpen(true)}>
+            🏁 Voir le classement final
+          </button>
+        )}
+        {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
     </main>
   );

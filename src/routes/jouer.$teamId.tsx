@@ -5,6 +5,7 @@ import { Camera, Crosshair, Flag, HelpCircle, MessageCircle, Send, Square, X } f
 import { RulesIntro } from "@/components/RulesIntro";
 import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { FinalResults } from "@/components/FinalResults";
 
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
@@ -138,6 +139,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [rulesOpen, setRulesOpen] = useState(false);
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
   const [followMe, setFollowMe] = useState(true);
+  const [resultsOpen, setResultsOpen] = useState(false);
 
   const rulesKey = `conquete:rules-seen:${teamId}`;
   useEffect(() => {
@@ -689,7 +691,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         )}
 
         {finished ? (
-          <div className="btn-huge btn-huge-dark">{endgameLabel}</div>
+          <>
+            <button className="btn-huge btn-huge-accent" onClick={() => setResultsOpen(true)}>
+              🏁 Voir le classement final
+            </button>
+            <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>
+          </>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle

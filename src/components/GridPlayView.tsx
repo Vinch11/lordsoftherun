@@ -4,6 +4,7 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
 import {
@@ -37,6 +38,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [now, setNow] = useState(() => Date.now());
   const [geoError, setGeoError] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
@@ -458,7 +460,12 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           </div>
         )}
 
-        {finished && <div className="btn-huge btn-huge-dark">{endgameLabel}</div>}
+        {finished && (
+          <button className="btn-huge btn-huge-accent" onClick={() => setResultsOpen(true)}>
+            🏁 Voir le classement final
+          </button>
+        )}
+        {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
     </main>
   );
