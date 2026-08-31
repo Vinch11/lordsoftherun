@@ -262,6 +262,7 @@ function Home() {
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
+                      {g.name && <span className="font-bold">#{g.code} · </span>}
                       {new Date(g.created_at).toLocaleDateString("fr-FR", {
                         day: "numeric",
                         month: "short",
@@ -276,12 +277,20 @@ function Home() {
                   </div>
                 </button>
                 <button
+                  aria-label={`Renommer la partie ${g.code}`}
+                  className="icon-btn p-3"
+                  onClick={() => void renameGame(g)}
+                >
+                  <Pencil className="h-5 w-5" />
+                </button>
+                <button
                   aria-label={`Afficher le QR code de la partie ${g.code}`}
                   className="icon-btn p-3"
                   onClick={() => setQrCodeGame(g.code)}
                 >
                   <QrCode className="h-5 w-5" />
                 </button>
+
                 <button
                   aria-label={`Supprimer la partie ${g.code}`}
                   className="icon-btn p-3 text-destructive"
