@@ -12,12 +12,14 @@ import { formatArea, randomCode } from "@/lib/conquete";
 type MyGame = {
   id: string;
   code: string;
+  name: string | null;
   status: string;
   created_at: string;
   teamCount: number;
   topTeam: string | null;
   topScore: number;
 };
+
 
 type ResumeTeam = { teamId: string; teamName: string; code: string };
 
