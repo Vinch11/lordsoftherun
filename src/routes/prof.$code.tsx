@@ -62,8 +62,11 @@ import { placeFlag, useFlags } from "@/lib/flags";
 import { cellCenter, useGridCells } from "@/lib/grid";
 import {
   addCircuitBox,
+  appendCheckpoint,
   circuitFormatRank,
   circuitRankMetric,
+  clearCheckpoints,
+  deleteCheckpoint,
   removeCircuitBox,
   resampleToCheckpoints,
   setCheckpoints,
