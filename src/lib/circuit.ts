@@ -27,10 +27,18 @@ export type Banana = {
  * start/finish line.
  */
 export function resampleToCheckpoints(path: [number, number][], count: number): [number, number][] {
-  if (path.length < 2 || count < 2) return [];
-  const line = lineString(path.map(([lat, lng]) => [lng, lat]));
+  if (count < 2) return [];
+  // Drop consecutive duplicates: a slow finger emits many identical points and
+  // turf then reports a zero-length line even though the stroke is fine.
+  const clean: [number, number][] = [];
+  for (const p of path) {
+    const last = clean[clean.length - 1];
+    if (!last || Math.abs(last[0] - p[0]) > 1e-9 || Math.abs(last[1] - p[1]) > 1e-9) clean.push(p);
+  }
+  if (clean.length < 2) return [];
+  const line = lineString(clean.map(([lat, lng]) => [lng, lat]));
   const totalKm = length(line, { units: "kilometers" });
-  if (totalKm === 0) return [];
+  if (totalKm <= 0) return [];
   const points: [number, number][] = [];
   for (let i = 0; i < count; i++) {
     const pt = along(line, (totalKm * i) / count, { units: "kilometers" });
@@ -39,6 +47,7 @@ export function resampleToCheckpoints(path: [number, number][], count: number): 
   }
   return points;
 }
+
 
 export function useCheckpoints(gameId: string | null) {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
