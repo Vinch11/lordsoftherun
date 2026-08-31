@@ -448,7 +448,33 @@ function TeacherDashboard() {
     };
   }, [code]);
 
-  const { game, teams, territories } = useGameState(gameId);
+  const { game, teams, territories, refresh } = useGameState(gameId);
+  const [gameNameDraft, setGameNameDraft] = useState("");
+  const gameNameRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!game) return;
+    if (gameNameRef.current !== game.name) {
+      gameNameRef.current = game.name;
+      setGameNameDraft(game.name ?? "");
+    }
+  }, [game]);
+  async function saveGameName() {
+    if (!gameId) return;
+    const next = gameNameDraft.trim();
+    if (next === (game?.name ?? "")) return;
+    const { error } = await supabase
+      .from("games")
+      .update({ name: next || null })
+      .eq("id", gameId);
+    if (error) {
+      toast.error("Impossible d'enregistrer le nom.");
+      return;
+    }
+    gameNameRef.current = next || null;
+    toast.success("Nom enregistré.");
+    await refresh();
+  }
+
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
