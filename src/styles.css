@@ -792,8 +792,16 @@
 /* GPS locator marker: colored dot + pulsing halo, like a phone map app. */
 .gps-blip {
   position: relative;
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
+}
+
+.gps-blip-ring {
+  position: absolute;
+  inset: 6px;
+  border-radius: 9999px;
+  border: 2px solid;
+  opacity: 0.55;
 }
 
 .gps-blip-halo {
@@ -809,9 +817,9 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px 0 0 -7px;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
   border-radius: 9999px;
   border: 2.5px solid #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);

@@ -25,6 +25,7 @@ export type MapStyleSpec = {
 // solid colored dot — instantly readable as "someone is here", even in sun.
 const blipClassic = (color: string) => `<div class="gps-blip">
   <span class="gps-blip-halo" style="background:${color}"></span>
+  <span class="gps-blip-ring" style="border-color:${color}"></span>
   <span class="gps-blip-dot" style="background:${color}"></span>
 </div>`;
 
