@@ -344,7 +344,6 @@ export default function GameMap({
     if (container) container.style.touchAction = drawingEnabled ? "none" : "";
   }, [drawingEnabled]);
 
-
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
