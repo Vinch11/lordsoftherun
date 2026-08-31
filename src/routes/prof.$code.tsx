@@ -1487,10 +1487,26 @@ function TeacherDashboard() {
               <div className="pill">
                 <MapPin className="h-3.5 w-3.5" /> Tableau de bord
               </div>
-              <h1 className="page-title mt-3 truncate text-3xl">
+              {isOwner ? (
+                <input
+                  className="field mt-3 text-xl font-bold"
+                  placeholder="Nom de la partie (ex. 2e année — mardi)"
+                  maxLength={80}
+                  value={gameNameDraft}
+                  onChange={(e) => setGameNameDraft(e.target.value)}
+                  onBlur={() => void saveGameName()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") e.currentTarget.blur();
+                  }}
+                />
+              ) : (
+                game?.name && <h2 className="mt-3 truncate text-xl font-bold">{game.name}</h2>
+              )}
+              <h1 className="page-title mt-2 truncate text-3xl">
                 Partie <em>{code}</em>
               </h1>
             </div>
+
             <span className={`chip ${running ? "chip-accent" : finished ? "chip-muted" : ""}`}>
               {running ? "En cours" : finished ? "Terminée" : "Lobby"}
             </span>
