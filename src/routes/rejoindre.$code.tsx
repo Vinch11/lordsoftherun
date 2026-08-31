@@ -207,10 +207,10 @@ function Join() {
             </section>
             <button
               type="button"
-              className="text-center text-sm text-muted-foreground underline"
+              className="btn-huge-dark"
               onClick={() => setCreatingNew(true)}
             >
-              Créer une nouvelle équipe à la place
+              <Plus className="h-5 w-5" /> Créer une nouvelle équipe
             </button>
           </>
         ) : (
