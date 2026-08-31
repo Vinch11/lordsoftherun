@@ -96,7 +96,7 @@ function Home() {
     let active = true;
     void supabase
       .from("games")
-      .select("id, code, status, created_at")
+      .select("id, code, name, status, created_at")
       .eq("owner_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20)
