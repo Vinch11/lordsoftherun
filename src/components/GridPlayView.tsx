@@ -99,7 +99,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       id: tm.id,
       name: tm.name,
       color: tm.color,
-      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) + (tm.bonus_cells ?? 0) - tm.penalty_m2),
+      score: Math.max(0, (cellCountByTeam.get(tm.id) ?? 0) + (tm.landmark_bonus_m2 ?? 0) - tm.penalty_m2),
     }));
   }, [cells, teams]);
   const formatCellScore = (n: number) => `${Math.round(n)} case${Math.round(n) > 1 ? "s" : ""}`;
