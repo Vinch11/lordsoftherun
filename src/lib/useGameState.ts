@@ -59,6 +59,7 @@ export type Team = {
   shield_until: string | null;
   returned_at: string | null;
   current_trail: [number, number][];
+  total_distance_m: number;
 };
 
 export type Territory = {

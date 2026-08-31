@@ -4,6 +4,7 @@ import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "luc
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
+import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { useGameState } from "@/lib/useGameState";
@@ -40,6 +41,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [resultsOpen, setResultsOpen] = useState(false);
   const [chatBody, setChatBody] = useState("");
@@ -50,6 +52,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const seenMessageCount = useRef<number | null>(null);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const instSpeedRef = useRef(0);
+  const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  const totalDistanceRef = useRef(0);
+  const totalDistanceInitRef = useRef(false);
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
   // period players are still moving, but nothing they do may change the board.
@@ -87,6 +92,13 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const myColor = me?.color ?? "#e63946";
   const myFlag = flags.find((f) => f.team_id === teamId) ?? null;
   const prevMyFlagStatusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!totalDistanceInitRef.current && me) {
+      totalDistanceRef.current = me.total_distance_m;
+      totalDistanceInitRef.current = true;
+    }
+  }, [me]);
 
   useEffect(() => {
     const prevStatus = prevMyFlagStatusRef.current;
@@ -183,13 +195,47 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         haversine,
       );
 
+      // Separate, simpler jitter filter for the lifetime distance stat — it
+      // doesn't need SpeedTracker's full smoothing, just to reject samples
+      // too close together in time/space to be real movement.
+      const prevPos = lastPosRef.current;
+      const nowMs = Date.now();
+      if (prevPos) {
+        const dt = (nowMs - prevPos.t) / 1000;
+        const dist = haversine(prevPos.point, point);
+        if (dt > 0.5 && dist > 2) {
+          lastPosRef.current = { point, t: nowMs };
+          if (gameRef.current?.status === "running") {
+            totalDistanceRef.current += dist;
+          }
+        }
+      } else {
+        lastPosRef.current = { point, t: nowMs };
+      }
+
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
         void supabase
           .from("teams")
-          .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+          .update({
+            lat: point[0],
+            lng: point[1],
+            total_distance_m: totalDistanceRef.current,
+            updated_at: new Date().toISOString(),
+          })
           .eq("id", teamId);
       }
+
+      if (gameRef.current) {
+        const myTeam = teamsRef.current.find((t) => t.id === teamId);
+        checkGraceArrival(gameRef.current, teamId, myTeam?.returned_at != null, point);
+      }
+
+      // Position (above) and grace-return detection (just above) keep
+      // running regardless of status — the grace window only exists once
+      // the game has moved past "running" — but nothing below should score
+      // or penalize before the professor actually starts the game.
+      if (gameRef.current?.status !== "running") return;
 
       if (gameRef.current && !gameRef.current.vehicle_allowed) {
         const thresholdKmh =
@@ -320,7 +366,10 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
     }
     const id = navigator.geolocation.watchPosition(
       onPosition,
-      (err) => setGeoError(err.message || "Position GPS refusée."),
+      (err) => {
+        setGeoError(err.message || "Position GPS refusée.");
+        if (err.code === err.PERMISSION_DENIED) setGeoDenied(true);
+      },
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
     );
     return () => navigator.geolocation.clearWatch(id);
@@ -537,7 +586,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {geoError && (
+        {geoError && !geoDenied && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
 
@@ -593,6 +642,8 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         )}
         {finished && <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>}
       </div>
+
+      {geoDenied && <GeoPermissionHelp onDismiss={() => setGeoDenied(false)} />}
 
       {resultsOpen && (
         <FinalResults

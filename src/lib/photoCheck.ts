@@ -22,12 +22,35 @@ export async function requestPhotoCheck(gameId: string, delayMinutes: number) {
   if (error) throw error;
 }
 
+/**
+ * Downscales a photo before upload: a raw phone camera shot can be several
+ * MB, which is what made photo check-ins feel "super slow" to arrive on a
+ * school WiFi/cellular connection. Re-encodes to JPEG at a size that's
+ * plenty for a quick visual check-in. Falls back to the original file if
+ * the browser can't decode/encode it (old browser, corrupt file, etc.).
+ */
+async function compressPhoto(file: File, maxDim = 1280, quality = 0.72): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  return new Promise<Blob>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob ?? file), "image/jpeg", quality);
+  });
+}
+
 /** Uploads a team's photo and records the submission. Returns the storage path. */
 export async function uploadTeamPhoto(gameId: string, teamId: string, file: File) {
-  const ext = file.type === "image/png" ? "png" : "jpg";
-  const path = `${gameId}/${teamId}/${Date.now()}.${ext}`;
-  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, file, {
-    contentType: file.type || "image/jpeg",
+  const compressed = await compressPhoto(file).catch(() => file);
+  const path = `${gameId}/${teamId}/${Date.now()}.jpg`;
+  const { error: uploadError } = await supabase.storage.from(BUCKET).upload(path, compressed, {
+    contentType: "image/jpeg",
   });
   if (uploadError) throw uploadError;
   const { error: insertError } = await supabase

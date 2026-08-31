@@ -253,6 +253,13 @@
       "when": 1788176413734,
       "tag": "0035_games_name_column",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788195000000,
+      "tag": "0036_team_distance",
+      "breakpoints": true
     }
   ]
 }
