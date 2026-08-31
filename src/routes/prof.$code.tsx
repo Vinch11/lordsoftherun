@@ -2,7 +2,6 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  Activity,
   ArrowLeft,
   Bike,
   Bookmark,
@@ -2985,6 +2984,11 @@ function TeacherDashboard() {
                 {gameMode === "capture_drapeau" && (
                   <span className="text-xs text-muted-foreground">🚩 {t.flags_captured}</span>
                 )}
+                <span className="label-xs">
+                  {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
+                  {(gameElapsedS > 0 ? (t.total_distance_m / gameElapsedS) * 3.6 : 0).toFixed(1)}{" "}
+                  km/h
+                </span>
               </span>
             </div>
           ))}
@@ -3013,34 +3017,6 @@ function TeacherDashboard() {
             </button>
           )}
         </section>
-
-        {teams.length > 0 && (
-          <section className="panel flex flex-col gap-1 p-4">
-            <div className="section-title mb-2">
-              <Activity className="h-4 w-4" /> Statistiques d'équipe
-            </div>
-            {teams.map((t) => {
-              const km = t.total_distance_m / 1000;
-              const kmh = gameElapsedS > 0 ? (t.total_distance_m / gameElapsedS) * 3.6 : 0;
-              return (
-                <div
-                  key={t.id}
-                  className="flex items-center gap-3 border-b border-border px-2 py-2 last:border-0"
-                >
-                  <span
-                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
-                    style={{ backgroundColor: t.color }}
-                  />
-                  <span className="flex-1 truncate text-sm font-semibold">{t.name}</span>
-                  <div className="text-right">
-                    <div className="display text-sm tabular-nums">{km.toFixed(2)} km</div>
-                    <div className="label-xs">{kmh.toFixed(1)} km/h moy.</div>
-                  </div>
-                </div>
-              );
-            })}
-          </section>
-        )}
 
         {ranked.length > 0 && gameMode === "territoire" && (
           <section className="panel flex flex-col gap-1 p-4">
