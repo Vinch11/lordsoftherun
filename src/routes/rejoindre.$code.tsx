@@ -1,9 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { TEAM_COLORS, teamStorageKey } from "@/lib/conquete";
+import { TEAM_COLORS, fetchWithRetry, teamStorageKey } from "@/lib/conquete";
 
 export const Route = createFileRoute("/rejoindre/$code")({
   head: () => ({
@@ -34,8 +34,10 @@ function Join() {
   const [color, setColor] = useState(TEAM_COLORS[0]!.hex);
   const [busy, setBusy] = useState(false);
   const [checkingResume, setCheckingResume] = useState(true);
+  const [resumeFailed, setResumeFailed] = useState(false);
   const [existingTeams, setExistingTeams] = useState<ExistingTeam[]>([]);
   const [creatingNew, setCreatingNew] = useState(false);
+  const [resumeRetryTick, setResumeRetryTick] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -44,26 +46,31 @@ function Join() {
       setCheckingResume(false);
       return;
     }
-    void supabase
-      .from("teams")
-      .select("id")
-      .eq("id", storedTeamId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active) return;
-        if (data) {
-          localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: data.id, code }));
-          void navigate({ to: "/jouer/$teamId", params: { teamId: data.id }, replace: true });
-        } else {
-          localStorage.removeItem(teamStorageKey(code));
-          setCheckingResume(false);
-        }
-      });
+    setResumeFailed(false);
+    void fetchWithRetry<{ id: string }>(() =>
+      supabase.from("teams").select("id").eq("id", storedTeamId).maybeSingle(),
+    ).then(({ data, error }) => {
+      if (!active) return;
+      if (data) {
+        localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: data.id, code }));
+        void navigate({ to: "/jouer/$teamId", params: { teamId: data.id }, replace: true });
+      } else if (error) {
+        // A network hiccup, not proof the team is gone — keep the stored
+        // id and let the student retry instead of wiping it and forcing
+        // them to rejoin from scratch (rescanning the QR code, losing
+        // their team name/color) over what may just be a flaky connection.
+        setResumeFailed(true);
+        setCheckingResume(false);
+      } else {
+        localStorage.removeItem(teamStorageKey(code));
+        setCheckingResume(false);
+      }
+    });
     return () => {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code]);
+  }, [code, resumeRetryTick]);
 
   // Lists the teams already created for this code, so a student can pick
   // theirs back up instead of always creating a new one — whether that's a
@@ -96,6 +103,15 @@ function Join() {
       active = false;
     };
   }, [code]);
+
+  // Two teams the same color is confusing on the map — once a color is
+  // taken, later teams can't pick it too.
+  const usedColors = useMemo(() => new Set(existingTeams.map((t) => t.color)), [existingTeams]);
+  useEffect(() => {
+    if (!usedColors.has(color)) return;
+    const free = TEAM_COLORS.find((c) => !usedColors.has(c.hex));
+    if (free) setColor(free.hex);
+  }, [usedColors, color]);
 
   async function rejoin(teamId: string) {
     setBusy(true);
@@ -154,6 +170,23 @@ function Join() {
     );
   }
 
+  if (resumeFailed) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
+        <button
+          className="btn-huge btn-huge-accent"
+          onClick={() => {
+            setCheckingResume(true);
+            setResumeRetryTick((n) => n + 1);
+          }}
+        >
+          Réessayer
+        </button>
+      </main>
+    );
+  }
+
   const showPicker = existingTeams.length > 0 && !creatingNew;
 
   return (
@@ -205,11 +238,7 @@ function Join() {
                 </button>
               ))}
             </section>
-            <button
-              type="button"
-              className="btn-huge-dark"
-              onClick={() => setCreatingNew(true)}
-            >
+            <button type="button" className="btn-huge-dark" onClick={() => setCreatingNew(true)}>
               <Plus className="h-5 w-5" /> Créer une nouvelle équipe
             </button>
           </>
@@ -240,21 +269,38 @@ function Join() {
               <div className="flex flex-col gap-2">
                 <span className="section-title">Couleur</span>
                 <div className="grid grid-cols-4 gap-3">
-                  {TEAM_COLORS.map((c) => (
-                    <button
-                      key={c.hex}
-                      type="button"
-                      aria-label={c.name}
-                      onClick={() => setColor(c.hex)}
-                      className={`h-16 rounded-2xl border-4 transition-transform ${
-                        color === c.hex
-                          ? "scale-105 border-foreground"
-                          : "border-transparent opacity-80"
-                      }`}
-                      style={{ backgroundColor: c.hex }}
-                    />
-                  ))}
+                  {TEAM_COLORS.map((c) => {
+                    const taken = usedColors.has(c.hex);
+                    return (
+                      <button
+                        key={c.hex}
+                        type="button"
+                        aria-label={taken ? `${c.name} (déjà prise)` : c.name}
+                        disabled={taken}
+                        onClick={() => setColor(c.hex)}
+                        className={`relative h-16 rounded-2xl border-4 transition-transform ${
+                          taken
+                            ? "cursor-not-allowed opacity-30"
+                            : color === c.hex
+                              ? "scale-105 border-foreground"
+                              : "border-transparent opacity-80"
+                        }`}
+                        style={{ backgroundColor: c.hex }}
+                      >
+                        {taken && (
+                          <span className="absolute inset-0 flex items-center justify-center text-2xl text-foreground">
+                            ✕
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
+                {usedColors.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Une couleur déjà prise par une autre équipe ne peut plus être choisie.
+                  </p>
+                )}
               </div>
             </section>
 

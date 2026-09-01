@@ -72,6 +72,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
   );
 
   const lastSync = useRef(0);
+  const syncFailWarnedRef = useRef(false);
   const seenMessageCount = useRef<number | null>(null);
   const instSpeedRef = useRef(0);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
@@ -298,7 +299,18 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
             total_distance_m: totalDistanceRef.current,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", teamId);
+          .eq("id", teamId)
+          .then(({ error }) => {
+            if (error && !syncFailWarnedRef.current) {
+              syncFailWarnedRef.current = true;
+              console.error("Échec de synchronisation de la position :", error);
+              toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                duration: 8000,
+              });
+            } else if (!error) {
+              syncFailWarnedRef.current = false;
+            }
+          });
       }
 
       if (gameRef.current?.status !== "running") return;
