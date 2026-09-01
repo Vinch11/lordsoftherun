@@ -26,6 +26,7 @@ import {
   formatCountdown,
   haversine,
   kmhToMs,
+  withTimeout,
   type CircuitItemKind,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
@@ -291,16 +292,19 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
-        void supabase
-          .from("teams")
-          .update({
-            lat: point[0],
-            lng: point[1],
-            total_distance_m: totalDistanceRef.current,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", teamId)
-          .then(({ error }) => {
+        void withTimeout(
+          supabase
+            .from("teams")
+            .update({
+              lat: point[0],
+              lng: point[1],
+              total_distance_m: totalDistanceRef.current,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", teamId),
+          8000,
+        ).then(
+          ({ error }) => {
             if (error && !syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
               console.error("Échec de synchronisation de la position :", error);
@@ -310,7 +314,17 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
             } else if (!error) {
               syncFailWarnedRef.current = false;
             }
-          });
+          },
+          (err: unknown) => {
+            if (!syncFailWarnedRef.current) {
+              syncFailWarnedRef.current = true;
+              console.error("Échec de synchronisation de la position :", err);
+              toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                duration: 8000,
+              });
+            }
+          },
+        );
       }
 
       if (gameRef.current?.status !== "running") return;

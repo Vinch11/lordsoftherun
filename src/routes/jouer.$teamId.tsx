@@ -25,6 +25,7 @@ import {
   formatCountdown,
   haversine,
   kmhToMs,
+  withTimeout,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
@@ -344,17 +345,20 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
-        void supabase
-          .from("teams")
-          .update({
-            lat: point[0],
-            lng: point[1],
-            current_trail: trackRef.current,
-            total_distance_m: totalDistanceRef.current,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", teamId)
-          .then(({ error }) => {
+        void withTimeout(
+          supabase
+            .from("teams")
+            .update({
+              lat: point[0],
+              lng: point[1],
+              current_trail: trackRef.current,
+              total_distance_m: totalDistanceRef.current,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", teamId),
+          8000,
+        ).then(
+          ({ error }) => {
             // This write is fire-and-forget by design (it can't block the GPS
             // loop), but a silent failure here means the team's position
             // never reaches the map — surface it instead of vanishing.
@@ -367,7 +371,20 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             } else if (!error) {
               syncFailWarnedRef.current = false;
             }
-          });
+          },
+          (err: unknown) => {
+            // A stalled request (no error, no success — just never resolves)
+            // would otherwise hide the failure forever; the timeout above
+            // turns it into a rejection so it's caught here too.
+            if (!syncFailWarnedRef.current) {
+              syncFailWarnedRef.current = true;
+              console.error("Échec de synchronisation de la position :", err);
+              toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                duration: 8000,
+              });
+            }
+          },
+        );
       }
 
       if (gameRef.current) {

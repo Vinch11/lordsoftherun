@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { withTimeout } from "@/lib/conquete";
 
 export type PhotoSubmission = {
   id: string;
@@ -46,20 +47,6 @@ async function compressPhoto(file: File, maxDim = 1280, quality = 0.72): Promise
 }
 
 const UPLOAD_TIMEOUT_MS = 25_000;
-
-/**
- * A stalled request on weak school WiFi/cellular can hang indefinitely — the
- * Supabase storage client has no built-in timeout, so without this the "Envoi…"
- * button would stay stuck forever instead of failing and letting the team retry.
- */
-function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promise),
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Envoi trop long, vérifiez votre connexion.")), ms),
-    ),
-  ]);
-}
 
 /** Uploads a team's photo and records the submission. Returns the storage path. */
 export async function uploadTeamPhoto(gameId: string, teamId: string, file: File) {
