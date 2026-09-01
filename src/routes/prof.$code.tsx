@@ -975,14 +975,18 @@ function TeacherDashboard() {
   function exportIdoceoCsv() {
     const maxScore = Math.max(0, ...teams.map((tm) => teamScore(tm)));
     // iDoceo lit la 2e colonne comme une note numérique : pas de "%" ni de
-    // virgule décimale, sinon la cellule est importée comme texte vide.
-    const rows: string[][] = [["Élève", "Conquête (/100)"]];
+    // virgule décimale, sinon la cellule est importée comme texte vide. Les
+    // colonnes suivantes (distance, vitesse) sont juste informatives.
+    const rows: string[][] = [["Élève", "Conquête (/100)", "Distance (km)", "Vitesse moy. (km/h)"]];
     for (const s of students) {
       if (!s.present || !s.team_id) continue;
       const team = teams.find((tm) => tm.id === s.team_id);
       if (!team) continue;
       const pct = maxScore > 0 ? Math.round((teamScore(team) / maxScore) * 100) : 0;
-      rows.push([s.name, String(pct)]);
+      const distanceKm = (team.total_distance_m / 1000).toFixed(2);
+      const avgSpeedKmh =
+        gameElapsedS > 0 ? ((team.total_distance_m / gameElapsedS) * 3.6).toFixed(1) : "0.0";
+      rows.push([s.name, String(pct), distanceKm, avgSpeedKmh]);
     }
 
     downloadCsv(`conquete-${code}.csv`, rows);
