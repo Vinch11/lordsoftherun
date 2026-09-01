@@ -70,12 +70,12 @@ export const NOTIFICATION_SOUND_OPTIONS: {
   {
     id: "long_alert",
     label: "Alerte longue",
-    description: "Une séquence plus longue, difficile à manquer.",
+    description: "Une série de bips puissants, difficile à manquer.",
   },
   {
     id: "intense",
     label: "Alarme intense",
-    description: "Le son le plus fort et le plus insistant.",
+    description: "Des bips rapides et très forts, le plus insistant.",
   },
 ];
 
@@ -116,25 +116,26 @@ const SOUND_PRESETS: Record<NotificationSoundId, SoundPreset> = {
   },
   long_alert: {
     type: "square",
-    peakGain: 0.9,
+    peakGain: 0.95,
     tones: [
-      { offset: 0, freqFrom: 740, freqTo: 1180, dur: 0.3 },
-      { offset: 0.4, freqFrom: 1180, freqTo: 740, dur: 0.3 },
-      { offset: 0.8, freqFrom: 740, freqTo: 1180, dur: 0.3 },
-      { offset: 1.4, freqFrom: 1180, freqTo: 740, dur: 0.3 },
-      { offset: 1.8, freqFrom: 740, freqTo: 1180, dur: 0.3 },
+      { offset: 0, freqFrom: 1000, freqTo: 1000, dur: 0.22 },
+      { offset: 0.32, freqFrom: 1000, freqTo: 1000, dur: 0.22 },
+      { offset: 0.64, freqFrom: 1000, freqTo: 1000, dur: 0.22 },
+      { offset: 1.1, freqFrom: 1000, freqTo: 1000, dur: 0.22 },
+      { offset: 1.42, freqFrom: 1000, freqTo: 1000, dur: 0.22 },
     ],
   },
   intense: {
     type: "square",
     peakGain: 1,
     tones: [
-      { offset: 0, freqFrom: 740, freqTo: 1180, dur: 0.25 },
-      { offset: 0.3, freqFrom: 1180, freqTo: 740, dur: 0.25 },
-      { offset: 0.6, freqFrom: 740, freqTo: 1180, dur: 0.25 },
-      { offset: 0.9, freqFrom: 1180, freqTo: 740, dur: 0.25 },
-      { offset: 1.2, freqFrom: 740, freqTo: 1180, dur: 0.25 },
-      { offset: 1.5, freqFrom: 1180, freqTo: 740, dur: 0.25 },
+      { offset: 0, freqFrom: 950, freqTo: 950, dur: 0.16 },
+      { offset: 0.2, freqFrom: 1300, freqTo: 1300, dur: 0.16 },
+      { offset: 0.4, freqFrom: 950, freqTo: 950, dur: 0.16 },
+      { offset: 0.6, freqFrom: 1300, freqTo: 1300, dur: 0.16 },
+      { offset: 0.8, freqFrom: 950, freqTo: 950, dur: 0.16 },
+      { offset: 1.0, freqFrom: 1300, freqTo: 1300, dur: 0.16 },
+      { offset: 1.2, freqFrom: 950, freqTo: 950, dur: 0.16 },
     ],
   },
 };
