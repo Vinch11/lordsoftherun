@@ -26,6 +26,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
+  setNotificationSound,
 } from "@/lib/notify";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
@@ -71,6 +72,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
+  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
   const teamsRef = useRef(teams);
   teamsRef.current = teams;
   const { messages } = useMessages(gameId);

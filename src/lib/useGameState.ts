@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { CaptureConsequence, GameMode, GracePenaltyMode, GridShape } from "@/lib/conquete";
+import type { NotificationSoundId } from "@/lib/notify";
 
 export type Game = {
   id: string;
@@ -34,6 +35,7 @@ export type Game = {
   grid_width_m: number;
   grid_height_m: number;
   grid_min_speed_kmh: number;
+  notification_sound: NotificationSoundId;
   grace_enabled: boolean;
   grace_minutes: number;
   grace_penalty_mode: GracePenaltyMode;

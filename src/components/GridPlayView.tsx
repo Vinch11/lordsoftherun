@@ -25,6 +25,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
+  setNotificationSound,
 } from "@/lib/notify";
 import {
   awardRunningBonusCell,
@@ -78,6 +79,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
+  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
   const { messages } = useMessages(gameId);
   const { cells } = useGridCells(gameId);
   const cellsRef = useRef(cells);
