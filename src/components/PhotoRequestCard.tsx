@@ -22,12 +22,16 @@ type Props = {
 export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, nowMs }: Props) {
   const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const alertedRef = useRef<string | null>(null);
+  const lastFileRef = useRef<File | null>(null);
 
   const storageKey = requestedAt ? `conquete:photo:${teamId}:${requestedAt}` : null;
 
   useEffect(() => {
+    setFailed(false);
+    lastFileRef.current = null;
     if (!storageKey) {
       setSentAt(null);
       return;
@@ -47,6 +51,8 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
 
   async function sendPhoto(file: File) {
     if (!storageKey) return;
+    lastFileRef.current = file;
+    setFailed(false);
     setSending(true);
     try {
       await uploadTeamPhoto(gameId, teamId, file);
@@ -55,6 +61,7 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
       setSentAt(at);
       toast.success("Photo envoyée au prof !");
     } catch (e) {
+      setFailed(true);
       toast.error(`Échec de l'envoi : ${e instanceof Error ? e.message : "réessayez"}`);
     } finally {
       setSending(false);
@@ -104,6 +111,14 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
       >
         <Camera className="h-6 w-6" /> {sending ? "Envoi..." : "Prendre la photo"}
       </button>
+      {failed && !sending && (
+        <button
+          className="btn-huge btn-huge-dark"
+          onClick={() => lastFileRef.current && void sendPhoto(lastFileRef.current)}
+        >
+          Réessayer l'envoi (sans reprendre la photo)
+        </button>
+      )}
     </div>
   );
 }
