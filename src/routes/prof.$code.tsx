@@ -773,15 +773,20 @@ function TeacherDashboard() {
     [teams],
   );
 
+  // Where teams actually are matters more than a fixed drop-off point — the
+  // map only centers once on load (no continuous follow here, so the prof
+  // can freely pan/zoom), so parking it on the return zone instead of the
+  // teams would leave it staring at an empty spot for the whole game once
+  // students wander off from it.
   const center = useMemo<[number, number] | null>(() => {
-    if (game?.return_lat != null && game.return_lng != null)
-      return [game.return_lat, game.return_lng];
     const withPos = teams.filter((t) => t.lat != null && t.lng != null);
     if (withPos.length) {
       const lat = withPos.reduce((s, t) => s + (t.lat ?? 0), 0) / withPos.length;
       const lng = withPos.reduce((s, t) => s + (t.lng ?? 0), 0) / withPos.length;
       return [lat, lng];
     }
+    if (game?.return_lat != null && game.return_lng != null)
+      return [game.return_lat, game.return_lng];
     return selfPos;
   }, [teams, game?.return_lat, game?.return_lng, selfPos]);
 
