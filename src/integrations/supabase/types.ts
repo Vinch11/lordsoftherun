@@ -281,6 +281,7 @@ export type Database = {
           map_style: string
           mode: string
           name: string | null
+          notification_sound: string
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
@@ -329,6 +330,7 @@ export type Database = {
           map_style?: string
           mode?: string
           name?: string | null
+          notification_sound?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -377,6 +379,7 @@ export type Database = {
           map_style?: string
           mode?: string
           name?: string | null
+          notification_sound?: string
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
