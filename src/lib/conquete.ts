@@ -174,3 +174,24 @@ export function formatCountdown(seconds: number): string {
 }
 
 export const teamStorageKey = (code: string) => `conquete:team:${code}`;
+
+/**
+ * Retries a Supabase query a few times before giving up — a transient
+ * network hiccup (weak school WiFi, exactly the moment every device hits
+ * the server at once when the prof starts the game) must not be mistaken
+ * for "this team doesn't exist", which is what used to force a full
+ * QR-code rejoin over what was really just one failed request.
+ */
+export async function fetchWithRetry<T>(
+  run: () => PromiseLike<{ data: T | null; error: unknown }>,
+  attempts = 3,
+  delayMs = 800,
+): Promise<{ data: T | null; error: unknown }> {
+  let last: { data: T | null; error: unknown } = { data: null, error: null };
+  for (let i = 0; i < attempts; i++) {
+    last = await run();
+    if (!last.error) return last;
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, delayMs));
+  }
+  return last;
+}

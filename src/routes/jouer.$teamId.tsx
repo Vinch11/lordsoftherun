@@ -19,6 +19,7 @@ import {
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
   VEHICLE_SUSTAINED_MS,
+  fetchWithRetry,
   formatArea,
   formatClock,
   formatCountdown,
@@ -69,23 +70,24 @@ function PlayView() {
   const { teamId } = Route.useParams();
   const [gameId, setGameId] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
+  const [connectionFailed, setConnectionFailed] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     let active = true;
-    void supabase
-      .from("teams")
-      .select("game_id")
-      .eq("id", teamId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!active) return;
-        if (!data) setMissing(true);
-        else setGameId(data.game_id);
-      });
+    setConnectionFailed(false);
+    void fetchWithRetry<{ game_id: string }>(() =>
+      supabase.from("teams").select("game_id").eq("id", teamId).maybeSingle(),
+    ).then(({ data, error }) => {
+      if (!active) return;
+      if (error) setConnectionFailed(true);
+      else if (!data) setMissing(true);
+      else setGameId(data.game_id);
+    });
     return () => {
       active = false;
     };
-  }, [teamId]);
+  }, [teamId, retryTick]);
 
   const { game } = useGameState(gameId);
 
@@ -93,6 +95,16 @@ function PlayView() {
     return (
       <main className="flex min-h-screen items-center justify-center p-6 text-center">
         <p className="text-lg">Équipe introuvable. Rejoignez à nouveau la partie.</p>
+      </main>
+    );
+  }
+  if (connectionFailed) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
+        <button className="btn-huge btn-huge-accent" onClick={() => setRetryTick((n) => n + 1)}>
+          Réessayer
+        </button>
       </main>
     );
   }
@@ -130,6 +142,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const distRef = useRef(0);
   const loopStartRef = useRef(0);
   const lastSync = useRef(0);
+  const syncFailWarnedRef = useRef(false);
   const closing = useRef(false);
   const instSpeedRef = useRef(0);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
@@ -340,7 +353,21 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             total_distance_m: totalDistanceRef.current,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", teamId);
+          .eq("id", teamId)
+          .then(({ error }) => {
+            // This write is fire-and-forget by design (it can't block the GPS
+            // loop), but a silent failure here means the team's position
+            // never reaches the map — surface it instead of vanishing.
+            if (error && !syncFailWarnedRef.current) {
+              syncFailWarnedRef.current = true;
+              console.error("Échec de synchronisation de la position :", error);
+              toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                duration: 8000,
+              });
+            } else if (!error) {
+              syncFailWarnedRef.current = false;
+            }
+          });
       }
 
       if (gameRef.current) {
