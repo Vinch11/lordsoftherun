@@ -34,6 +34,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
+  setNotificationSound,
 } from "@/lib/notify";
 import {
   advanceCircuitProgress,
@@ -103,6 +104,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
+  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
   const { messages } = useMessages(gameId);
   const { checkpoints } = useCheckpoints(gameId);
   const checkpointsRef = useRef(checkpoints);

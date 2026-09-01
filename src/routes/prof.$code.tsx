@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
+  Bell,
   Bike,
   Bookmark,
   Camera,
@@ -47,7 +48,16 @@ import {
   saveMessageTemplate,
   useMessageTemplates,
 } from "@/lib/messageTemplates";
-import { armAlertSound, notifyMessage, requestNotificationPermission } from "@/lib/notify";
+import {
+  armAlertSound,
+  DEFAULT_NOTIFICATION_SOUND,
+  NOTIFICATION_SOUND_OPTIONS,
+  notifyMessage,
+  previewSound,
+  requestNotificationPermission,
+  setNotificationSound,
+  type NotificationSoundId,
+} from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
 import {
   addLandmark,
@@ -402,6 +412,9 @@ function TeacherDashboard() {
   const [gridCellSize, setGridCellSize] = useState(DEFAULT_GRID_CELL_SIZE_M);
   const [gridShowOverlay, setGridShowOverlay] = useState(true);
   const [gridMinSpeed, setGridMinSpeed] = useState(DEFAULT_GRID_MIN_SPEED_KMH);
+  const [notificationSound, setNotificationSoundChoice] = useState<NotificationSoundId>(
+    DEFAULT_NOTIFICATION_SOUND,
+  );
   const [graceEnabled, setGraceEnabled] = useState(false);
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_MINUTES);
   const [gracePenaltyMode, setGracePenaltyMode] = useState<GracePenaltyMode>("cancel");
@@ -500,6 +513,7 @@ function TeacherDashboard() {
   }, [code]);
 
   const { game, teams, territories, refresh } = useGameState(gameId);
+  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
   const [gameNameDraft, setGameNameDraft] = useState("");
   const gameNameRef = useRef<string | null>(null);
   useEffect(() => {
@@ -580,6 +594,7 @@ function TeacherDashboard() {
       setGridCellSize(game.grid_cell_size_m);
       setGridShowOverlay(game.grid_show_overlay);
       setGridMinSpeed(game.grid_min_speed_kmh);
+      setNotificationSoundChoice(game.notification_sound);
       setGraceEnabled(game.grace_enabled);
       setGraceMinutes(game.grace_minutes);
       setGracePenaltyMode(game.grace_penalty_mode);
@@ -1210,6 +1225,12 @@ function TeacherDashboard() {
     setGridMinSpeed(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ grid_min_speed_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateNotificationSound(next: NotificationSoundId) {
+    setNotificationSoundChoice(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ notification_sound: next }).eq("id", gameId);
   }
 
   async function clearGridZone() {
@@ -2421,6 +2442,41 @@ function TeacherDashboard() {
                 </>
               )}
             </>
+          )}
+        </section>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Bell className="h-4 w-4" /> Son des notifications
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Le son joué (avec vibration) sur votre écran et celui des équipes à chaque alerte —
+            message, effet reçu, fin de partie, etc.
+          </p>
+          {isOwner ? (
+            <div className="grid grid-cols-2 gap-2">
+              {NOTIFICATION_SOUND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className="seg-btn flex flex-col gap-1 p-3 text-left"
+                  data-active={notificationSound === opt.id}
+                  onClick={() => {
+                    void updateNotificationSound(opt.id);
+                    previewSound(opt.id);
+                  }}
+                >
+                  <span className="text-sm">{opt.label}</span>
+                  <span className="font-sans text-xs font-normal normal-case tracking-normal text-muted-foreground">
+                    {opt.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm font-semibold">
+              {NOTIFICATION_SOUND_OPTIONS.find((o) => o.id === notificationSound)?.label}
+            </p>
           )}
         </section>
 

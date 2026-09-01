@@ -32,6 +32,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
+  setNotificationSound,
 } from "@/lib/notify";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
@@ -168,6 +169,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const { game, teams, territories } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
+  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
   const { messages } = useMessages(gameId);
   const { landmarks } = useLandmarks(gameId);
   const landmarksRef = useRef(landmarks);

@@ -309,6 +309,13 @@
       "when": 1788209098643,
       "tag": "0043_grid_min_speed",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1788210000000,
+      "tag": "0044_notification_sound",
+      "breakpoints": true
     }
   ]
 }
