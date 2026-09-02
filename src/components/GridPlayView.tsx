@@ -397,7 +397,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   }, [finished]);
 
   return (
-    <main className="relative h-[100dvh] w-full overflow-hidden">
+    <main className="bib relative h-[100dvh] w-full overflow-hidden">
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}
