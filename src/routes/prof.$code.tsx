@@ -7,6 +7,7 @@ import {
   Bike,
   Bookmark,
   Camera,
+  ChevronDown,
   Download,
   Eye,
   EyeOff,
@@ -415,6 +416,28 @@ function TeacherDashboard() {
   const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_KEY);
+      if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggleSection = (id: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const sectionProps = (id: string) => ({ "data-collapsed": collapsed[id] ? "true" : "false" });
 
   const [gameId, setGameId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
