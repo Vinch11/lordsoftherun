@@ -9,7 +9,6 @@ import {
   fetchWithRetry,
   rememberMyTeam,
   studentStorageKey,
-  studentThemeClass,
   teamStorageKey,
   type StudentIdMode,
 } from "@/lib/conquete";
@@ -263,7 +262,7 @@ function Join() {
 
   if (checkingResume) {
     return (
-      <main className={`bib ${studentThemeClass(theme)} flex min-h-screen items-center justify-center p-6 text-center`}>
+      <main className={`bib flex min-h-screen items-center justify-center p-6 text-center`}>
         <p className="text-lg text-muted-foreground">Reconnexion à votre équipe…</p>
       </main>
     );
@@ -271,7 +270,7 @@ function Join() {
 
   if (resumeFailed) {
     return (
-      <main className={`bib ${studentThemeClass(theme)} flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
+      <main className={`bib flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
         <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
         <button
           className="btn-huge btn-huge-accent"
@@ -288,7 +287,7 @@ function Join() {
 
   if (asyncMode) {
     return (
-      <main className={`bib ${studentThemeClass(theme)} min-h-screen px-5 py-8`}>
+      <main className={`bib min-h-screen px-5 py-8`}>
         <div className="mx-auto flex max-w-md flex-col gap-6">
           <header className="pt-4">
             <div className="pill">
@@ -421,7 +420,7 @@ function Join() {
   const showPicker = existingTeams.length > 0 && !creatingNew;
 
   return (
-    <main className={`bib ${studentThemeClass(theme)} min-h-screen px-5 py-8`}>
+    <main className={`bib min-h-screen px-5 py-8`}>
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <header className="pt-4">
           <div className="pill">
