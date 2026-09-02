@@ -1,4 +1,3 @@
-import { StudentThemePreview } from "@/components/StudentThemePreview";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -156,7 +155,6 @@ import {
   MIN_GRID_CELL_SIZE_M,
   MIN_GRID_RADIUS_M,
   MIN_GRID_SIDE_M,
-  STUDENT_THEMES,
   TEAM_COLORS,
   formatArea,
   formatClock,
@@ -2271,36 +2269,6 @@ function TeacherDashboard() {
                     </p>
                   </div>
                 )}
-                <div className="flex flex-col gap-2 border-t border-border pt-3">
-                  <span className="text-sm font-semibold">Thème de l'écran élève</span>
-                  <p className="text-xs text-muted-foreground">
-                    Aperçu réel de ce que verront les élèves. Touchez un aperçu pour l'appliquer.{" "}
-                    <a href="/themes" target="_blank" rel="noreferrer" className="underline">
-                      Voir en grand
-                    </a>
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    {STUDENT_THEMES.map((th) => (
-                      <button
-                        key={th.id}
-                        type="button"
-                        onClick={() => void updateStudentTheme(th.id)}
-                        className={`flex flex-col gap-1.5 rounded-xl border-2 p-1.5 text-left transition ${
-                          studentTheme === th.id
-                            ? "border-primary ring-2 ring-primary/30"
-                            : "border-border"
-                        }`}
-                      >
-                        <StudentThemePreview theme={th.id} />
-                        <span className="px-0.5 text-xs font-semibold">{th.label}</span>
-                        <span className="px-0.5 text-[11px] leading-snug text-muted-foreground">
-                          {th.hint}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
                     <span className="text-sm font-semibold">Identification de l'élève</span>
