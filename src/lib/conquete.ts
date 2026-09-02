@@ -191,6 +191,34 @@ export const teamStorageKey = (code: string) => `conquete:team:${code}`;
 /** In async mode, remembers which student this device is playing as for a given team. */
 export const studentStorageKey = (teamId: string) => `conquete:student:${teamId}`;
 
+export type MyTeamEntry = { teamId: string; code: string };
+const MY_TEAMS_KEY = "conquete:my-teams";
+/** A device can accumulate teams across a whole school year — cap so the
+ * home screen's resume list (and the storage itself) doesn't grow forever. */
+const MAX_MY_TEAMS = 20;
+
+/** Every team this device has joined or resumed, most recent last. */
+export function getMyTeams(): MyTeamEntry[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(MY_TEAMS_KEY) ?? "[]");
+    return Array.isArray(parsed) ? (parsed as MyTeamEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function setMyTeams(entries: MyTeamEntry[]): void {
+  localStorage.setItem(MY_TEAMS_KEY, JSON.stringify(entries));
+}
+
+/** Records that this device just joined/resumed a team, for the home screen's list. */
+export function rememberMyTeam(teamId: string, code: string): void {
+  const next = [...getMyTeams().filter((t) => t.teamId !== teamId), { teamId, code }].slice(
+    -MAX_MY_TEAMS,
+  );
+  setMyTeams(next);
+}
+
 /**
  * Retries a Supabase query a few times before giving up — a transient
  * network hiccup (weak school WiFi, exactly the moment every device hits

@@ -6,6 +6,7 @@ import { RulesIntro } from "@/components/RulesIntro";
 import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
+import { InstallPwaBanner } from "@/components/InstallPwaBanner";
 import { FinalResults } from "@/components/FinalResults";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -802,6 +803,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
+        {game?.async_mode && !running && <InstallPwaBanner />}
+
         {geoError && !geoDenied && (
           <div className="panel px-4 py-3 text-sm font-semibold text-destructive">{geoError}</div>
         )}
