@@ -379,8 +379,32 @@ function LandmarkFields({
     </div>
   );
 }
+const COLLAPSED_KEY = "conquete.collapsedSections";
+
+function CollapseToggle({
+  id,
+  collapsed,
+  onToggle,
+}: {
+  id: string;
+  collapsed: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="collapse-toggle"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? "Déplier la section" : "Réduire la section"}
+      onClick={() => onToggle(id)}
+    >
+      <ChevronDown className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+    </button>
+  );
+}
 
 function TeacherDashboard() {
+
   const { code } = Route.useParams();
   const navigate = useNavigate();
   const { account: user } = useAuth();
