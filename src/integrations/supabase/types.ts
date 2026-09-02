@@ -248,6 +248,7 @@ export type Database = {
       }
       games: {
         Row: {
+          async_mode: boolean
           circuit_banana_penalty_s: number
           circuit_boost_bonus_s: number
           circuit_capture_radius_m: number
@@ -278,6 +279,7 @@ export type Database = {
           grid_show_overlay: boolean
           grid_width_m: number
           id: string
+          loop_close_mode: string
           map_style: string
           mode: string
           name: string | null
@@ -292,11 +294,13 @@ export type Database = {
           running_bonus_speed_kmh: number
           started_at: string | null
           status: string
+          student_id_mode: string
           vehicle_allowed: boolean
           vehicle_penalty_m2: number
           vehicle_speed_threshold_kmh: number
         }
         Insert: {
+          async_mode?: boolean
           circuit_banana_penalty_s?: number
           circuit_boost_bonus_s?: number
           circuit_capture_radius_m?: number
@@ -327,6 +331,7 @@ export type Database = {
           grid_show_overlay?: boolean
           grid_width_m?: number
           id?: string
+          loop_close_mode?: string
           map_style?: string
           mode?: string
           name?: string | null
@@ -341,11 +346,13 @@ export type Database = {
           running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
+          student_id_mode?: string
           vehicle_allowed?: boolean
           vehicle_penalty_m2?: number
           vehicle_speed_threshold_kmh?: number
         }
         Update: {
+          async_mode?: boolean
           circuit_banana_penalty_s?: number
           circuit_boost_bonus_s?: number
           circuit_capture_radius_m?: number
@@ -376,6 +383,7 @@ export type Database = {
           grid_show_overlay?: boolean
           grid_width_m?: number
           id?: string
+          loop_close_mode?: string
           map_style?: string
           mode?: string
           name?: string | null
@@ -390,6 +398,7 @@ export type Database = {
           running_bonus_speed_kmh?: number
           started_at?: string | null
           status?: string
+          student_id_mode?: string
           vehicle_allowed?: boolean
           vehicle_penalty_m2?: number
           vehicle_speed_threshold_kmh?: number
@@ -710,6 +719,8 @@ export type Database = {
           name: string
           present: boolean
           team_id: string | null
+          total_active_s: number
+          total_distance_m: number
         }
         Insert: {
           created_at?: string
@@ -718,6 +729,8 @@ export type Database = {
           name: string
           present?: boolean
           team_id?: string | null
+          total_active_s?: number
+          total_distance_m?: number
         }
         Update: {
           created_at?: string
@@ -726,6 +739,8 @@ export type Database = {
           name?: string
           present?: boolean
           team_id?: string | null
+          total_active_s?: number
+          total_distance_m?: number
         }
         Relationships: [
           {
@@ -737,6 +752,42 @@ export type Database = {
           },
           {
             foreignKeyName: "students_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          joined_at: string
+          member_uid: string
+          student_id: string | null
+          team_id: string
+        }
+        Insert: {
+          joined_at?: string
+          member_uid: string
+          student_id?: string | null
+          team_id: string
+        }
+        Update: {
+          joined_at?: string
+          member_uid?: string
+          student_id?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -762,11 +813,14 @@ export type Database = {
           landmark_bonus_m2: number
           lat: number | null
           lng: number | null
+          loop_active: boolean
+          loop_started_at: string | null
           name: string
           penalty_m2: number
           returned_at: string | null
           score_m2: number
           shield_until: string | null
+          total_active_s: number
           total_captured_m2: number
           total_distance_m: number
           updated_at: string
@@ -789,11 +843,14 @@ export type Database = {
           landmark_bonus_m2?: number
           lat?: number | null
           lng?: number | null
+          loop_active?: boolean
+          loop_started_at?: string | null
           name: string
           penalty_m2?: number
           returned_at?: string | null
           score_m2?: number
           shield_until?: string | null
+          total_active_s?: number
           total_captured_m2?: number
           total_distance_m?: number
           updated_at?: string
@@ -816,11 +873,14 @@ export type Database = {
           landmark_bonus_m2?: number
           lat?: number | null
           lng?: number | null
+          loop_active?: boolean
+          loop_started_at?: string | null
           name?: string
           penalty_m2?: number
           returned_at?: string | null
           score_m2?: number
           shield_until?: string | null
+          total_active_s?: number
           total_captured_m2?: number
           total_distance_m?: number
           updated_at?: string
@@ -886,6 +946,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_distance:
+        | {
+            Args: {
+              _delta_active_s?: number
+              _delta_m?: number
+              _student_id?: string
+              _team_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _delta_active_s?: number
+              _delta_m?: number
+              _student_id?: string
+              _team_id: string
+            }
+            Returns: undefined
+          }
+      join_team_member: {
+        Args: { _student_id?: string; _student_name?: string; _team_id: string }
+        Returns: string
+      }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
     }
     Enums: {
