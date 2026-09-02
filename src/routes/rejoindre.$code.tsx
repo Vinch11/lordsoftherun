@@ -9,6 +9,7 @@ import {
   fetchWithRetry,
   rememberMyTeam,
   studentStorageKey,
+  studentThemeClass,
   teamStorageKey,
   type StudentIdMode,
 } from "@/lib/conquete";
@@ -49,6 +50,7 @@ function Join() {
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
   const [studentIdMode, setStudentIdMode] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
+  const [theme, setTheme] = useState<string>("dossard");
   const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
   const [nameEntryTeam, setNameEntryTeam] = useState<ExistingTeam | null>(null);
   const [ownName, setOwnName] = useState("");
@@ -100,7 +102,7 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id, async_mode, student_id_mode")
+      .select("id, async_mode, student_id_mode, student_theme")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
@@ -120,6 +122,7 @@ function Join() {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
+          setTheme(game.student_theme);
         }
       });
     return () => {
@@ -260,7 +263,7 @@ function Join() {
 
   if (checkingResume) {
     return (
-      <main className="bib flex min-h-screen items-center justify-center p-6 text-center">
+      <main className={`bib ${studentThemeClass(theme)} flex min-h-screen items-center justify-center p-6 text-center`}>
         <p className="text-lg text-muted-foreground">Reconnexion à votre équipe…</p>
       </main>
     );
@@ -268,7 +271,7 @@ function Join() {
 
   if (resumeFailed) {
     return (
-      <main className="bib flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
+      <main className={`bib ${studentThemeClass(theme)} flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
         <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
         <button
           className="btn-huge btn-huge-accent"
@@ -285,7 +288,7 @@ function Join() {
 
   if (asyncMode) {
     return (
-      <main className="bib min-h-screen px-5 py-8">
+      <main className={`bib ${studentThemeClass(theme)} min-h-screen px-5 py-8`}>
         <div className="mx-auto flex max-w-md flex-col gap-6">
           <header className="pt-4">
             <div className="pill">
@@ -418,7 +421,7 @@ function Join() {
   const showPicker = existingTeams.length > 0 && !creatingNew;
 
   return (
-    <main className="bib min-h-screen px-5 py-8">
+    <main className={`bib ${studentThemeClass(theme)} min-h-screen px-5 py-8`}>
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <header className="pt-4">
           <div className="pill">
