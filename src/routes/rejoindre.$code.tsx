@@ -119,7 +119,7 @@ function Join() {
         if (active) {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
-          setStudentIdMode(game.student_id_mode);
+          setStudentIdMode(game.student_id_mode as StudentIdMode);
         }
       });
     return () => {

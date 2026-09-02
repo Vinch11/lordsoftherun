@@ -946,25 +946,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      add_distance:
-        | {
-            Args: {
-              _delta_active_s?: number
-              _delta_m?: number
-              _student_id?: string
-              _team_id: string
-            }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _delta_active_s?: number
-              _delta_m?: number
-              _student_id?: string
-              _team_id: string
-            }
-            Returns: undefined
-          }
+      add_distance: {
+        Args: {
+          _delta_active_s?: number
+          _delta_m?: number
+          _student_id?: string
+          _team_id: string
+        }
+        Returns: undefined
+      }
       join_team_member: {
         Args: { _student_id?: string; _student_name?: string; _team_id: string }
         Returns: string
