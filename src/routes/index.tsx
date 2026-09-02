@@ -44,8 +44,8 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
-  const { profile, refresh: refreshProfile } = useProfile(user?.id);
+  const { user, account, loading } = useAuth();
+  const { profile, refresh: refreshProfile } = useProfile(account?.id);
   const t = getTerminology(profile?.terminology);
 
   async function toggleTerminology() {
@@ -378,7 +378,7 @@ function Home() {
         )}
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
-          {user ? (
+          {account ? (
             <>
               {profile?.role === "admin" && (
                 <Link
@@ -416,7 +416,7 @@ function Home() {
                   toast("Déconnecté.");
                 }}
               >
-                Se déconnecter ({user.email})
+                Se déconnecter ({account.email})
               </button>
             </>
           ) : (
