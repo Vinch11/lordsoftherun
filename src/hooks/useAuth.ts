@@ -19,5 +19,8 @@ export function useAuth() {
   }, []);
 
   const user: User | null = session?.user ?? null;
-  return { session, user, loading };
+  // Students get a silent anonymous session; that is not a teacher account.
+  const isAnonymous = Boolean(user?.is_anonymous);
+  const account: User | null = isAnonymous ? null : user;
+  return { session, user, account, isAnonymous, loading };
 }

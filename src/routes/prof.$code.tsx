@@ -377,7 +377,7 @@ function LandmarkFields({
 function TeacherDashboard() {
   const { code } = Route.useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { account: user } = useAuth();
   const { profile } = useProfile(user?.id);
   const t = getTerminology(profile?.terminology);
   const [creatingGame, setCreatingGame] = useState(false);

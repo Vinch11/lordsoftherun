@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { account: user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile(user?.id);
   const [teachers, setTeachers] = useState<Profile[]>([]);
   const [loadingTeachers, setLoadingTeachers] = useState(true);
