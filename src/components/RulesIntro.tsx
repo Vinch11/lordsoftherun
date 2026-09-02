@@ -13,7 +13,7 @@ type Props = {
   onClose: () => void;
   /** Close label; defaults to the pre-game wording. */
   closeLabel?: string;
-  /** Mode asynchrone : pas de distance minimale, boucles indépendantes lancées quand on veut. */
+  /** Mode chacun chez soi : pas de distance minimale, boucles indépendantes lancées quand on veut. */
   asyncMode?: boolean;
   loopCloseMode?: LoopCloseMode;
 };

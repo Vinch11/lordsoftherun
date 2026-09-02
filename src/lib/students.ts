@@ -8,6 +8,8 @@ export type Student = {
   name: string;
   present: boolean;
   team_id: string | null;
+  total_distance_m: number;
+  total_active_s: number;
 };
 
 export function useStudents(gameId: string | null) {
