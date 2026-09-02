@@ -7,6 +7,7 @@ import {
   Bike,
   Bookmark,
   Camera,
+  ChevronDown,
   Download,
   Eye,
   EyeOff,
@@ -379,8 +380,32 @@ function LandmarkFields({
     </div>
   );
 }
+const COLLAPSED_KEY = "conquete.collapsedSections";
+
+function CollapseToggle({
+  id,
+  collapsed,
+  onToggle,
+}: {
+  id: string;
+  collapsed: boolean;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="collapse-toggle"
+      aria-expanded={!collapsed}
+      aria-label={collapsed ? "Déplier la section" : "Réduire la section"}
+      onClick={() => onToggle(id)}
+    >
+      <ChevronDown className={`h-4 w-4 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+    </button>
+  );
+}
 
 function TeacherDashboard() {
+
   const { code } = Route.useParams();
   const navigate = useNavigate();
   const { account: user } = useAuth();
@@ -391,6 +416,28 @@ function TeacherDashboard() {
   const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_KEY);
+      if (raw) setCollapsed(JSON.parse(raw) as Record<string, boolean>);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const toggleSection = (id: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  };
+  const sectionProps = (id: string) => ({ "data-collapsed": collapsed[id] ? "true" : "false" });
 
   const [gameId, setGameId] = useState<string | null>(null);
   const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -1934,7 +1981,8 @@ function TeacherDashboard() {
           </div>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("mode")}>
+          <CollapseToggle id="mode" collapsed={!!collapsed["mode"]} onToggle={toggleSection} />
           <div className="section-title">
             <Gamepad2 className="h-4 w-4" /> Mode de jeu
           </div>
@@ -1979,7 +2027,8 @@ function TeacherDashboard() {
         </section>
 
         {isOwner && game?.status === "lobby" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("eleves")}>
+            <CollapseToggle id="eleves" collapsed={!!collapsed["eleves"]} onToggle={toggleSection} />
             <div className="section-title">
               <Users className="h-4 w-4" /> Élèves
               {students.length > 0 && (
@@ -2164,8 +2213,9 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-between">
+        <section className="panel relative flex flex-col gap-3 p-4 pr-12" {...sectionProps("duree")}>
+          <CollapseToggle id="duree" collapsed={!!collapsed["duree"]} onToggle={toggleSection} />
+          <div className="section-head flex items-center justify-between">
             <span className="section-title">Durée</span>
             <div className="flex items-center gap-3">
               <button
@@ -2222,7 +2272,8 @@ function TeacherDashboard() {
         </section>
 
         {gameMode === "territoire" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("async")}>
+            <CollapseToggle id="async" collapsed={!!collapsed["async"]} onToggle={toggleSection} />
             <div className="section-title">
               <Users className="h-4 w-4" /> Mode chacun chez soi
             </div>
@@ -2395,8 +2446,9 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col items-center gap-3 p-4">
-          <div className="flex w-full items-center justify-between">
+        <section className="panel relative flex flex-col items-center gap-3 p-4 pr-12" {...sectionProps("rejoindre")}>
+          <CollapseToggle id="rejoindre" collapsed={!!collapsed["rejoindre"]} onToggle={toggleSection} />
+          <div className="section-head flex w-full items-center justify-between">
             <div className="section-title">
               <QrCode className="h-4 w-4" /> Rejoindre
             </div>
@@ -2492,8 +2544,9 @@ function TeacherDashboard() {
         )}
 
         {gameMode !== "circuit" && (
-          <section className="panel flex flex-col gap-3 p-4">
-            <div className="flex items-center justify-between">
+          <section className="panel relative flex flex-col gap-3 p-4 pr-12" {...sectionProps("zone-retour")}>
+            <CollapseToggle id="zone-retour" collapsed={!!collapsed["zone-retour"]} onToggle={toggleSection} />
+            <div className="section-head flex items-center justify-between">
               <div className="section-title">
                 <MapPin className="h-4 w-4" />{" "}
                 {gameMode === "capture_drapeau" ? "Zone de dépôt des drapeaux" : "Zone de retour"}
@@ -2571,7 +2624,8 @@ function TeacherDashboard() {
         )}
 
         {gameMode !== "circuit" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("delai-retour")}>
+            <CollapseToggle id="delai-retour" collapsed={!!collapsed["delai-retour"]} onToggle={toggleSection} />
             <div className="section-title">
               <Timer className="h-4 w-4" /> Délai de retour en fin de partie
             </div>
@@ -2670,7 +2724,8 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("vehicules")}>
+          <CollapseToggle id="vehicules" collapsed={!!collapsed["vehicules"]} onToggle={toggleSection} />
           <div className="section-title">
             <Bike className="h-4 w-4" /> Véhicules
           </div>
@@ -2753,7 +2808,8 @@ function TeacherDashboard() {
           )}
         </section>
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("son")}>
+          <CollapseToggle id="son" collapsed={!!collapsed["son"]} onToggle={toggleSection} />
           <div className="section-title">
             <Bell className="h-4 w-4" /> Son des notifications
           </div>
@@ -2789,8 +2845,9 @@ function TeacherDashboard() {
         </section>
 
         {gameMode === "grille" && (
-          <section className="panel flex flex-col gap-3 p-4">
-            <div className="flex items-center justify-between">
+          <section className="panel relative flex flex-col gap-3 p-4 pr-12" {...sectionProps("zone-jeu")}>
+            <CollapseToggle id="zone-jeu" collapsed={!!collapsed["zone-jeu"]} onToggle={toggleSection} />
+            <div className="section-head flex items-center justify-between">
               <div className="section-title">
                 <Grid3x3 className="h-4 w-4" /> Zone de jeu
               </div>
@@ -2977,7 +3034,8 @@ function TeacherDashboard() {
         )}
 
         {gameMode === "capture_drapeau" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("drapeaux")}>
+            <CollapseToggle id="drapeaux" collapsed={!!collapsed["drapeaux"]} onToggle={toggleSection} />
             <div className="section-title">
               <Flag className="h-4 w-4" /> Drapeaux
             </div>
@@ -3101,7 +3159,8 @@ function TeacherDashboard() {
         )}
 
         {gameMode === "circuit" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("circuit")}>
+            <CollapseToggle id="circuit" collapsed={!!collapsed["circuit"]} onToggle={toggleSection} />
             <div className="section-title">
               <Flag className="h-4 w-4" /> Circuit
             </div>
@@ -3289,7 +3348,8 @@ function TeacherDashboard() {
         )}
 
         {gameMode === "circuit" && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("boites")}>
+            <CollapseToggle id="boites" collapsed={!!collapsed["boites"]} onToggle={toggleSection} />
             <div className="section-title">
               <span className="text-base">❓</span> Boîtes mystères &amp; objets
             </div>
@@ -3439,7 +3499,8 @@ function TeacherDashboard() {
         )}
 
         {(gameMode === "territoire" || gameMode === "grille") && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("bonus-course")}>
+            <CollapseToggle id="bonus-course" collapsed={!!collapsed["bonus-course"]} onToggle={toggleSection} />
             <div className="section-title">
               <Flag className="h-4 w-4" /> Bonus course
             </div>
@@ -3537,7 +3598,8 @@ function TeacherDashboard() {
         )}
 
         {(gameMode === "territoire" || gameMode === "capture_drapeau") && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("reperes")}>
+            <CollapseToggle id="reperes" collapsed={!!collapsed["reperes"]} onToggle={toggleSection} />
             <div className="section-title">
               <Star className="h-4 w-4" /> Repères bonus
             </div>
@@ -3703,7 +3765,8 @@ function TeacherDashboard() {
         )}
 
         {(gameMode === "territoire" || gameMode === "capture_drapeau") && (
-          <section className="panel flex flex-col gap-3 p-4">
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("zones-interdites")}>
+            <CollapseToggle id="zones-interdites" collapsed={!!collapsed["zones-interdites"]} onToggle={toggleSection} />
             <div className="section-title">
               <ShieldAlert className="h-4 w-4" /> Zones interdites
             </div>
@@ -3839,7 +3902,8 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("photo")}>
+          <CollapseToggle id="photo" collapsed={!!collapsed["photo"]} onToggle={toggleSection} />
           <div className="section-title">
             <Camera className="h-4 w-4" /> Photo de contrôle
           </div>
@@ -3921,7 +3985,8 @@ function TeacherDashboard() {
           )}
         </section>
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("apercu")}>
+          <CollapseToggle id="apercu" collapsed={!!collapsed["apercu"]} onToggle={toggleSection} />
           <div className="section-title">
             <Smartphone className="h-4 w-4" /> Aperçu élève
           </div>
@@ -3954,7 +4019,8 @@ function TeacherDashboard() {
           )}
         </section>
 
-        <section className="panel flex flex-col gap-1 p-4">
+        <section className="panel relative flex flex-col gap-1 p-4" {...sectionProps("classement")}>
+          <CollapseToggle id="classement" collapsed={!!collapsed["classement"]} onToggle={toggleSection} />
           <div className="section-title mb-2">
             <Trophy className="h-4 w-4" /> Classement final ({teams.length} groupes)
           </div>
@@ -4037,7 +4103,8 @@ function TeacherDashboard() {
         </section>
 
         {ranked.length > 0 && gameMode === "territoire" && (
-          <section className="panel flex flex-col gap-1 p-4">
+          <section className="panel relative flex flex-col gap-1 p-4" {...sectionProps("total")}>
+            <CollapseToggle id="total" collapsed={!!collapsed["total"]} onToggle={toggleSection} />
             <div className="section-title mb-2">
               <Medal className="h-4 w-4" /> Total conquis (indicatif)
             </div>
@@ -4064,7 +4131,8 @@ function TeacherDashboard() {
           </section>
         )}
 
-        <section className="panel flex flex-col gap-3 p-4">
+        <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("messages")}>
+          <CollapseToggle id="messages" collapsed={!!collapsed["messages"]} onToggle={toggleSection} />
           <div className="section-title">Messages</div>
           <div className="flex max-h-64 flex-col gap-2 overflow-y-auto">
             {messages.length === 0 && (
