@@ -22,6 +22,7 @@ import {
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   VEHICLE_SUSTAINED_MS,
   formatArea,
+  studentThemeClass,
   formatClock,
   formatCountdown,
   haversine,

@@ -23,6 +23,7 @@ import {
   VEHICLE_SUSTAINED_MS,
   fetchWithRetry,
   formatArea,
+  studentThemeClass,
   formatClock,
   formatCountdown,
   haversine,
