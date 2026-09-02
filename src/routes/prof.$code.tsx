@@ -139,7 +139,6 @@ import {
   DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_STUDENT_ID_MODE,
-  DEFAULT_STUDENT_THEME,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   GAME_MODE_DESCRIPTIONS,
@@ -167,7 +166,6 @@ import {
   type GracePenaltyMode,
   type LoopCloseMode,
   type StudentIdMode,
-  type StudentTheme,
 } from "@/lib/conquete";
 
 type DurationUnit = "minutes" | "heures" | "jours";
@@ -457,7 +455,6 @@ function TeacherDashboard() {
   const [asyncMode, setAsyncModeState] = useState(false);
   const [loopCloseMode, setLoopCloseModeState] = useState<LoopCloseMode>(DEFAULT_LOOP_CLOSE_MODE);
   const [studentIdMode, setStudentIdModeState] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
-  const [studentTheme, setStudentThemeState] = useState<StudentTheme>(DEFAULT_STUDENT_THEME);
   const [newTeamName, setNewTeamName] = useState("");
   const [addingTeam, setAddingTeam] = useState(false);
   const [messageBody, setMessageBody] = useState("");
@@ -624,7 +621,6 @@ function TeacherDashboard() {
       setAsyncModeState(game.async_mode);
       setLoopCloseModeState(game.loop_close_mode);
       setStudentIdModeState(game.student_id_mode);
-      setStudentThemeState(game.student_theme as StudentTheme);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -1353,12 +1349,6 @@ function TeacherDashboard() {
     setStudentIdModeState(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ student_id_mode: next }).eq("id", gameId);
-  }
-
-  async function updateStudentTheme(next: StudentTheme) {
-    setStudentThemeState(next);
-    if (!gameId || !isOwner) return;
-    await supabase.from("games").update({ student_theme: next }).eq("id", gameId);
   }
 
   async function addTeamManually() {
