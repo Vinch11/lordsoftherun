@@ -847,3 +847,170 @@
     opacity: 0.25;
   }
 }
+
+/* ============================================================
+   Direction « Dossard de course » — écrans élèves uniquement.
+   Palette haute visibilité sport (fond clair, encre noire,
+   vert fluo, bleu marine), typo Bebas Neue + Barlow,
+   disposition carte plein écran + HUD flottant type dossard.
+   ============================================================ */
+.bib {
+  --background: oklch(0.97 0.005 150);
+  --foreground: oklch(0.24 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.02 250);
+  --primary: oklch(0.32 0.09 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.93 0.008 150);
+  --secondary-foreground: oklch(0.24 0.02 250);
+  --muted: oklch(0.93 0.008 150);
+  --muted-foreground: oklch(0.45 0.02 250);
+  --accent: oklch(0.87 0.24 155);
+  --accent-foreground: oklch(0.2 0.05 160);
+  --destructive: oklch(0.55 0.24 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.2 150);
+  --success-foreground: oklch(0.16 0.04 150);
+  --border: oklch(0.24 0.02 250 / 100%);
+  --input: oklch(0.24 0.02 250 / 100%);
+  --ring: oklch(0.32 0.09 258);
+  --font-display: "Bebas Neue", "Barlow", system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  background-color: var(--background);
+  background-image: none;
+  color: var(--foreground);
+  font-family: "Barlow", system-ui, sans-serif;
+}
+
+.bib h1,
+.bib h2,
+.bib h3,
+.bib .display,
+.bib .page-title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-shadow: none;
+  color: var(--foreground);
+}
+
+/* Pastilles HUD : opaques, contour noir épais — lisibles en plein soleil. */
+.bib .hud-badge,
+.bib .nav-back {
+  background-color: oklch(1 0 0);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1rem;
+  box-shadow: 0 3px 0 0 var(--foreground);
+  color: var(--foreground);
+}
+
+.bib .panel,
+.bib .sheet {
+  background-color: oklch(1 0 0);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 0 0 var(--foreground);
+  color: var(--foreground);
+}
+
+/* Boutons dossard : aplat saturé, contour noir, ombre portée nette. */
+.bib .btn-huge {
+  background-image: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 0 0 var(--foreground);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  padding: 1rem 1.25rem;
+}
+
+.bib .btn-huge:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 0 var(--foreground);
+}
+
+.bib .btn-huge-accent {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  animation: none;
+  box-shadow: 0 4px 0 0 var(--foreground);
+}
+
+.bib .btn-huge-dark {
+  background-color: var(--foreground);
+  color: oklch(0.99 0 0);
+}
+
+.bib .field {
+  background-color: oklch(1 0 0);
+  border: 3px solid var(--foreground);
+  border-radius: 1rem;
+  color: var(--foreground);
+}
+
+.bib .field:focus {
+  border-color: var(--accent-foreground);
+  box-shadow: 0 0 0 4px var(--accent);
+}
+
+.bib .pill {
+  background-color: var(--accent);
+  border: 3px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.bib .pill,
+.bib .section-title,
+.bib .label-xs {
+  color: var(--foreground);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bib .text-muted-foreground {
+  color: var(--muted-foreground);
+}
+
+/* Bandeau de scores : chips dossard numérotés. */
+.bib .score-chip {
+  background-color: oklch(1 0 0);
+  border: 3px solid var(--foreground);
+  box-shadow: 0 3px 0 0 var(--foreground);
+}
+
+.bib .score-chip-leader {
+  background-color: var(--accent);
+}
+
+.bib .score-chip-me {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
