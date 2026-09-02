@@ -44,7 +44,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const navigate = useNavigate();
-  const { user, account, loading } = useAuth();
+  const { account, loading } = useAuth();
   const { profile, refresh: refreshProfile } = useProfile(account?.id);
   const t = getTerminology(profile?.terminology);
 
@@ -132,7 +132,7 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    if (!user) {
+    if (!account) {
       setMyGames([]);
       return;
     }
@@ -140,7 +140,7 @@ function Home() {
     void supabase
       .from("games")
       .select("id, code, name, status, created_at")
-      .eq("owner_id", user.id)
+      .eq("owner_id", account.id)
       .order("created_at", { ascending: false })
       .limit(20)
       .then(async ({ data: games }) => {
@@ -169,7 +169,7 @@ function Home() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [account]);
 
   async function renameGame(game: MyGame) {
     const input = window.prompt(
@@ -213,7 +213,7 @@ function Home() {
   }
 
   async function createGame() {
-    if (!user) {
+    if (!account) {
       await navigate({ to: "/auth" });
       return;
     }
@@ -223,7 +223,7 @@ function Home() {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c, owner_id: user.id })
+          .insert({ code: c, owner_id: account.id })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -290,7 +290,7 @@ function Home() {
           </button>
         </section>
 
-        {user && myGames.length > 0 && (
+        {account && myGames.length > 0 && (
           <section className="panel flex flex-col gap-1 p-5">
             <div className="section-title mb-2">Mes parties</div>
             {myGames.map((g) => (
