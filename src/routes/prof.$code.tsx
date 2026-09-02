@@ -2361,52 +2361,6 @@ function TeacherDashboard() {
                     </p>
                   </div>
                 )}
-                <div className="flex flex-col gap-2 border-t border-border pt-3">
-                  <span className="text-sm font-semibold">Thème de l'écran élève</span>
-                  <p className="text-xs text-muted-foreground">
-                    Aperçu réel du rendu sur le téléphone des élèves.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {STUDENT_THEMES.map((t) => (
-                      <div
-                        key={t.id}
-                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 transition ${
-                          studentTheme === t.id
-                            ? "border-primary ring-2 ring-primary/40"
-                            : "border-border"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => void updateStudentTheme(t.id)}
-                          className="flex flex-col gap-2 text-left"
-                        >
-                          <StudentThemePreview theme={t.id} />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold">{t.label}</span>
-                            <span className="flex gap-1">
-                              {t.swatches.map((c) => (
-                                <span
-                                  key={c}
-                                  className="h-3 w-3 rounded-full border border-border"
-                                  style={{ backgroundColor: c }}
-                                />
-                              ))}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{t.description}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
-                          onClick={() => setThemePreview(t.id)}
-                        >
-                          <Smartphone className="h-4 w-4" /> Aperçu grandeur nature
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
                     <span className="text-sm font-semibold">Créer une équipe à la main</span>
@@ -2443,6 +2397,48 @@ function TeacherDashboard() {
                   : "Mode chacun chez soi désactivé."}
               </p>
             )}
+          </section>
+        )}
+
+        {isOwner && (
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("theme")}>
+            <CollapseToggle id="theme" collapsed={!!collapsed["theme"]} onToggle={toggleSection} />
+            <div className="section-title">
+              <Smartphone className="h-4 w-4" /> Thème de l'écran élève
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex shrink-0 gap-1">
+                {(STUDENT_THEMES.find((t) => t.id === studentTheme)?.swatches ?? []).map((c) => (
+                  <span
+                    key={c}
+                    className="h-4 w-4 rounded-full border border-border"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </span>
+              <select
+                className="field flex-1"
+                value={studentTheme}
+                onChange={(e) => void updateStudentTheme(e.target.value as StudentTheme)}
+              >
+                {STUDENT_THEMES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                aria-label="Aperçu grandeur nature"
+                className="icon-btn"
+                onClick={() => setThemePreview(studentTheme)}
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {STUDENT_THEMES.find((t) => t.id === studentTheme)?.description}
+            </p>
           </section>
         )}
 
