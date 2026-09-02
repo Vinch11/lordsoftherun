@@ -87,8 +87,10 @@ export function studentThemeClass(theme: string | null | undefined): string {
       return "bib skin-apple";
     case "athletic":
       return "bib skin-athletic";
-    default:
+    case "dossard":
       return "bib";
+    default:
+      return "";
   }
 }
 
