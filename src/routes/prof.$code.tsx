@@ -2426,6 +2426,42 @@ function TeacherDashboard() {
           </div>
         )}
 
+        {themePreview && (
+          <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-3 bg-background/95 p-4">
+            <div className="flex w-full max-w-[380px] items-center justify-between">
+              <span className="section-title">
+                <Smartphone className="h-4 w-4" />{" "}
+                {STUDENT_THEMES.find((t) => t.id === themePreview)?.label ?? "Aperçu"}
+              </span>
+              <button
+                aria-label="Fermer l'aperçu du thème"
+                className="icon-btn"
+                onClick={() => setThemePreview(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
+              <iframe
+                title="Aperçu grandeur nature du thème élève"
+                src={`/apercu-theme/${themePreview}`}
+                className="h-full w-full"
+              />
+            </div>
+            <div className="flex w-full max-w-[380px] gap-2">
+              <button
+                className="btn-huge btn-huge-accent flex-1 justify-center !py-3 text-sm"
+                onClick={() => {
+                  void updateStudentTheme(themePreview);
+                  setThemePreview(null);
+                }}
+              >
+                Utiliser ce thème
+              </button>
+            </div>
+          </div>
+        )}
+
         {previewTeamId && (
           <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-4 bg-background/95 p-4">
             <div className="flex w-full max-w-[380px] items-center justify-between">
