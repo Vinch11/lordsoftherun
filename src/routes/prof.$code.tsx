@@ -2400,6 +2400,48 @@ function TeacherDashboard() {
           </section>
         )}
 
+        {isOwner && (
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("theme")}>
+            <CollapseToggle id="theme" collapsed={!!collapsed["theme"]} onToggle={toggleSection} />
+            <div className="section-title">
+              <Smartphone className="h-4 w-4" /> Thème de l'écran élève
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="flex shrink-0 gap-1">
+                {(STUDENT_THEMES.find((t) => t.id === studentTheme)?.swatches ?? []).map((c) => (
+                  <span
+                    key={c}
+                    className="h-4 w-4 rounded-full border border-border"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </span>
+              <select
+                className="field flex-1"
+                value={studentTheme}
+                onChange={(e) => void updateStudentTheme(e.target.value as StudentTheme)}
+              >
+                {STUDENT_THEMES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                aria-label="Aperçu grandeur nature"
+                className="icon-btn"
+                onClick={() => setThemePreview(studentTheme)}
+              >
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {STUDENT_THEMES.find((t) => t.id === studentTheme)?.description}
+            </p>
+          </section>
+        )}
+
         <section className="panel relative flex flex-col items-center gap-3 p-4 pr-12" {...sectionProps("rejoindre")}>
           <CollapseToggle id="rejoindre" collapsed={!!collapsed["rejoindre"]} onToggle={toggleSection} />
           <div className="section-head flex w-full items-center justify-between">
