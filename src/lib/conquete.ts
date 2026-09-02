@@ -37,8 +37,8 @@ export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
 /** Visual skin of the student screens, picked by the teacher per game. */
-export type StudentTheme = "dossard" | "esport" | "apple" | "athletic";
-export const DEFAULT_STUDENT_THEME: StudentTheme = "dossard";
+export type StudentTheme = "classic" | "dossard" | "esport" | "apple" | "athletic";
+export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
 
 export const STUDENT_THEMES: {
   id: StudentTheme;
@@ -46,6 +46,12 @@ export const STUDENT_THEMES: {
   description: string;
   swatches: [string, string, string];
 }[] = [
+  {
+    id: "classic",
+    label: "Classique (par défaut)",
+    description: "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
+    swatches: ["#ffffff", "#0f3460", "#39ff88"],
+  },
   {
     id: "dossard",
     label: "Dossard de course",
