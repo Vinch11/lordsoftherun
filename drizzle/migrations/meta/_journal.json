@@ -330,6 +330,13 @@
       "when": 1788250000000,
       "tag": "0046_async_territory",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1788255000000,
+      "tag": "0047_player_distance_stats",
+      "breakpoints": true
     }
   ]
 }

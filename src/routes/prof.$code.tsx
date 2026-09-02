@@ -779,6 +779,15 @@ function TeacherDashboard() {
     const endMs = game.ends_at ? Math.min(now, new Date(game.ends_at).getTime()) : now;
     return Math.max(0, (endMs - startMs) / 1000);
   }, [game?.started_at, game?.ends_at, now]);
+
+  // Whole-game elapsed time makes for a meaningless "average speed" once a
+  // game can span weeks (mode chacun chez soi) — total_active_s only counts
+  // time actually spent in a loop, so it stays a sensible denominator.
+  // Falls back to gameElapsedS for teams/games predating that column.
+  function avgSpeedKmh(distanceM: number, activeS: number): number {
+    const seconds = activeS > 0 ? activeS : gameElapsedS;
+    return seconds > 0 ? (distanceM / seconds) * 3.6 : 0;
+  }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -983,16 +992,29 @@ function TeacherDashboard() {
     // iDoceo lit la 2e colonne comme une note numérique : pas de "%" ni de
     // virgule décimale, sinon la cellule est importée comme texte vide. Les
     // colonnes suivantes (distance, vitesse) sont juste informatives.
-    const rows: string[][] = [["Élève", "Conquête (/100)", "Distance (km)", "Vitesse moy. (km/h)"]];
+    const rows: string[][] = [
+      [
+        "Élève",
+        "Conquête (/100)",
+        "Distance équipe (km)",
+        "Vitesse équipe (km/h)",
+        "Distance élève (km)",
+        "Vitesse élève (km/h)",
+      ],
+    ];
     for (const s of students) {
       if (!s.present || !s.team_id) continue;
       const team = teams.find((tm) => tm.id === s.team_id);
       if (!team) continue;
       const pct = maxScore > 0 ? Math.round((teamScore(team) / maxScore) * 100) : 0;
-      const distanceKm = (team.total_distance_m / 1000).toFixed(2);
-      const avgSpeedKmh =
-        gameElapsedS > 0 ? ((team.total_distance_m / gameElapsedS) * 3.6).toFixed(1) : "0.0";
-      rows.push([s.name, String(pct), distanceKm, avgSpeedKmh]);
+      rows.push([
+        s.name,
+        String(pct),
+        (team.total_distance_m / 1000).toFixed(2),
+        avgSpeedKmh(team.total_distance_m, team.total_active_s).toFixed(1),
+        (s.total_distance_m / 1000).toFixed(2),
+        avgSpeedKmh(s.total_distance_m, s.total_active_s).toFixed(1),
+      ]);
     }
 
     downloadCsv(`conquete-${code}.csv`, rows);
@@ -1947,6 +1969,11 @@ function TeacherDashboard() {
                     >
                       {s.name}
                     </span>
+                    {asyncMode && s.total_distance_m > 0 && (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {(s.total_distance_m / 1000).toFixed(1)} km
+                      </span>
+                    )}
                     {teams.length > 0 && (
                       <select
                         className="field w-28 py-1 text-xs"
@@ -2154,7 +2181,7 @@ function TeacherDashboard() {
         {gameMode === "territoire" && (
           <section className="panel flex flex-col gap-3 p-4">
             <div className="section-title">
-              <Users className="h-4 w-4" /> Mode asynchrone
+              <Users className="h-4 w-4" /> Mode chacun chez soi
             </div>
             <p className="text-sm text-muted-foreground">
               Pour une conquête qui s'étale sur plusieurs jours ou semaines (ex. une promenade du
@@ -2166,7 +2193,7 @@ function TeacherDashboard() {
             {isOwner ? (
               <>
                 <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Activer le mode asynchrone</span>
+                  <span className="text-sm font-semibold">Activer le mode chacun chez soi</span>
                   <input
                     type="checkbox"
                     className="h-5 w-5"
@@ -2206,8 +2233,8 @@ function TeacherDashboard() {
             ) : (
               <p className="text-sm text-muted-foreground">
                 {asyncMode
-                  ? `Mode asynchrone activé — fermeture ${loopCloseMode === "auto" ? "automatique" : "manuelle"} des boucles.`
-                  : "Mode asynchrone désactivé."}
+                  ? `Mode chacun chez soi activé — fermeture ${loopCloseMode === "auto" ? "automatique" : "manuelle"} des boucles.`
+                  : "Mode chacun chez soi désactivé."}
               </p>
             )}
           </section>
@@ -2288,7 +2315,7 @@ function TeacherDashboard() {
             </div>
             {gameMode === "territoire" && asyncMode && (
               <p className="text-xs text-muted-foreground">
-                Mode asynchrone : évitez de définir une zone de retour, les boucles se ferment
+                Mode chacun chez soi : évitez de définir une zone de retour, les boucles se ferment
                 indépendamment les unes des autres au fil des jours.
               </p>
             )}
@@ -3785,8 +3812,7 @@ function TeacherDashboard() {
                 )}
                 <span className="label-xs">
                   {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
-                  {(gameElapsedS > 0 ? (t.total_distance_m / gameElapsedS) * 3.6 : 0).toFixed(1)}{" "}
-                  km/h
+                  {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h
                 </span>
               </span>
             </div>

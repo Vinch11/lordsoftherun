@@ -26,6 +26,7 @@ import {
   formatCountdown,
   haversine,
   kmhToMs,
+  studentStorageKey,
   withTimeout,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
@@ -148,8 +149,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const closing = useRef(false);
   const instSpeedRef = useRef(0);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
-  const totalDistanceRef = useRef(0);
-  const totalDistanceInitRef = useRef(false);
+  // Distance walked since the last flush to the server: sent as a delta via
+  // add_distance() (an atomic increment) rather than a full snapshot, so two
+  // teammates playing at once from separate phones can't clobber each
+  // other's progress with a stale read-modify-write.
+  const distanceDeltaRef = useRef(0);
+  const myStudentIdRef = useRef<string | null>(
+    typeof window !== "undefined" ? localStorage.getItem(studentStorageKey(teamId)) : null,
+  );
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
   // period players are still moving, but nothing they do may change the board.
@@ -197,13 +204,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const myColor = me?.color ?? "#e63946";
   const meRef = useRef(me);
   meRef.current = me;
-
-  useEffect(() => {
-    if (!totalDistanceInitRef.current && me) {
-      totalDistanceRef.current = me.total_distance_m;
-      totalDistanceInitRef.current = true;
-    }
-  }, [me]);
 
   const loopResumedRef = useRef(false);
   useEffect(() => {
@@ -285,11 +285,18 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     const poly = polygonFromTrack(trackRef.current);
     runningRef.current = false;
     setRunning(false);
+    const elapsedS = (Date.now() - loopStartRef.current) / 1000;
+    if (elapsedS > 0) {
+      void supabase.rpc("add_distance", {
+        _team_id: teamId,
+        _student_id: myStudentIdRef.current,
+        _delta_active_s: elapsedS,
+      });
+    }
     if (!poly) {
       toast.error("Boucle invalide, réessayez.");
     } else {
       try {
-        const elapsedS = (Date.now() - loopStartRef.current) / 1000;
         const avgSpeedMs = elapsedS > 0 ? distRef.current / elapsedS : 0;
         const loopTrack = [...trackRef.current];
         const loopDistance = distRef.current;
@@ -364,7 +371,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         if (dt > 0.5 && dist > 2) {
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
-            totalDistanceRef.current += dist;
+            distanceDeltaRef.current += dist;
           }
         }
       } else {
@@ -380,7 +387,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               lat: point[0],
               lng: point[1],
               current_trail: trackRef.current,
-              total_distance_m: totalDistanceRef.current,
               loop_active: runningRef.current,
               updated_at: new Date().toISOString(),
             })
@@ -414,6 +420,22 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             }
           },
         );
+
+        if (distanceDeltaRef.current > 0) {
+          const delta = distanceDeltaRef.current;
+          distanceDeltaRef.current = 0;
+          void supabase
+            .rpc("add_distance", {
+              _team_id: teamId,
+              _student_id: myStudentIdRef.current,
+              _delta_m: delta,
+            })
+            .then(({ error }) => {
+              // Put the unflushed distance back so the next tick retries it
+              // instead of silently losing ground covered while offline.
+              if (error) distanceDeltaRef.current += delta;
+            });
+        }
       }
 
       if (gameRef.current) {
@@ -620,6 +642,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   }
 
   function abortLoop() {
+    const elapsedS = (Date.now() - loopStartRef.current) / 1000;
     runningRef.current = false;
     trackRef.current = [];
     distRef.current = 0;
@@ -627,6 +650,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     setTrack([]);
     setDistance(0);
     void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
+    if (elapsedS > 0) {
+      void supabase.rpc("add_distance", {
+        _team_id: teamId,
+        _student_id: myStudentIdRef.current,
+        _delta_active_s: elapsedS,
+      });
+    }
   }
 
   function finishLoopManually() {

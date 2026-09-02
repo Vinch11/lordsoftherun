@@ -188,6 +188,8 @@ export function formatCountdown(seconds: number): string {
 }
 
 export const teamStorageKey = (code: string) => `conquete:team:${code}`;
+/** In async mode, remembers which student this device is playing as for a given team. */
+export const studentStorageKey = (teamId: string) => `conquete:student:${teamId}`;
 
 /**
  * Retries a Supabase query a few times before giving up — a transient

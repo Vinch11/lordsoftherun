@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { TEAM_COLORS, fetchWithRetry, teamStorageKey } from "@/lib/conquete";
+import { TEAM_COLORS, fetchWithRetry, studentStorageKey, teamStorageKey } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
 export const Route = createFileRoute("/rejoindre/$code")({
@@ -148,6 +148,7 @@ function Join() {
     try {
       await joinTeamMember(namePickTeam.id, studentId);
       localStorage.setItem(teamStorageKey(code), namePickTeam.id);
+      localStorage.setItem(studentStorageKey(namePickTeam.id), studentId);
       localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: namePickTeam.id, code }));
       await navigate({ to: "/jouer/$teamId", params: { teamId: namePickTeam.id } });
     } catch {

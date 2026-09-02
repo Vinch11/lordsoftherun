@@ -86,6 +86,7 @@ export type Team = {
   circuit_shielded: boolean;
   loop_active: boolean;
   loop_started_at: string | null;
+  total_active_s: number;
 };
 
 export type Territory = {
