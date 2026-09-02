@@ -2361,52 +2361,6 @@ function TeacherDashboard() {
                     </p>
                   </div>
                 )}
-                <div className="flex flex-col gap-2 border-t border-border pt-3">
-                  <span className="text-sm font-semibold">Thème de l'écran élève</span>
-                  <p className="text-xs text-muted-foreground">
-                    Aperçu réel du rendu sur le téléphone des élèves.
-                  </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {STUDENT_THEMES.map((t) => (
-                      <div
-                        key={t.id}
-                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 transition ${
-                          studentTheme === t.id
-                            ? "border-primary ring-2 ring-primary/40"
-                            : "border-border"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => void updateStudentTheme(t.id)}
-                          className="flex flex-col gap-2 text-left"
-                        >
-                          <StudentThemePreview theme={t.id} />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-sm font-semibold">{t.label}</span>
-                            <span className="flex gap-1">
-                              {t.swatches.map((c) => (
-                                <span
-                                  key={c}
-                                  className="h-3 w-3 rounded-full border border-border"
-                                  style={{ backgroundColor: c }}
-                                />
-                              ))}
-                            </span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">{t.description}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
-                          onClick={() => setThemePreview(t.id)}
-                        >
-                          <Smartphone className="h-4 w-4" /> Aperçu grandeur nature
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
                     <span className="text-sm font-semibold">Créer une équipe à la main</span>
