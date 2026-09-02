@@ -29,6 +29,7 @@ import {
   kmhToMs,
   studentStorageKey,
   withTimeout,
+  studentThemeClass,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";

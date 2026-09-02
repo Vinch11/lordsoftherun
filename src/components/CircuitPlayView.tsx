@@ -28,6 +28,7 @@ import {
   kmhToMs,
   withTimeout,
   type CircuitItemKind,
+  studentThemeClass,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {

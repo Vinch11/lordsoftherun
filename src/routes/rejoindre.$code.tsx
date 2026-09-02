@@ -11,6 +11,8 @@ import {
   studentStorageKey,
   teamStorageKey,
   type StudentIdMode,
+  studentThemeClass,
+  DEFAULT_STUDENT_THEME,
 } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
@@ -92,6 +94,8 @@ function Join() {
   // theirs back up instead of always creating a new one — whether that's a
   // team pre-formed by the teacher (CSV roster split) or their own team
   // from earlier, after a dead phone forced them onto a different device.
+  const [studentTheme, setStudentTheme] = useState<string>(DEFAULT_STUDENT_THEME);
+
   useEffect(() => {
     let active = true;
     if (code.length !== 4) {
@@ -120,6 +124,7 @@ function Join() {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
+          setStudentTheme(game.student_theme);
         }
       });
     return () => {

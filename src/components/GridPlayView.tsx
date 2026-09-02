@@ -19,6 +19,7 @@ import {
   haversine,
   kmhToMs,
   withTimeout,
+  studentThemeClass,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
