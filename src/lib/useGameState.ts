@@ -6,6 +6,7 @@ import type {
   GracePenaltyMode,
   GridShape,
   LoopCloseMode,
+  StudentIdMode,
 } from "@/lib/conquete";
 import type { NotificationSoundId } from "@/lib/notify";
 
@@ -59,7 +60,7 @@ export type Game = {
   circuit_lightning_penalty_s: number;
   async_mode: boolean;
   loop_close_mode: LoopCloseMode;
-  require_student_name: boolean;
+  student_id_mode: StudentIdMode;
 };
 
 export type Team = {

@@ -4,11 +4,13 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  DEFAULT_STUDENT_ID_MODE,
   TEAM_COLORS,
   fetchWithRetry,
   rememberMyTeam,
   studentStorageKey,
   teamStorageKey,
+  type StudentIdMode,
 } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
@@ -46,8 +48,10 @@ function Join() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
-  const [requireStudentName, setRequireStudentName] = useState(true);
+  const [studentIdMode, setStudentIdMode] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
   const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
+  const [nameEntryTeam, setNameEntryTeam] = useState<ExistingTeam | null>(null);
+  const [ownName, setOwnName] = useState("");
   const [roster, setRoster] = useState<Student[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
 
@@ -96,7 +100,7 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id, async_mode, require_student_name")
+      .select("id, async_mode, student_id_mode")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
@@ -115,7 +119,7 @@ function Join() {
         if (active) {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
-          setRequireStudentName(game.require_student_name);
+          setStudentIdMode(game.student_id_mode);
         }
       });
     return () => {
@@ -151,8 +155,11 @@ function Join() {
   }, [namePickTeam]);
 
   function selectTeam(team: ExistingTeam) {
-    if (requireStudentName) {
+    if (studentIdMode === "roster") {
       setNamePickTeam(team);
+    } else if (studentIdMode === "freetext") {
+      setOwnName("");
+      setNameEntryTeam(team);
     } else {
       void joinTeamOnly(team.id);
     }
@@ -163,6 +170,23 @@ function Join() {
     try {
       await joinTeamMember(teamId, null);
       localStorage.setItem(teamStorageKey(code), teamId);
+      rememberMyTeam(teamId, code);
+      await navigate({ to: "/jouer/$teamId", params: { teamId } });
+    } catch {
+      toast.error("Impossible de rejoindre cette équipe.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function joinWithOwnName() {
+    if (!nameEntryTeam || !ownName.trim()) return;
+    setBusy(true);
+    try {
+      const teamId = nameEntryTeam.id;
+      const studentId = await joinTeamMember(teamId, null, ownName.trim());
+      localStorage.setItem(teamStorageKey(code), teamId);
+      if (studentId) localStorage.setItem(studentStorageKey(teamId), studentId);
       rememberMyTeam(teamId, code);
       await navigate({ to: "/jouer/$teamId", params: { teamId } });
     } catch {
@@ -273,11 +297,13 @@ function Join() {
             <p className="mt-3 text-muted-foreground">
               {namePickTeam
                 ? `Qui es-tu dans ${namePickTeam.name} ?`
-                : "Entrez le code, puis retrouvez votre classe."}
+                : nameEntryTeam
+                  ? `Qui es-tu dans ${nameEntryTeam.name} ?`
+                  : "Entrez le code, puis retrouvez votre classe."}
             </p>
           </header>
 
-          {!namePickTeam && (
+          {!namePickTeam && !nameEntryTeam && (
             <label className="flex flex-col gap-2">
               <span className="section-title">Code de la partie</span>
               <input
@@ -321,6 +347,36 @@ function Join() {
                     </button>
                   ))
                 )}
+              </section>
+            </>
+          ) : nameEntryTeam ? (
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-sm text-muted-foreground underline"
+                onClick={() => setNameEntryTeam(null)}
+              >
+                <ArrowLeft className="h-4 w-4" /> Changer d'équipe
+              </button>
+              <section className="panel flex flex-col gap-3 p-5">
+                <label className="flex flex-col gap-2">
+                  <span className="section-title">Ton prénom</span>
+                  <input
+                    className="field"
+                    placeholder="Ton prénom"
+                    maxLength={40}
+                    value={ownName}
+                    onChange={(e) => setOwnName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void joinWithOwnName()}
+                  />
+                </label>
+                <button
+                  className="btn-huge btn-huge-accent"
+                  disabled={busy || !ownName.trim()}
+                  onClick={() => void joinWithOwnName()}
+                >
+                  {busy ? "Connexion..." : "C'est parti !"}
+                </button>
               </section>
             </>
           ) : (
