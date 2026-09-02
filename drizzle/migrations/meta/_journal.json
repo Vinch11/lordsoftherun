@@ -393,6 +393,13 @@
       "when": 1788382643269,
       "tag": "0055_student_theme_classic_default",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1788384695165,
+      "tag": "0056_remove_esport_theme",
+      "breakpoints": true
     }
   ]
 }
