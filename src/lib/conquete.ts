@@ -37,7 +37,7 @@ export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
 /** Visual skin of the student screens, picked by the teacher per game. */
-export type StudentTheme = "classic" | "dossard" | "esport" | "apple" | "athletic";
+export type StudentTheme = "classic" | "dossard" | "apple" | "athletic";
 export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
 
 export const STUDENT_THEMES: {
@@ -59,12 +59,6 @@ export const STUDENT_THEMES: {
     swatches: ["#f5f7f5", "#1f2933", "#39ff88"],
   },
   {
-    id: "esport",
-    label: "HUD Esport",
-    description: "Panneaux sombres translucides, accents cyan, typo massive — ambiance jeu compétitif moderne.",
-    swatches: ["#26262e", "#0fb5c9", "#f4f4f6"],
-  },
-  {
     id: "apple",
     label: "Apple Premium",
     description: "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
@@ -81,8 +75,6 @@ export const STUDENT_THEMES: {
 /** CSS classes to put on the student screen root for a given theme. */
 export function studentThemeClass(theme: string | null | undefined): string {
   switch (theme) {
-    case "esport":
-      return "bib skin-esport";
     case "apple":
       return "bib skin-apple";
     case "athletic":
