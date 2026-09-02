@@ -295,6 +295,7 @@ export type Database = {
           started_at: string | null
           status: string
           student_id_mode: string
+          student_theme: string
           vehicle_allowed: boolean
           vehicle_penalty_m2: number
           vehicle_speed_threshold_kmh: number
@@ -347,6 +348,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           student_id_mode?: string
+          student_theme?: string
           vehicle_allowed?: boolean
           vehicle_penalty_m2?: number
           vehicle_speed_threshold_kmh?: number
@@ -399,6 +401,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           student_id_mode?: string
+          student_theme?: string
           vehicle_allowed?: boolean
           vehicle_penalty_m2?: number
           vehicle_speed_threshold_kmh?: number
