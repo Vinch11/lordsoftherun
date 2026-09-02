@@ -19,6 +19,7 @@ import {
   haversine,
   kmhToMs,
   withTimeout,
+  studentThemeClass,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
@@ -397,7 +398,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   }, [finished]);
 
   return (
-    <main className={`bib relative h-[100dvh] w-full overflow-hidden`}>
+    <main className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}>
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}

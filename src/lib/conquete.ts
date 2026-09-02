@@ -36,9 +36,56 @@ export const DEFAULT_LOOP_CLOSE_MODE: LoopCloseMode = "auto";
 export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
-/** Kept for the DB column; only the "Dossard de course" skin exists. */
-export type StudentTheme = "dossard";
+/** Visual skin of the student screens, picked by the teacher per game. */
+export type StudentTheme = "dossard" | "esport" | "apple" | "athletic";
 export const DEFAULT_STUDENT_THEME: StudentTheme = "dossard";
+
+export const STUDENT_THEMES: {
+  id: StudentTheme;
+  label: string;
+  description: string;
+  swatches: [string, string, string];
+}[] = [
+  {
+    id: "dossard",
+    label: "Dossard de course",
+    description: "Haute visibilité : aplats clairs, contours noirs épais, vert fluo. Le plus lisible en plein soleil.",
+    swatches: ["#f5f7f5", "#1f2933", "#39ff88"],
+  },
+  {
+    id: "esport",
+    label: "HUD Esport",
+    description: "Panneaux sombres translucides, accents cyan, typo massive — ambiance jeu compétitif moderne.",
+    swatches: ["#26262e", "#0fb5c9", "#f4f4f6"],
+  },
+  {
+    id: "apple",
+    label: "Apple Premium",
+    description: "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
+    swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
+  },
+  {
+    id: "athletic",
+    label: "Apple Pro Athletics",
+    description: "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium.",
+    swatches: ["#fafafa", "#2563eb", "#111827"],
+  },
+];
+
+/** CSS classes to put on the student screen root for a given theme. */
+export function studentThemeClass(theme: string | null | undefined): string {
+  switch (theme) {
+    case "esport":
+      return "bib skin-esport";
+    case "apple":
+      return "bib skin-apple";
+    case "athletic":
+      return "bib skin-athletic";
+    default:
+      return "bib";
+  }
+}
+
 
 /** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
 export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;

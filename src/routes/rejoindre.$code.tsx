@@ -11,6 +11,8 @@ import {
   studentStorageKey,
   teamStorageKey,
   type StudentIdMode,
+  studentThemeClass,
+  DEFAULT_STUDENT_THEME,
 } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
@@ -92,6 +94,8 @@ function Join() {
   // theirs back up instead of always creating a new one — whether that's a
   // team pre-formed by the teacher (CSV roster split) or their own team
   // from earlier, after a dead phone forced them onto a different device.
+  const [studentTheme, setStudentTheme] = useState<string>(DEFAULT_STUDENT_THEME);
+
   useEffect(() => {
     let active = true;
     if (code.length !== 4) {
@@ -120,6 +124,7 @@ function Join() {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
+          setStudentTheme(game.student_theme);
         }
       });
     return () => {
@@ -260,7 +265,7 @@ function Join() {
 
   if (checkingResume) {
     return (
-      <main className={`bib flex min-h-screen items-center justify-center p-6 text-center`}>
+      <main className={`${studentThemeClass(studentTheme)} flex min-h-screen items-center justify-center p-6 text-center`}>
         <p className="text-lg text-muted-foreground">Reconnexion à votre équipe…</p>
       </main>
     );
@@ -268,7 +273,7 @@ function Join() {
 
   if (resumeFailed) {
     return (
-      <main className={`bib flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
+      <main className={`${studentThemeClass(studentTheme)} flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
         <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
         <button
           className="btn-huge btn-huge-accent"
@@ -285,7 +290,7 @@ function Join() {
 
   if (asyncMode) {
     return (
-      <main className={`bib min-h-screen px-5 py-8`}>
+      <main className={`${studentThemeClass(studentTheme)} min-h-screen px-5 py-8`}>
         <div className="mx-auto flex max-w-md flex-col gap-6">
           <header className="pt-4">
             <div className="pill">
@@ -418,7 +423,7 @@ function Join() {
   const showPicker = existingTeams.length > 0 && !creatingNew;
 
   return (
-    <main className={`bib min-h-screen px-5 py-8`}>
+    <main className={`${studentThemeClass(studentTheme)} min-h-screen px-5 py-8`}>
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <header className="pt-4">
           <div className="pill">
