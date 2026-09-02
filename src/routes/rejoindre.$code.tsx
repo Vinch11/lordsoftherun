@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Users } from "lucide-react";
+import { ArrowLeft, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { TEAM_COLORS, fetchWithRetry, teamStorageKey } from "@/lib/conquete";
+import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
 export const Route = createFileRoute("/rejoindre/$code")({
   head: () => ({
@@ -38,6 +39,10 @@ function Join() {
   const [existingTeams, setExistingTeams] = useState<ExistingTeam[]>([]);
   const [creatingNew, setCreatingNew] = useState(false);
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
+  const [asyncMode, setAsyncMode] = useState(false);
+  const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
+  const [roster, setRoster] = useState<Student[]>([]);
+  const [rosterLoading, setRosterLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -84,12 +89,15 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id")
+      .select("id, async_mode")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
         if (!game) {
-          if (active) setExistingTeams([]);
+          if (active) {
+            setExistingTeams([]);
+            setAsyncMode(false);
+          }
           return;
         }
         const { data: teams } = await supabase
@@ -97,7 +105,10 @@ function Join() {
           .select("id, name, color")
           .eq("game_id", game.id)
           .order("created_at");
-        if (active) setExistingTeams(teams ?? []);
+        if (active) {
+          setExistingTeams(teams ?? []);
+          setAsyncMode(game.async_mode);
+        }
       });
     return () => {
       active = false;
@@ -112,6 +123,39 @@ function Join() {
     const free = TEAM_COLORS.find((c) => !usedColors.has(c.hex));
     if (free) setColor(free.hex);
   }, [usedColors, color]);
+
+  useEffect(() => {
+    let active = true;
+    if (!namePickTeam) {
+      setRoster([]);
+      return;
+    }
+    setRosterLoading(true);
+    void fetchTeamRoster(namePickTeam.id).then((students) => {
+      if (active) {
+        setRoster(students);
+        setRosterLoading(false);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [namePickTeam]);
+
+  async function joinAsync(studentId: string) {
+    if (!namePickTeam) return;
+    setBusy(true);
+    try {
+      await joinTeamMember(namePickTeam.id, studentId);
+      localStorage.setItem(teamStorageKey(code), namePickTeam.id);
+      localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: namePickTeam.id, code }));
+      await navigate({ to: "/jouer/$teamId", params: { teamId: namePickTeam.id } });
+    } catch {
+      toast.error("Impossible de rejoindre cette équipe.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function rejoin(teamId: string) {
     setBusy(true);
@@ -183,6 +227,105 @@ function Join() {
         >
           Réessayer
         </button>
+      </main>
+    );
+  }
+
+  if (asyncMode) {
+    return (
+      <main className="min-h-screen px-5 py-8">
+        <div className="mx-auto flex max-w-md flex-col gap-6">
+          <header className="pt-4">
+            <div className="pill">
+              <Users className="h-3.5 w-3.5" /> Groupe d'élèves
+            </div>
+            <h1 className="page-title mt-4">
+              Re<em>joindre</em>
+            </h1>
+            <p className="mt-3 text-muted-foreground">
+              {namePickTeam
+                ? `Qui es-tu dans ${namePickTeam.name} ?`
+                : "Entrez le code, puis retrouvez votre classe."}
+            </p>
+          </header>
+
+          {!namePickTeam && (
+            <label className="flex flex-col gap-2">
+              <span className="section-title">Code de la partie</span>
+              <input
+                className="field text-center text-3xl font-bold tracking-[0.4em]"
+                inputMode="numeric"
+                placeholder="0000"
+                maxLength={4}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              />
+            </label>
+          )}
+
+          {namePickTeam ? (
+            <>
+              <button
+                type="button"
+                className="flex items-center gap-1 text-sm text-muted-foreground underline"
+                onClick={() => setNamePickTeam(null)}
+              >
+                <ArrowLeft className="h-4 w-4" /> Changer d'équipe
+              </button>
+              <section className="panel flex flex-col gap-2 p-5">
+                <span className="section-title">Ton prénom</span>
+                {rosterLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                ) : roster.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aucun élève dans cette équipe pour l'instant — demande à ton prof de t'ajouter.
+                  </p>
+                ) : (
+                  roster.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void joinAsync(s.id)}
+                      className="rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+                    >
+                      {s.name}
+                    </button>
+                  ))
+                )}
+              </section>
+            </>
+          ) : (
+            <section className="panel flex flex-col gap-2 p-5">
+              <span className="section-title">Ta classe / équipe</span>
+              {code.length !== 4 ? (
+                <p className="text-sm text-muted-foreground">
+                  Entrez le code à 4 chiffres ci-dessus.
+                </p>
+              ) : existingTeams.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Aucune équipe pour ce code pour l'instant — demandez à votre prof de configurer
+                  les classes.
+                </p>
+              ) : (
+                existingTeams.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNamePickTeam(t)}
+                    className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98]"
+                  >
+                    <span
+                      className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                      style={{ backgroundColor: t.color }}
+                    />
+                    {t.name}
+                  </button>
+                ))
+              )}
+            </section>
+          )}
+        </div>
       </main>
     );
   }

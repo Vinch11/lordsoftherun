@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { CaptureConsequence, GameMode, GracePenaltyMode, GridShape } from "@/lib/conquete";
+import type {
+  CaptureConsequence,
+  GameMode,
+  GracePenaltyMode,
+  GridShape,
+  LoopCloseMode,
+} from "@/lib/conquete";
 import type { NotificationSoundId } from "@/lib/notify";
 
 export type Game = {
@@ -51,6 +57,8 @@ export type Game = {
   circuit_banana_penalty_s: number;
   circuit_boost_bonus_s: number;
   circuit_lightning_penalty_s: number;
+  async_mode: boolean;
+  loop_close_mode: LoopCloseMode;
 };
 
 export type Team = {
@@ -76,6 +84,8 @@ export type Team = {
   circuit_finished_at: string | null;
   circuit_held_item: string | null;
   circuit_shielded: boolean;
+  loop_active: boolean;
+  loop_started_at: string | null;
 };
 
 export type Territory = {

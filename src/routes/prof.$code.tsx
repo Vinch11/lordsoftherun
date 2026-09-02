@@ -136,6 +136,7 @@ import {
   DEFAULT_GRID_WIDTH_M,
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
+  DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
@@ -162,6 +163,7 @@ import {
   type GameMode,
   type GridShape,
   type GracePenaltyMode,
+  type LoopCloseMode,
 } from "@/lib/conquete";
 
 type DurationUnit = "minutes" | "heures" | "jours";
@@ -448,6 +450,8 @@ function TeacherDashboard() {
   const [forbiddenRunningOnly, setForbiddenRunningOnly] = useState(false);
   const [runningBonusEnabled, setRunningBonusEnabled] = useState(true);
   const [runningBonusSpeedKmh, setRunningBonusSpeedKmh] = useState(DEFAULT_RUNNING_BONUS_SPEED_KMH);
+  const [asyncMode, setAsyncModeState] = useState(false);
+  const [loopCloseMode, setLoopCloseModeState] = useState<LoopCloseMode>(DEFAULT_LOOP_CLOSE_MODE);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
@@ -609,6 +613,8 @@ function TeacherDashboard() {
       setCircuitBananaPenalty(game.circuit_banana_penalty_s);
       setCircuitBoostBonus(game.circuit_boost_bonus_s);
       setCircuitLightningPenalty(game.circuit_lightning_penalty_s);
+      setAsyncModeState(game.async_mode);
+      setLoopCloseModeState(game.loop_close_mode);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -1297,6 +1303,18 @@ function TeacherDashboard() {
     setRunningBonusSpeedKmh(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ running_bonus_speed_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateAsyncMode(next: boolean) {
+    setAsyncModeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ async_mode: next }).eq("id", gameId);
+  }
+
+  async function updateLoopCloseMode(next: LoopCloseMode) {
+    setLoopCloseModeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ loop_close_mode: next }).eq("id", gameId);
   }
 
   async function updateForbiddenRunningOnly(next: boolean) {
@@ -2133,6 +2151,68 @@ function TeacherDashboard() {
           </div>
         </section>
 
+        {gameMode === "territoire" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Users className="h-4 w-4" /> Mode asynchrone
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Pour une conquête qui s'étale sur plusieurs jours ou semaines (ex. une promenade du
+              chien chaque soir) : chaque élève lance une boucle quand il le peut, plutôt que de
+              garder l'appli ouverte en continu. Les équipes doivent être créées à l'avance (import
+              CSV, une équipe par classe) et plusieurs élèves d'une même équipe peuvent jouer en
+              même temps depuis leur propre téléphone.
+            </p>
+            {isOwner ? (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Activer le mode asynchrone</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5"
+                    checked={asyncMode}
+                    onChange={(e) => void updateAsyncMode(e.target.checked)}
+                  />
+                </label>
+                {asyncMode && (
+                  <div className="flex flex-col gap-2 border-t border-border pt-3">
+                    <span className="text-sm font-semibold">Fermeture d'une boucle</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        className="seg-btn"
+                        data-active={loopCloseMode === "auto"}
+                        onClick={() => void updateLoopCloseMode("auto")}
+                      >
+                        Automatique
+                      </button>
+                      <button
+                        type="button"
+                        className="seg-btn"
+                        data-active={loopCloseMode === "manual"}
+                        onClick={() => void updateLoopCloseMode("manual")}
+                      >
+                        Manuelle
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {loopCloseMode === "auto"
+                        ? "La boucle se ferme toute seule dès que l'élève repasse près de son point de départ."
+                        : "L'élève doit confirmer lui-même la fin de sa boucle, une fois revenu près du départ."}
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {asyncMode
+                  ? `Mode asynchrone activé — fermeture ${loopCloseMode === "auto" ? "automatique" : "manuelle"} des boucles.`
+                  : "Mode asynchrone désactivé."}
+              </p>
+            )}
+          </section>
+        )}
+
         <section className="panel flex flex-col items-center gap-3 p-4">
           <div className="flex w-full items-center justify-between">
             <div className="section-title">
@@ -2206,6 +2286,12 @@ function TeacherDashboard() {
                 </button>
               )}
             </div>
+            {gameMode === "territoire" && asyncMode && (
+              <p className="text-xs text-muted-foreground">
+                Mode asynchrone : évitez de définir une zone de retour, les boucles se ferment
+                indépendamment les unes des autres au fil des jours.
+              </p>
+            )}
             {gameMode === "capture_drapeau" ? (
               <p className="text-sm text-muted-foreground">
                 {returnZone

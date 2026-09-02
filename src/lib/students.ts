@@ -194,7 +194,6 @@ export async function applyRosterComposition(
   if (error) throw error;
 }
 
-
 /** Replaces the whole roster for a game — re-importing a corrected CSV starts clean. */
 export async function importRoster(gameId: string, names: string[]): Promise<void> {
   const { error: delError } = await supabase.from("students").delete().eq("game_id", gameId);
@@ -207,7 +206,9 @@ export async function importRoster(gameId: string, names: string[]): Promise<voi
 }
 
 export async function addStudent(gameId: string, name: string): Promise<void> {
-  const { error } = await supabase.from("students").insert({ game_id: gameId, name, present: true });
+  const { error } = await supabase
+    .from("students")
+    .insert({ game_id: gameId, name, present: true });
   if (error) throw error;
 }
 
@@ -216,7 +217,6 @@ export async function removeStudent(studentId: string): Promise<void> {
   if (error) throw error;
 }
 
-
 export async function setStudentPresent(studentId: string, present: boolean): Promise<void> {
   const { error } = await supabase.from("students").update({ present }).eq("id", studentId);
   if (error) throw error;
@@ -224,6 +224,25 @@ export async function setStudentPresent(studentId: string, present: boolean): Pr
 
 export async function assignStudentTeam(studentId: string, teamId: string | null): Promise<void> {
   const { error } = await supabase.from("students").update({ team_id: teamId }).eq("id", studentId);
+  if (error) throw error;
+}
+
+/** For the async join flow: the roster of a specific team, so a student can pick their own name. */
+export async function fetchTeamRoster(teamId: string): Promise<Student[]> {
+  const { data } = await supabase.from("students").select("*").eq("team_id", teamId).order("name");
+  return (data ?? []) as unknown as Student[];
+}
+
+/**
+ * Joins a team without evicting whoever else is already using it — unlike
+ * rejoin_team's exclusive claim, several students of the same class/team can
+ * each keep playing from their own phone at the same time.
+ */
+export async function joinTeamMember(teamId: string, studentId: string | null): Promise<void> {
+  const { error } = await supabase.rpc("join_team_member", {
+    _team_id: teamId,
+    _student_id: studentId,
+  });
   if (error) throw error;
 }
 

@@ -18,6 +18,7 @@ type Props = {
 };
 
 type Step = "presence" | "teams";
+type TeamMode = "auto" | "manual" | "classe";
 
 /**
  * Two-step import assistant, mirroring the flow used in "Tournoi Facile":
@@ -28,7 +29,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
   const [step, setStep] = useState<Step>("presence");
   const [absent, setAbsent] = useState<Set<string>>(new Set());
   const [teamCount, setTeamCount] = useState(4);
-  const [mode, setMode] = useState<"auto" | "manual">("auto");
+  const [mode, setMode] = useState<TeamMode>("auto");
   const [assignments, setAssignments] = useState<string[][]>([]);
   const [unassigned, setUnassigned] = useState<string[]>([]);
   const [teamNames, setTeamNames] = useState<string[]>([]);
@@ -40,22 +41,40 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
     [players, absent],
   );
 
+  // A "classe" column in the imported CSV (used for inter-class tournaments)
+  // lets teams be composed one-per-class instead of split by hand.
+  const hasGroups = useMemo(() => players.some((p) => p.group), [players]);
+  const groups = useMemo(() => {
+    const seen: string[] = [];
+    for (const p of presentPlayers) {
+      if (p.group && !seen.includes(p.group)) seen.push(p.group);
+    }
+    return seen;
+  }, [presentPlayers]);
+
   useEffect(() => {
     if (!open) return;
     setStep("presence");
     setAbsent(new Set());
-    setMode("auto");
+    setMode(players.some((p) => p.group) ? "classe" : "auto");
     setPickTarget(null);
     setTeamCount(Math.min(TEAM_COLORS.length, Math.max(2, Math.ceil(players.length / 4))));
   }, [open, players]);
 
   useEffect(() => {
+    if (mode === "classe") return;
     setTeamNames(Array.from({ length: teamCount }, (_, i) => `Équipe ${i + 1}`));
-  }, [teamCount]);
+  }, [teamCount, mode]);
 
   useEffect(() => {
     if (step !== "teams") return;
-    if (mode === "auto") {
+    if (mode === "classe") {
+      setAssignments(
+        groups.map((g) => presentPlayers.filter((p) => p.group === g).map((p) => p.name)),
+      );
+      setUnassigned(presentPlayers.filter((p) => !p.group).map((p) => p.name));
+      setTeamNames(groups);
+    } else if (mode === "auto") {
       const shuffled = [...presentPlayers.map((p) => p.name)].sort(() => Math.random() - 0.5);
       const next: string[][] = Array.from({ length: teamCount }, () => []);
       shuffled.forEach((name, i) => next[i % teamCount]!.push(name));
@@ -65,7 +84,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
       setAssignments(Array.from({ length: teamCount }, () => []));
       setUnassigned(presentPlayers.map((p) => p.name));
     }
-  }, [step, mode, teamCount, presentPlayers]);
+  }, [step, mode, teamCount, presentPlayers, groups]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -168,9 +187,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
                     >
                       {p.name}
                     </span>
-                    {p.group && (
-                      <span className="text-xs text-muted-foreground">{p.group}</span>
-                    )}
+                    {p.group && <span className="text-xs text-muted-foreground">{p.group}</span>}
                   </button>
                 );
               })}
@@ -188,7 +205,17 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
           </>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-2">
+            <div className={`grid gap-2 ${hasGroups ? "grid-cols-3" : "grid-cols-2"}`}>
+              {hasGroups && (
+                <button
+                  type="button"
+                  className="seg-btn"
+                  data-active={mode === "classe"}
+                  onClick={() => setMode("classe")}
+                >
+                  Par classe
+                </button>
+              )}
               <button
                 type="button"
                 className="seg-btn"
@@ -207,41 +234,50 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
               </button>
             </div>
 
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-semibold">Nombre d'équipes</span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  aria-label="Moins d'équipes"
-                  className="icon-btn"
-                  onClick={() => setTeamCount((v) => Math.max(2, v - 1))}
-                >
-                  −
-                </button>
-                <span className="display w-10 text-center text-xl">{teamCount}</span>
-                <button
-                  type="button"
-                  aria-label="Plus d'équipes"
-                  className="icon-btn"
-                  onClick={() => setTeamCount((v) => Math.min(TEAM_COLORS.length, v + 1))}
-                >
-                  +
-                </button>
-                {mode === "auto" && (
+            {mode === "classe" ? (
+              <p className="text-sm text-muted-foreground">
+                {groups.length} classe{groups.length > 1 ? "s" : ""} détectée
+                {groups.length > 1 ? "s" : ""} dans le fichier importé — une équipe par classe.
+                {unassigned.length > 0 &&
+                  ` ${unassigned.length} élève${unassigned.length > 1 ? "s" : ""} sans classe à placer à la main ci-dessous.`}
+              </p>
+            ) : (
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold">Nombre d'équipes</span>
+                <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    aria-label="Mélanger"
+                    aria-label="Moins d'équipes"
                     className="icon-btn"
-                    onClick={() => setTeamCount((v) => v)}
+                    onClick={() => setTeamCount((v) => Math.max(2, v - 1))}
                   >
-                    <Shuffle className="h-4 w-4" />
+                    −
                   </button>
-                )}
+                  <span className="display w-10 text-center text-xl">{teamCount}</span>
+                  <button
+                    type="button"
+                    aria-label="Plus d'équipes"
+                    className="icon-btn"
+                    onClick={() => setTeamCount((v) => Math.min(TEAM_COLORS.length, v + 1))}
+                  >
+                    +
+                  </button>
+                  {mode === "auto" && (
+                    <button
+                      type="button"
+                      aria-label="Mélanger"
+                      className="icon-btn"
+                      onClick={() => setTeamCount((v) => v)}
+                    >
+                      <Shuffle className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex flex-col gap-3">
-              {mode === "manual" && (
+              {(mode === "manual" || unassigned.length > 0) && (
                 <div
                   className="rounded-md border border-dashed p-2"
                   onDragOver={(e) => e.preventDefault()}
