@@ -2274,7 +2274,10 @@ function TeacherDashboard() {
                 <div className="flex flex-col gap-2 border-t border-border pt-3">
                   <span className="text-sm font-semibold">Thème de l'écran élève</span>
                   <p className="text-xs text-muted-foreground">
-                    Aperçu réel de ce que verront les élèves. Touchez un aperçu pour l'appliquer.
+                    Aperçu réel de ce que verront les élèves. Touchez un aperçu pour l'appliquer.{" "}
+                    <a href="/themes" target="_blank" rel="noreferrer" className="underline">
+                      Voir en grand
+                    </a>
                   </p>
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {STUDENT_THEMES.map((th) => (
