@@ -138,6 +138,7 @@ import {
   DEFAULT_LANDMARK_ICON,
   DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
+  DEFAULT_STUDENT_ID_MODE,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   GAME_MODE_DESCRIPTIONS,
@@ -164,6 +165,7 @@ import {
   type GridShape,
   type GracePenaltyMode,
   type LoopCloseMode,
+  type StudentIdMode,
 } from "@/lib/conquete";
 
 type DurationUnit = "minutes" | "heures" | "jours";
@@ -452,7 +454,7 @@ function TeacherDashboard() {
   const [runningBonusSpeedKmh, setRunningBonusSpeedKmh] = useState(DEFAULT_RUNNING_BONUS_SPEED_KMH);
   const [asyncMode, setAsyncModeState] = useState(false);
   const [loopCloseMode, setLoopCloseModeState] = useState<LoopCloseMode>(DEFAULT_LOOP_CLOSE_MODE);
-  const [requireStudentName, setRequireStudentNameState] = useState(true);
+  const [studentIdMode, setStudentIdModeState] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
   const [newTeamName, setNewTeamName] = useState("");
   const [addingTeam, setAddingTeam] = useState(false);
   const [messageBody, setMessageBody] = useState("");
@@ -618,7 +620,7 @@ function TeacherDashboard() {
       setCircuitLightningPenalty(game.circuit_lightning_penalty_s);
       setAsyncModeState(game.async_mode);
       setLoopCloseModeState(game.loop_close_mode);
-      setRequireStudentNameState(game.require_student_name);
+      setStudentIdModeState(game.student_id_mode);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -1343,10 +1345,10 @@ function TeacherDashboard() {
     await supabase.from("games").update({ loop_close_mode: next }).eq("id", gameId);
   }
 
-  async function updateRequireStudentName(next: boolean) {
-    setRequireStudentNameState(next);
+  async function updateStudentIdMode(next: StudentIdMode) {
+    setStudentIdModeState(next);
     if (!gameId || !isOwner) return;
-    await supabase.from("games").update({ require_student_name: next }).eq("id", gameId);
+    await supabase.from("games").update({ student_id_mode: next }).eq("id", gameId);
   }
 
   async function addTeamManually() {
@@ -2258,24 +2260,42 @@ function TeacherDashboard() {
                   </div>
                 )}
                 {asyncMode && (
-                  <label className="flex items-center justify-between gap-3 border-t border-border pt-3">
-                    <span className="text-sm font-semibold">
-                      Les élèves choisissent leur prénom
-                    </span>
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5"
-                      checked={requireStudentName}
-                      onChange={(e) => void updateRequireStudentName(e.target.checked)}
-                    />
-                  </label>
-                )}
-                {asyncMode && (
-                  <p className="text-xs text-muted-foreground">
-                    {requireStudentName
-                      ? "En rejoignant une équipe, l'élève choisit aussi son prénom dans la liste importée — nécessaire pour les stats individuelles."
-                      : "L'élève rejoint directement son équipe sans choisir de prénom — plus rapide, mais pas de stats par élève."}
-                  </p>
+                  <div className="flex flex-col gap-2 border-t border-border pt-3">
+                    <span className="text-sm font-semibold">Identification de l'élève</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        className="seg-btn"
+                        data-active={studentIdMode === "roster"}
+                        onClick={() => void updateStudentIdMode("roster")}
+                      >
+                        Liste importée
+                      </button>
+                      <button
+                        type="button"
+                        className="seg-btn"
+                        data-active={studentIdMode === "freetext"}
+                        onClick={() => void updateStudentIdMode("freetext")}
+                      >
+                        Tape son prénom
+                      </button>
+                      <button
+                        type="button"
+                        className="seg-btn"
+                        data-active={studentIdMode === "none"}
+                        onClick={() => void updateStudentIdMode("none")}
+                      >
+                        Aucune
+                      </button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {studentIdMode === "roster"
+                        ? "L'élève choisit son prénom dans la liste importée par CSV — nécessaire pour les stats individuelles, mais demande d'avoir importé la classe à l'avance."
+                        : studentIdMode === "freetext"
+                          ? "L'élève tape lui-même son prénom en rejoignant l'équipe — fonctionne même sans import CSV, et donne quand même des stats individuelles."
+                          : "L'élève rejoint directement son équipe sans dire qui il est — le plus rapide, mais pas de stats par élève."}
+                    </p>
+                  </div>
                 )}
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">

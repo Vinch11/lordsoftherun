@@ -239,13 +239,25 @@ export async function fetchTeamRoster(teamId: string): Promise<Student[]> {
  * Joins a team without evicting whoever else is already using it — unlike
  * rejoin_team's exclusive claim, several students of the same class/team can
  * each keep playing from their own phone at the same time.
+ *
+ * `studentId` picks an existing roster entry; `studentName` (used only when
+ * `studentId` is null) has the server create one on the fly — for teams
+ * with no imported roster that still want per-student stats. Returns the
+ * student id that ended up attached to this device (whichever path was
+ * used), or null if joining with no identification at all.
  */
-export async function joinTeamMember(teamId: string, studentId: string | null): Promise<void> {
-  const { error } = await supabase.rpc("join_team_member", {
+export async function joinTeamMember(
+  teamId: string,
+  studentId: string | null,
+  studentName?: string | null,
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("join_team_member", {
     _team_id: teamId,
     _student_id: studentId,
+    _student_name: studentName ?? null,
   });
   if (error) throw error;
+  return data ?? null;
 }
 
 /**
