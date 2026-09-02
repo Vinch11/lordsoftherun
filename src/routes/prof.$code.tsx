@@ -2316,31 +2316,42 @@ function TeacherDashboard() {
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {STUDENT_THEMES.map((t) => (
-                      <button
+                      <div
                         key={t.id}
-                        type="button"
-                        onClick={() => void updateStudentTheme(t.id)}
-                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 text-left transition ${
+                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 transition ${
                           studentTheme === t.id
                             ? "border-primary ring-2 ring-primary/40"
-                            : "border-border hover:border-primary/50"
+                            : "border-border"
                         }`}
                       >
-                        <StudentThemePreview theme={t.id} />
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold">{t.label}</span>
-                          <span className="flex gap-1">
-                            {t.swatches.map((c) => (
-                              <span
-                                key={c}
-                                className="h-3 w-3 rounded-full border border-border"
-                                style={{ backgroundColor: c }}
-                              />
-                            ))}
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{t.description}</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => void updateStudentTheme(t.id)}
+                          className="flex flex-col gap-2 text-left"
+                        >
+                          <StudentThemePreview theme={t.id} />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{t.label}</span>
+                            <span className="flex gap-1">
+                              {t.swatches.map((c) => (
+                                <span
+                                  key={c}
+                                  className="h-3 w-3 rounded-full border border-border"
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{t.description}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
+                          onClick={() => setThemePreview(t.id)}
+                        >
+                          <Smartphone className="h-4 w-4" /> Aperçu grandeur nature
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
