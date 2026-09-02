@@ -337,6 +337,13 @@
       "when": 1788255000000,
       "tag": "0047_player_distance_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1788260000000,
+      "tag": "0048_manual_teams_optional_name",
+      "breakpoints": true
     }
   ]
 }

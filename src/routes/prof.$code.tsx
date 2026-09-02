@@ -452,6 +452,9 @@ function TeacherDashboard() {
   const [runningBonusSpeedKmh, setRunningBonusSpeedKmh] = useState(DEFAULT_RUNNING_BONUS_SPEED_KMH);
   const [asyncMode, setAsyncModeState] = useState(false);
   const [loopCloseMode, setLoopCloseModeState] = useState<LoopCloseMode>(DEFAULT_LOOP_CLOSE_MODE);
+  const [requireStudentName, setRequireStudentNameState] = useState(true);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [addingTeam, setAddingTeam] = useState(false);
   const [messageBody, setMessageBody] = useState("");
   const [messageTarget, setMessageTarget] = useState<string>("all");
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
@@ -615,6 +618,7 @@ function TeacherDashboard() {
       setCircuitLightningPenalty(game.circuit_lightning_penalty_s);
       setAsyncModeState(game.async_mode);
       setLoopCloseModeState(game.loop_close_mode);
+      setRequireStudentNameState(game.require_student_name);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -1337,6 +1341,30 @@ function TeacherDashboard() {
     setLoopCloseModeState(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ loop_close_mode: next }).eq("id", gameId);
+  }
+
+  async function updateRequireStudentName(next: boolean) {
+    setRequireStudentNameState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ require_student_name: next }).eq("id", gameId);
+  }
+
+  async function addTeamManually() {
+    const name = newTeamName.trim();
+    if (!name || !gameId) return;
+    setAddingTeam(true);
+    try {
+      const used = new Set(teams.map((t) => t.color));
+      const color = TEAM_COLORS.find((c) => !used.has(c.hex))?.hex ?? TEAM_COLORS[0]!.hex;
+      const { error } = await supabase.from("teams").insert({ game_id: gameId, name, color });
+      if (error) throw error;
+      setNewTeamName("");
+      toast.success(`Équipe « ${name} » créée.`);
+    } catch {
+      toast.error("Impossible de créer l'équipe.");
+    } finally {
+      setAddingTeam(false);
+    }
   }
 
   async function updateForbiddenRunningOnly(next: boolean) {
@@ -2187,8 +2215,8 @@ function TeacherDashboard() {
               Pour une conquête qui s'étale sur plusieurs jours ou semaines (ex. une promenade du
               chien chaque soir) : chaque élève lance une boucle quand il le peut, plutôt que de
               garder l'appli ouverte en continu. Les équipes doivent être créées à l'avance (import
-              CSV, une équipe par classe) et plusieurs élèves d'une même équipe peuvent jouer en
-              même temps depuis leur propre téléphone.
+              CSV avec une équipe par classe, ou créées à la main ci-dessous) et plusieurs élèves
+              d'une même équipe peuvent jouer en même temps depuis leur propre téléphone.
             </p>
             {isOwner ? (
               <>
@@ -2227,6 +2255,54 @@ function TeacherDashboard() {
                         ? "La boucle se ferme toute seule dès que l'élève repasse près de son point de départ."
                         : "L'élève doit confirmer lui-même la fin de sa boucle, une fois revenu près du départ."}
                     </p>
+                  </div>
+                )}
+                {asyncMode && (
+                  <label className="flex items-center justify-between gap-3 border-t border-border pt-3">
+                    <span className="text-sm font-semibold">
+                      Les élèves choisissent leur prénom
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5"
+                      checked={requireStudentName}
+                      onChange={(e) => void updateRequireStudentName(e.target.checked)}
+                    />
+                  </label>
+                )}
+                {asyncMode && (
+                  <p className="text-xs text-muted-foreground">
+                    {requireStudentName
+                      ? "En rejoignant une équipe, l'élève choisit aussi son prénom dans la liste importée — nécessaire pour les stats individuelles."
+                      : "L'élève rejoint directement son équipe sans choisir de prénom — plus rapide, mais pas de stats par élève."}
+                  </p>
+                )}
+                {asyncMode && (
+                  <div className="flex flex-col gap-2 border-t border-border pt-3">
+                    <span className="text-sm font-semibold">Créer une équipe à la main</span>
+                    <div className="flex gap-2">
+                      <input
+                        className="field flex-1"
+                        placeholder="Nom de l'équipe"
+                        maxLength={24}
+                        value={newTeamName}
+                        onChange={(e) => setNewTeamName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && void addTeamManually()}
+                      />
+                      <button
+                        type="button"
+                        className="btn-huge-dark w-auto px-5"
+                        disabled={addingTeam || !newTeamName.trim()}
+                        onClick={() => void addTeamManually()}
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                    {teams.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Équipes actuelles : {teams.map((tm) => tm.name).join(", ")}
+                      </p>
+                    )}
                   </div>
                 )}
               </>
