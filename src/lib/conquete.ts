@@ -36,6 +36,43 @@ export const DEFAULT_LOOP_CLOSE_MODE: LoopCloseMode = "auto";
 export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
+/** Visual skin applied to every student screen; picked by the teacher in the
+ * game settings. Each id maps to a CSS class appended next to `.bib`. */
+export type StudentTheme = "dossard" | "frost" | "crystal" | "glass" | "neo";
+export const DEFAULT_STUDENT_THEME: StudentTheme = "dossard";
+export const STUDENT_THEMES: { id: StudentTheme; label: string; hint: string }[] = [
+  {
+    id: "dossard",
+    label: "Dossard de course",
+    hint: "Contours noirs épais, vert fluo — contraste maximal en plein soleil.",
+  },
+  {
+    id: "frost",
+    label: "Tactical Frost",
+    hint: "Blanc satiné, chiffres mono, accents émeraude — sobre et précis.",
+  },
+  {
+    id: "crystal",
+    label: "Épure Cristalline",
+    hint: "Cartes blanches très arrondies, accent indigo — épuré et lumineux.",
+  },
+  {
+    id: "glass",
+    label: "Frosted Glass",
+    hint: "Verre dépoli iOS, ombres douces, accent indigo profond.",
+  },
+  {
+    id: "neo",
+    label: "Néo Futuriste",
+    hint: "Blanc laqué et violet électrique, halos néon — premium et futuriste.",
+  },
+];
+export function studentThemeClass(theme?: string | null): string {
+  return `skin-${(theme ?? DEFAULT_STUDENT_THEME) as StudentTheme}`;
+}
+
+
+
 /** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
 export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;
 /** A loop closed at or above this average speed (~8 km/h, a brisk jog) counts as "run". */
