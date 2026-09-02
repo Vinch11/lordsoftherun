@@ -49,7 +49,6 @@ function Join() {
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
   const [studentIdMode, setStudentIdMode] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
-  const [theme, setTheme] = useState<string>("dossard");
   const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
   const [nameEntryTeam, setNameEntryTeam] = useState<ExistingTeam | null>(null);
   const [ownName, setOwnName] = useState("");
@@ -121,7 +120,6 @@ function Join() {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
-          setTheme(game.student_theme);
         }
       });
     return () => {
