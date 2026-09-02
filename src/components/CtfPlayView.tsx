@@ -489,7 +489,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           : "En attente (l'organisateur va le replacer)";
 
   return (
-    <main className={`bib relative h-[100dvh] w-full overflow-hidden`}>
+    <main className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}>
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}
