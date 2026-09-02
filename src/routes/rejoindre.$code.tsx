@@ -46,6 +46,7 @@ function Join() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
+  const [requireStudentName, setRequireStudentName] = useState(true);
   const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
   const [roster, setRoster] = useState<Student[]>([]);
   const [rosterLoading, setRosterLoading] = useState(false);
@@ -95,7 +96,7 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id, async_mode")
+      .select("id, async_mode, require_student_name")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
@@ -114,6 +115,7 @@ function Join() {
         if (active) {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
+          setRequireStudentName(game.require_student_name);
         }
       });
     return () => {
@@ -147,6 +149,28 @@ function Join() {
       active = false;
     };
   }, [namePickTeam]);
+
+  function selectTeam(team: ExistingTeam) {
+    if (requireStudentName) {
+      setNamePickTeam(team);
+    } else {
+      void joinTeamOnly(team.id);
+    }
+  }
+
+  async function joinTeamOnly(teamId: string) {
+    setBusy(true);
+    try {
+      await joinTeamMember(teamId, null);
+      localStorage.setItem(teamStorageKey(code), teamId);
+      rememberMyTeam(teamId, code);
+      await navigate({ to: "/jouer/$teamId", params: { teamId } });
+    } catch {
+      toast.error("Impossible de rejoindre cette équipe.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function joinAsync(studentId: string) {
     if (!namePickTeam) return;
@@ -308,16 +332,17 @@ function Join() {
                 </p>
               ) : existingTeams.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Aucune équipe pour ce code pour l'instant — demandez à votre prof de configurer
-                  les classes.
+                  Aucune équipe pour ce code pour l'instant — demandez à votre prof de créer les
+                  équipes.
                 </p>
               ) : (
                 existingTeams.map((t) => (
                   <button
                     key={t.id}
                     type="button"
-                    onClick={() => setNamePickTeam(t)}
-                    className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98]"
+                    disabled={busy}
+                    onClick={() => selectTeam(t)}
+                    className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
                   >
                     <span
                       className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"

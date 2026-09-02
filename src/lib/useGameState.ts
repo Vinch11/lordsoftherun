@@ -59,6 +59,7 @@ export type Game = {
   circuit_lightning_penalty_s: number;
   async_mode: boolean;
   loop_close_mode: LoopCloseMode;
+  require_student_name: boolean;
 };
 
 export type Team = {
