@@ -1,5 +1,10 @@
 import { Flag, MapPin, Shield, Star, Timer, X } from "lucide-react";
-import { CLOSE_RADIUS_M, LANDMARK_CLAIM_RADIUS_M, MIN_LOOP_DISTANCE_M } from "@/lib/conquete";
+import {
+  CLOSE_RADIUS_M,
+  LANDMARK_CLAIM_RADIUS_M,
+  MIN_LOOP_DISTANCE_M,
+  type LoopCloseMode,
+} from "@/lib/conquete";
 
 type Props = {
   teamName?: string | null;
@@ -8,35 +13,49 @@ type Props = {
   onClose: () => void;
   /** Close label; defaults to the pre-game wording. */
   closeLabel?: string;
+  /** Mode asynchrone : pas de distance minimale, boucles indépendantes lancées quand on veut. */
+  asyncMode?: boolean;
+  loopCloseMode?: LoopCloseMode;
 };
 
-const RULES = [
-  {
-    icon: Flag,
-    title: "Lance ta boucle",
-    text: "Appuie sur « Commencer ma boucle » à ton point de départ. Ta trace GPS s'affiche en direct dans la couleur de ton groupe.",
-  },
-  {
-    icon: MapPin,
-    title: "Referme la boucle",
-    text: `Parcours au moins ${MIN_LOOP_DISTANCE_M} m puis reviens à moins de ${CLOSE_RADIUS_M} m de ton point de départ : la boucle se ferme toute seule et la surface enfermée devient votre territoire.`,
-  },
-  {
-    icon: Shield,
-    title: "Vole du terrain",
-    text: "Si votre boucle recouvre le territoire d'un autre groupe, la zone commune change de camp. Le score, c'est la surface possédée en m².",
-  },
-  {
-    icon: Star,
-    title: "Bonus et zones interdites",
-    text: `Passe à moins de ${LANDMARK_CLAIM_RADIUS_M} m d'un repère ⭐ pour empocher son bonus. Les zones rouges sont interdites : y entrer coûte des points.`,
-  },
-  {
-    icon: Timer,
-    title: "Consignes de sécurité",
-    text: "Restez groupés, respectez le code de la route, traversez sur les passages piétons et gardez un œil sur la circulation plutôt que sur l'écran.",
-  },
-];
+function buildRules(asyncMode: boolean, loopCloseMode: LoopCloseMode) {
+  return [
+    {
+      icon: Flag,
+      title: "Lance ta boucle",
+      text: asyncMode
+        ? "Quand tu peux (en te promenant, en allant à pied quelque part…), appuie sur « Commencer ma boucle » à ton point de départ. Ta trace GPS s'affiche en direct dans la couleur de ton groupe."
+        : "Appuie sur « Commencer ma boucle » à ton point de départ. Ta trace GPS s'affiche en direct dans la couleur de ton groupe.",
+    },
+    {
+      icon: MapPin,
+      title: "Referme la boucle",
+      text:
+        asyncMode && loopCloseMode === "manual"
+          ? `Reviens à moins de ${CLOSE_RADIUS_M} m de ton point de départ, puis appuie sur « Terminer » : la surface enfermée devient votre territoire. Pas de distance minimale, mais plus la boucle est grande, plus elle rapporte.`
+          : asyncMode
+            ? `Reviens à moins de ${CLOSE_RADIUS_M} m de ton point de départ : la boucle se ferme toute seule et la surface enfermée devient votre territoire. Pas de distance minimale, mais plus la boucle est grande, plus elle rapporte.`
+            : `Parcours au moins ${MIN_LOOP_DISTANCE_M} m puis reviens à moins de ${CLOSE_RADIUS_M} m de ton point de départ : la boucle se ferme toute seule et la surface enfermée devient votre territoire.`,
+    },
+    {
+      icon: Shield,
+      title: "Vole du terrain",
+      text: "Si votre boucle recouvre le territoire d'un autre groupe, la zone commune change de camp. Le score, c'est la surface possédée en m².",
+    },
+    {
+      icon: Star,
+      title: "Bonus et zones interdites",
+      text: `Passe à moins de ${LANDMARK_CLAIM_RADIUS_M} m d'un repère ⭐ pour empocher son bonus. Les zones rouges sont interdites : y entrer coûte des points.`,
+    },
+    {
+      icon: Timer,
+      title: "Consignes de sécurité",
+      text: asyncMode
+        ? "Respecte le code de la route, traverse sur les passages piétons et garde un œil sur la circulation plutôt que sur l'écran — même en balade près de chez toi."
+        : "Restez groupés, respectez le code de la route, traversez sur les passages piétons et gardez un œil sur la circulation plutôt que sur l'écran.",
+    },
+  ];
+}
 
 export function RulesIntro({
   teamName,
@@ -44,7 +63,10 @@ export function RulesIntro({
   hasReturnZone,
   onClose,
   closeLabel = "C'est compris, on y va !",
+  asyncMode = false,
+  loopCloseMode = "auto",
 }: Props) {
+  const rules = buildRules(asyncMode, loopCloseMode);
   return (
     <div className="absolute inset-0 z-[1200] flex flex-col bg-background/95 backdrop-blur-sm">
       <div className="mx-auto flex h-full w-full max-w-md flex-col gap-4 overflow-y-auto p-5">
@@ -67,7 +89,7 @@ export function RulesIntro({
         </div>
 
         <div className="flex flex-col gap-2.5">
-          {RULES.map((rule) => (
+          {rules.map((rule) => (
             <div key={rule.title} className="panel flex gap-3 p-4">
               <rule.icon className="mt-0.5 h-6 w-6 shrink-0 text-accent" />
               <div className="flex flex-col gap-1">

@@ -13,6 +13,7 @@ import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
+  DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
@@ -204,6 +205,28 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
   }, [me]);
 
+  const loopResumedRef = useRef(false);
+  useEffect(() => {
+    if (loopResumedRef.current || !me) return;
+    loopResumedRef.current = true;
+    if (me.loop_active && me.current_trail.length > 0) {
+      let d = 0;
+      for (let i = 1; i < me.current_trail.length; i++) {
+        d += haversine(me.current_trail[i - 1]!, me.current_trail[i]!);
+      }
+      trackRef.current = me.current_trail;
+      distRef.current = d;
+      loopStartRef.current = me.loop_started_at
+        ? new Date(me.loop_started_at).getTime()
+        : Date.now();
+      runningRef.current = true;
+      setTrack(trackRef.current);
+      setDistance(d);
+      setRunning(true);
+      toast("Boucle reprise là où vous l'aviez laissée.");
+    }
+  }, [me]);
+
   const myMessages = useMemo(
     () =>
       messages.filter((m) => (m.sender === "prof" && m.team_id === null) || m.team_id === teamId),
@@ -251,6 +274,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (finishedRef.current) {
       runningRef.current = false;
       setRunning(false);
+      void supabase
+        .from("teams")
+        .update({ loop_active: false, current_trail: [] })
+        .eq("id", teamId);
       toast("⏱️ Partie terminée — cette boucle ne compte plus.");
       closing.current = false;
       return;
@@ -299,6 +326,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     distRef.current = 0;
     setTrack([]);
     setDistance(0);
+    void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
     closing.current = false;
   }, [gameId, teamId]);
 
@@ -353,6 +381,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               lng: point[1],
               current_trail: trackRef.current,
               total_distance_m: totalDistanceRef.current,
+              loop_active: runningRef.current,
               updated_at: new Date().toISOString(),
             })
             .eq("id", teamId),
@@ -469,8 +498,10 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       setTrack(trackRef.current);
 
       const start = trackRef.current[0]!;
+      const minLoopDistance = gameRef.current?.async_mode ? 0 : MIN_LOOP_DISTANCE_M;
       if (
-        distRef.current >= MIN_LOOP_DISTANCE_M &&
+        gameRef.current?.loop_close_mode !== "manual" &&
+        distRef.current >= minLoopDistance &&
         haversine(start, point) <= CLOSE_RADIUS_M &&
         trackRef.current.length >= 4
       ) {
@@ -537,7 +568,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
 
   finishedRef.current = finished;
-  useWakeLock(!finished);
+  // In async mode the app is only meant to be open while a loop is running,
+  // not kept awake for the whole month a game lasts.
+  useWakeLock(game?.async_mode ? running : !finished);
 
   const prevFinishedRef = useRef(finished);
   useEffect(() => {
@@ -576,6 +609,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     setDistance(0);
     setRunning(true);
     toast.success("Boucle lancée ! Reviens à ton point de départ.");
+    void supabase
+      .from("teams")
+      .update({
+        loop_active: true,
+        loop_started_at: new Date().toISOString(),
+        current_trail: [pos],
+      })
+      .eq("id", teamId);
   }
 
   function abortLoop() {
@@ -585,6 +626,17 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     setRunning(false);
     setTrack([]);
     setDistance(0);
+    void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
+  }
+
+  function finishLoopManually() {
+    if (toStart === null || toStart > CLOSE_RADIUS_M) {
+      toast.error(
+        `Rapproche-toi de ton point de départ (encore ${toStart === null ? "?" : Math.round(toStart)} m).`,
+      );
+      return;
+    }
+    void closeLoop();
   }
 
   return (
@@ -783,6 +835,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             </button>
             <div className="panel px-4 py-2 text-center text-sm">{endgameLabel}</div>
           </>
+        ) : running && game?.loop_close_mode === "manual" ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button className="btn-huge" onClick={abortLoop}>
+              <Square className="h-6 w-6" /> Annuler
+            </button>
+            <button className="btn-huge btn-huge-accent" onClick={finishLoopManually}>
+              <Flag className="h-6 w-6" /> Terminer
+            </button>
+          </div>
         ) : running ? (
           <button className="btn-huge" onClick={abortLoop}>
             <Square className="h-6 w-6" /> Annuler ma boucle
@@ -800,6 +861,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           teamColor={myColor}
           hasReturnZone={!!returnZone}
           onClose={closeRules}
+          asyncMode={game?.async_mode ?? false}
+          loopCloseMode={game?.loop_close_mode ?? DEFAULT_LOOP_CLOSE_MODE}
         />
       )}
 

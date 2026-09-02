@@ -14,6 +14,12 @@ export const TEAM_COLORS: TeamColor[] = [
 export const MIN_LOOP_DISTANCE_M = 100;
 export const CLOSE_RADIUS_M = 20;
 
+/** "auto" closes a loop by itself once it returns near its start; "manual"
+ * requires the player to confirm — useful when there's no minimum distance
+ * to force a walk, so a false auto-detection near home wouldn't surprise them. */
+export type LoopCloseMode = "auto" | "manual";
+export const DEFAULT_LOOP_CLOSE_MODE: LoopCloseMode = "auto";
+
 /** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
 export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;
 /** A loop closed at or above this average speed (~8 km/h, a brisk jog) counts as "run". */
