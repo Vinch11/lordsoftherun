@@ -290,7 +290,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (elapsedS > 0) {
       void supabase.rpc("add_distance", {
         _team_id: teamId,
-        _student_id: myStudentIdRef.current ?? undefined,
+        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
         _delta_active_s: elapsedS,
       });
     }
@@ -428,7 +428,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           void supabase
             .rpc("add_distance", {
               _team_id: teamId,
-              _student_id: myStudentIdRef.current ?? undefined,
+              ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
               _delta_m: delta,
             })
             .then(({ error }) => {
@@ -654,7 +654,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (elapsedS > 0) {
       void supabase.rpc("add_distance", {
         _team_id: teamId,
-        _student_id: myStudentIdRef.current ?? undefined,
+        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
         _delta_active_s: elapsedS,
       });
     }
