@@ -3,7 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { TEAM_COLORS, fetchWithRetry, studentStorageKey, teamStorageKey } from "@/lib/conquete";
+import {
+  TEAM_COLORS,
+  fetchWithRetry,
+  rememberMyTeam,
+  studentStorageKey,
+  teamStorageKey,
+} from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 
 export const Route = createFileRoute("/rejoindre/$code")({
@@ -57,7 +63,7 @@ function Join() {
     ).then(({ data, error }) => {
       if (!active) return;
       if (data) {
-        localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: data.id, code }));
+        rememberMyTeam(data.id, code);
         void navigate({ to: "/jouer/$teamId", params: { teamId: data.id }, replace: true });
       } else if (error) {
         // A network hiccup, not proof the team is gone — keep the stored
@@ -149,7 +155,7 @@ function Join() {
       await joinTeamMember(namePickTeam.id, studentId);
       localStorage.setItem(teamStorageKey(code), namePickTeam.id);
       localStorage.setItem(studentStorageKey(namePickTeam.id), studentId);
-      localStorage.setItem("conquete:last-team", JSON.stringify({ teamId: namePickTeam.id, code }));
+      rememberMyTeam(namePickTeam.id, code);
       await navigate({ to: "/jouer/$teamId", params: { teamId: namePickTeam.id } });
     } catch {
       toast.error("Impossible de rejoindre cette équipe.");
@@ -167,7 +173,7 @@ function Join() {
         return;
       }
       localStorage.setItem(teamStorageKey(code), teamId);
-      localStorage.setItem("conquete:last-team", JSON.stringify({ teamId, code }));
+      rememberMyTeam(teamId, code);
       await navigate({ to: "/jouer/$teamId", params: { teamId } });
     } finally {
       setBusy(false);
@@ -197,10 +203,7 @@ function Join() {
         return;
       }
       localStorage.setItem(teamStorageKey(game.code), team.id);
-      localStorage.setItem(
-        "conquete:last-team",
-        JSON.stringify({ teamId: team.id, code: game.code }),
-      );
+      rememberMyTeam(team.id, game.code);
       await navigate({ to: "/jouer/$teamId", params: { teamId: team.id } });
     } finally {
       setBusy(false);

@@ -7,7 +7,7 @@ import { JoinQRCode } from "@/components/JoinQRCode";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
 import { getTerminology } from "@/lib/terminology";
-import { formatArea, randomCode } from "@/lib/conquete";
+import { formatArea, getMyTeams, randomCode, rememberMyTeam, setMyTeams } from "@/lib/conquete";
 
 type MyGame = {
   id: string;
@@ -20,8 +20,7 @@ type MyGame = {
   topScore: number;
 };
 
-
-type ResumeTeam = { teamId: string; teamName: string; code: string };
+type ResumeTeam = { teamId: string; teamName: string; code: string; gameName: string | null };
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -65,27 +64,71 @@ function Home() {
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
-  const [resumeTeam, setResumeTeam] = useState<ResumeTeam | null>(null);
+  const [resumeTeams, setResumeTeams] = useState<ResumeTeam[]>([]);
   const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
   const [deletingGame, setDeletingGame] = useState<string | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem("conquete:last-team");
-    if (!raw) return;
-    try {
-      const last = JSON.parse(raw) as { teamId: string; code: string };
-      void supabase
-        .from("teams")
-        .select("id, name")
-        .eq("id", last.teamId)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setResumeTeam({ teamId: data.id, teamName: data.name, code: last.code });
-          else localStorage.removeItem("conquete:last-team");
-        });
-    } catch {
+    // One-time migration: this device used to remember only the single most
+    // recently joined team. Fold it into the new multi-team list so students
+    // mid-game when this ships don't lose their resume shortcut.
+    const legacyRaw = localStorage.getItem("conquete:last-team");
+    if (legacyRaw) {
+      try {
+        const legacy = JSON.parse(legacyRaw) as { teamId: string; code: string };
+        rememberMyTeam(legacy.teamId, legacy.code);
+      } catch {
+        /* malformed legacy entry — nothing to migrate */
+      }
       localStorage.removeItem("conquete:last-team");
     }
+
+    const stored = getMyTeams();
+    if (stored.length === 0) return;
+    let active = true;
+    void (async () => {
+      const teamIds = stored.map((s) => s.teamId);
+      const { data: teamRows } = await supabase
+        .from("teams")
+        .select("id, name, game_id")
+        .in("id", teamIds);
+      const gameIds = [...new Set((teamRows ?? []).map((t) => t.game_id))];
+      const { data: gameRows } =
+        gameIds.length > 0
+          ? await supabase.from("games").select("id, name, status, ends_at").in("id", gameIds)
+          : { data: [] };
+      if (!active) return;
+
+      const gamesById = new Map((gameRows ?? []).map((g) => [g.id, g]));
+      const nowMs = Date.now();
+      // Only teams whose game is still running are worth remembering — once a
+      // game ends there's nothing left to resume, so drop it from storage too
+      // instead of re-fetching it forever.
+      const kept: typeof stored = [];
+      const resumeList: ResumeTeam[] = [];
+      for (const entry of stored) {
+        const team = teamRows?.find((tm) => tm.id === entry.teamId);
+        if (!team) continue; // team deleted
+        const game = gamesById.get(team.game_id);
+        const finished =
+          !game ||
+          game.status === "finished" ||
+          (game.ends_at != null && new Date(game.ends_at).getTime() <= nowMs);
+        if (finished) continue;
+        kept.push(entry);
+        resumeList.push({
+          teamId: team.id,
+          teamName: team.name,
+          code: entry.code,
+          gameName: game.name,
+        });
+      }
+      if (kept.length !== stored.length) setMyTeams(kept);
+      setResumeTeams(resumeList);
+    })();
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -148,7 +191,6 @@ function Home() {
   }
 
   async function deleteGame(game: MyGame) {
-
     if (
       !window.confirm(
         `Supprimer définitivement la partie ${game.code} et toutes ses données (équipes, territoires, classement) ?`,
@@ -211,15 +253,20 @@ function Home() {
           </p>
         </header>
 
-        {resumeTeam && (
-          <button
-            className="btn-huge btn-huge-accent"
-            onClick={() =>
-              navigate({ to: "/jouer/$teamId", params: { teamId: resumeTeam.teamId } })
-            }
-          >
-            <Play className="h-5 w-5" /> Reprendre ma partie — {resumeTeam.teamName}
-          </button>
+        {resumeTeams.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {resumeTeams.length > 1 && <span className="section-title">Mes parties en cours</span>}
+            {resumeTeams.map((rt) => (
+              <button
+                key={rt.teamId}
+                className="btn-huge btn-huge-accent"
+                onClick={() => navigate({ to: "/jouer/$teamId", params: { teamId: rt.teamId } })}
+              >
+                <Play className="h-5 w-5" /> Reprendre ma partie — {rt.teamName}
+                {rt.gameName ? ` (${rt.gameName})` : ""}
+              </button>
+            ))}
+          </div>
         )}
 
         <section className="panel flex flex-col gap-4 p-5">
@@ -257,14 +304,9 @@ function Home() {
                 >
                   <div className="flex items-center justify-between gap-3">
                     <span className="display truncate text-xl tracking-[0.2em]">
-                      {g.name ? (
-                        <span className="tracking-normal">{g.name}</span>
-                      ) : (
-                        g.code
-                      )}
+                      {g.name ? <span className="tracking-normal">{g.name}</span> : g.code}
                     </span>
                     <span
-
                       className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
                         g.status === "running"
                           ? "bg-accent text-accent-foreground"
