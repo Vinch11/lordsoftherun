@@ -959,6 +959,12 @@
   box-shadow: 0 0 0 4px var(--accent);
 }
 
+.bib .pill {
+  background-color: var(--accent);
+  border: 3px solid var(--foreground);
+  color: var(--foreground);
+}
+
 .bib .pill,
 .bib .section-title,
 .bib .label-xs {
