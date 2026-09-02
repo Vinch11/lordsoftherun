@@ -139,6 +139,8 @@ import {
   DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_STUDENT_ID_MODE,
+  DEFAULT_STUDENT_THEME,
+  STUDENT_THEMES,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   GAME_MODE_DESCRIPTIONS,
@@ -167,6 +169,7 @@ import {
   type LoopCloseMode,
   type StudentIdMode,
 } from "@/lib/conquete";
+import { StudentThemePreview } from "@/components/StudentThemePreview";
 
 type DurationUnit = "minutes" | "heures" | "jours";
 const UNIT_TO_MINUTES: Record<DurationUnit, number> = { minutes: 1, heures: 60, jours: 1440 };
@@ -455,6 +458,7 @@ function TeacherDashboard() {
   const [asyncMode, setAsyncModeState] = useState(false);
   const [loopCloseMode, setLoopCloseModeState] = useState<LoopCloseMode>(DEFAULT_LOOP_CLOSE_MODE);
   const [studentIdMode, setStudentIdModeState] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
+  const [studentTheme, setStudentThemeState] = useState<StudentTheme>(DEFAULT_STUDENT_THEME);
   const [newTeamName, setNewTeamName] = useState("");
   const [addingTeam, setAddingTeam] = useState(false);
   const [messageBody, setMessageBody] = useState("");
@@ -621,6 +625,7 @@ function TeacherDashboard() {
       setAsyncModeState(game.async_mode);
       setLoopCloseModeState(game.loop_close_mode);
       setStudentIdModeState(game.student_id_mode);
+      setStudentThemeState(game.student_theme as StudentTheme);
       ctfConfigInitRef.current = true;
     }
   }, [game]);
@@ -1349,6 +1354,12 @@ function TeacherDashboard() {
     setStudentIdModeState(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ student_id_mode: next }).eq("id", gameId);
+  }
+
+  async function updateStudentTheme(next: StudentTheme) {
+    setStudentThemeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ student_theme: next }).eq("id", gameId);
   }
 
   async function addTeamManually() {
@@ -2297,6 +2308,41 @@ function TeacherDashboard() {
                     </p>
                   </div>
                 )}
+                <div className="flex flex-col gap-2 border-t border-border pt-3">
+                  <span className="text-sm font-semibold">Thème de l'écran élève</span>
+                  <p className="text-xs text-muted-foreground">
+                    Aperçu réel du rendu sur le téléphone des élèves.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {STUDENT_THEMES.map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => void updateStudentTheme(t.id)}
+                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 text-left transition ${
+                          studentTheme === t.id
+                            ? "border-primary ring-2 ring-primary/40"
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        <StudentThemePreview theme={t.id} />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm font-semibold">{t.label}</span>
+                          <span className="flex gap-1">
+                            {t.swatches.map((c) => (
+                              <span
+                                key={c}
+                                className="h-3 w-3 rounded-full border border-border"
+                                style={{ backgroundColor: c }}
+                              />
+                            ))}
+                          </span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{t.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
                     <span className="text-sm font-semibold">Créer une équipe à la main</span>
