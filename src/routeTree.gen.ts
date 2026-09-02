@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as JouerTeamIdRouteImport } from './routes/jouer.$teamId'
 import { Route as ProfCodeRouteImport } from './routes/prof.$code'
 import { Route as RejoindreCodeRouteImport } from './routes/rejoindre.$code'
@@ -30,11 +29,6 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ThemesRoute = ThemesRouteImport.update({
-  id: '/themes',
-  path: '/themes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JouerTeamIdRoute = JouerTeamIdRouteImport.update({
@@ -57,7 +51,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/themes': typeof ThemesRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -66,7 +59,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/themes': typeof ThemesRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -76,7 +68,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
-  '/themes': typeof ThemesRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -87,7 +78,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/themes'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -96,7 +86,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/themes'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -105,7 +94,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
-    | '/themes'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -115,7 +103,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
-  ThemesRoute: typeof ThemesRoute
   JouerTeamIdRoute: typeof JouerTeamIdRoute
   ProfCodeRoute: typeof ProfCodeRoute
   RejoindreCodeRoute: typeof RejoindreCodeRoute
@@ -142,13 +129,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/themes': {
-      id: '/themes'
-      path: '/themes'
-      fullPath: '/themes'
-      preLoaderRoute: typeof ThemesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jouer/$teamId': {
@@ -179,7 +159,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
-  ThemesRoute: ThemesRoute,
   JouerTeamIdRoute: JouerTeamIdRoute,
   ProfCodeRoute: ProfCodeRoute,
   RejoindreCodeRoute: RejoindreCodeRoute,
