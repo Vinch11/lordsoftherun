@@ -9,6 +9,14 @@ export const TEAM_COLORS: TeamColor[] = [
   { name: "Cyan", hex: "#0bb4c4" },
   { name: "Rose", hex: "#ef476f" },
   { name: "Jaune", hex: "#e9c500" },
+  { name: "Turquoise", hex: "#06d6a0" },
+  { name: "Indigo", hex: "#3a0ca3" },
+  { name: "Marron", hex: "#7f4f24" },
+  { name: "Gris", hex: "#495057" },
+  { name: "Lime", hex: "#a3e635" },
+  { name: "Bordeaux", hex: "#9d0208" },
+  { name: "Bleu ciel", hex: "#48cae4" },
+  { name: "Magenta", hex: "#b5179e" },
 ];
 
 export const MIN_LOOP_DISTANCE_M = 100;
