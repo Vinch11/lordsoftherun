@@ -389,6 +389,7 @@ function TeacherDashboard() {
   const [creatingGame, setCreatingGame] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
   const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
+  const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
 
   const [gameId, setGameId] = useState<string | null>(null);
@@ -2316,31 +2317,42 @@ function TeacherDashboard() {
                   </p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {STUDENT_THEMES.map((t) => (
-                      <button
+                      <div
                         key={t.id}
-                        type="button"
-                        onClick={() => void updateStudentTheme(t.id)}
-                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 text-left transition ${
+                        className={`flex flex-col gap-2 rounded-2xl border-2 p-2 transition ${
                           studentTheme === t.id
                             ? "border-primary ring-2 ring-primary/40"
-                            : "border-border hover:border-primary/50"
+                            : "border-border"
                         }`}
                       >
-                        <StudentThemePreview theme={t.id} />
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-semibold">{t.label}</span>
-                          <span className="flex gap-1">
-                            {t.swatches.map((c) => (
-                              <span
-                                key={c}
-                                className="h-3 w-3 rounded-full border border-border"
-                                style={{ backgroundColor: c }}
-                              />
-                            ))}
-                          </span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{t.description}</span>
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => void updateStudentTheme(t.id)}
+                          className="flex flex-col gap-2 text-left"
+                        >
+                          <StudentThemePreview theme={t.id} />
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-semibold">{t.label}</span>
+                            <span className="flex gap-1">
+                              {t.swatches.map((c) => (
+                                <span
+                                  key={c}
+                                  className="h-3 w-3 rounded-full border border-border"
+                                  style={{ backgroundColor: c }}
+                                />
+                              ))}
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">{t.description}</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
+                          onClick={() => setThemePreview(t.id)}
+                        >
+                          <Smartphone className="h-4 w-4" /> Aperçu grandeur nature
+                        </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -2411,6 +2423,42 @@ function TeacherDashboard() {
             {joinUrl && <JoinQRCode url={joinUrl} size={320} />}
             <div className="display text-5xl tracking-[0.3em]">{code}</div>
             <p className="text-muted-foreground">Touchez l'écran pour fermer</p>
+          </div>
+        )}
+
+        {themePreview && (
+          <div className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-3 bg-background/95 p-4">
+            <div className="flex w-full max-w-[380px] items-center justify-between">
+              <span className="section-title">
+                <Smartphone className="h-4 w-4" />{" "}
+                {STUDENT_THEMES.find((t) => t.id === themePreview)?.label ?? "Aperçu"}
+              </span>
+              <button
+                aria-label="Fermer l'aperçu du thème"
+                className="icon-btn"
+                onClick={() => setThemePreview(null)}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
+              <iframe
+                title="Aperçu grandeur nature du thème élève"
+                src={`/apercu-theme/${themePreview}`}
+                className="h-full w-full"
+              />
+            </div>
+            <div className="flex w-full max-w-[380px] gap-2">
+              <button
+                className="btn-huge btn-huge-accent flex-1 justify-center !py-3 text-sm"
+                onClick={() => {
+                  void updateStudentTheme(themePreview);
+                  setThemePreview(null);
+                }}
+              >
+                Utiliser ce thème
+              </button>
+            </div>
           </div>
         )}
 

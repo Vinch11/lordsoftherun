@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ApercuThemeThemeRouteImport } from './routes/apercu-theme.$theme'
 import { Route as JouerTeamIdRouteImport } from './routes/jouer.$teamId'
 import { Route as ProfCodeRouteImport } from './routes/prof.$code'
 import { Route as RejoindreCodeRouteImport } from './routes/rejoindre.$code'
@@ -29,6 +30,11 @@ const AdminRoute = AdminRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApercuThemeThemeRoute = ApercuThemeThemeRouteImport.update({
+  id: '/apercu-theme/$theme',
+  path: '/apercu-theme/$theme',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JouerTeamIdRoute = JouerTeamIdRouteImport.update({
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/apercu-theme/$theme': typeof ApercuThemeThemeRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/apercu-theme/$theme': typeof ApercuThemeThemeRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -68,6 +76,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/apercu-theme/$theme': typeof ApercuThemeThemeRoute
   '/jouer/$teamId': typeof JouerTeamIdRoute
   '/prof/$code': typeof ProfCodeRoute
   '/rejoindre/$code': typeof RejoindreCodeRoute
@@ -78,6 +87,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/apercu-theme/$theme'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -86,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/apercu-theme/$theme'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -94,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/auth'
+    | '/apercu-theme/$theme'
     | '/jouer/$teamId'
     | '/prof/$code'
     | '/rejoindre/$code'
@@ -103,6 +115,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  ApercuThemeThemeRoute: typeof ApercuThemeThemeRoute
   JouerTeamIdRoute: typeof JouerTeamIdRoute
   ProfCodeRoute: typeof ProfCodeRoute
   RejoindreCodeRoute: typeof RejoindreCodeRoute
@@ -129,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/apercu-theme/$theme': {
+      id: '/apercu-theme/$theme'
+      path: '/apercu-theme/$theme'
+      fullPath: '/apercu-theme/$theme'
+      preLoaderRoute: typeof ApercuThemeThemeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jouer/$teamId': {
@@ -159,6 +179,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  ApercuThemeThemeRoute: ApercuThemeThemeRoute,
   JouerTeamIdRoute: JouerTeamIdRoute,
   ProfCodeRoute: ProfCodeRoute,
   RejoindreCodeRoute: RejoindreCodeRoute,
