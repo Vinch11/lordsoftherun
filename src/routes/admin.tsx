@@ -38,10 +38,12 @@ function AdminPage() {
   const isAdmin = profile?.role === "admin";
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (loading) return;
+    if (!user || !isAdmin) {
       void navigate({ to: "/" });
     }
   }, [loading, user, isAdmin, navigate]);
+
 
   async function refresh() {
     setLoadingTeachers(true);
@@ -95,7 +97,15 @@ function AdminPage() {
     void refresh();
   }
 
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center px-5">
+        <p className="text-muted-foreground">Chargement…</p>
+      </main>
+    );
+  }
   if (!isAdmin) return null;
+
 
   const pending = teachers.filter((t) => t.role === "teacher" && !t.approved);
   const approved = teachers.filter((t) => t.role === "teacher" && t.approved);
