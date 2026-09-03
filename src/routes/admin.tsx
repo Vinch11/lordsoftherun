@@ -44,7 +44,6 @@ function AdminPage() {
     }
   }, [loading, user, isAdmin, navigate]);
 
-
   async function refresh() {
     setLoadingTeachers(true);
     const { data } = await supabase
@@ -105,7 +104,6 @@ function AdminPage() {
     );
   }
   if (!isAdmin) return null;
-
 
   const pending = teachers.filter((t) => t.role === "teacher" && !t.approved);
   const approved = teachers.filter((t) => t.role === "teacher" && t.approved);
