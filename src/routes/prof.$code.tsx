@@ -1083,7 +1083,7 @@ function TeacherDashboard() {
     try {
       const parsed = parseRosterCsv(await file.text());
       if (parsed.length === 0) {
-        toast.error("Aucun élève trouvé dans ce fichier.");
+        toast.error(t.noParticipantsFoundError);
         return;
       }
       setWizardPlayers(parsed);
@@ -1108,9 +1108,7 @@ function TeacherDashboard() {
       await refreshStudents();
       setWizardOpen(false);
       setWizardPlayers([]);
-      toast.success(
-        `${roster.filter((r) => r.present).length} élèves répartis en ${composed.length} équipes.`,
-      );
+      toast.success(t.rosterComposedToast(roster.filter((r) => r.present).length, composed.length));
     } catch (e) {
       toast.error(
         `Échec de la création des équipes : ${e instanceof Error ? e.message : "erreur inconnue"}`,
@@ -1143,12 +1141,12 @@ function TeacherDashboard() {
     // colonnes suivantes (distance, vitesse) sont juste informatives.
     const rows: string[][] = [
       [
-        "Élève",
+        t.participantNounCap,
         "Conquête (/100)",
         "Distance équipe (km)",
         "Vitesse équipe (km/h)",
-        "Distance élève (km)",
-        "Vitesse élève (km/h)",
+        t.csvDistanceHeader,
+        t.csvSpeedHeader,
       ],
     ];
     for (const s of students) {
@@ -2217,7 +2215,7 @@ function TeacherDashboard() {
               onToggle={toggleSection}
             />
             <div className="section-title">
-              <Users className="h-4 w-4" /> Élèves
+              <Users className="h-4 w-4" /> {t.participantNounCapPlural}
               {students.length > 0 && (
                 <span className="ml-auto text-xs font-normal text-muted-foreground">
                   {students.filter((s) => s.present).length}/{students.length} présents
@@ -2226,10 +2224,7 @@ function TeacherDashboard() {
             </div>
 
             {students.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Importez la liste de classe (export CSV iDoceo) pour prendre la présence et répartir
-                les équipes automatiquement.
-              </p>
+              <p className="text-xs text-muted-foreground">{t.rosterEmptyHelp}</p>
             ) : (
               <div className="flex max-h-56 flex-col gap-1 overflow-y-auto">
                 {students.map((s) => (
@@ -2323,18 +2318,18 @@ function TeacherDashboard() {
             >
               <input
                 className="field flex-1 py-2 text-sm"
-                placeholder="Ajouter un élève"
+                placeholder={t.addParticipantPlaceholder}
                 value={newStudentName}
                 onChange={(e) => setNewStudentName(e.target.value)}
               />
-              <button type="submit" className="icon-btn" aria-label="Ajouter l'élève">
+              <button type="submit" className="icon-btn" aria-label={t.addParticipantAria}>
                 <Plus className="h-4 w-4" />
               </button>
             </form>
 
             <label className="btn-huge btn-huge-dark cursor-pointer">
               <Upload className="h-5 w-5" />
-              {students.length === 0 ? "Importer un CSV iDoceo" : "Réimporter un autre CSV"}
+              {students.length === 0 ? t.rosterImportButton : "Réimporter un autre CSV"}
               <input
                 type="file"
                 accept=".csv,text/csv"
@@ -2394,6 +2389,7 @@ function TeacherDashboard() {
               open={wizardOpen}
               players={wizardPlayers}
               busy={rosterBusy}
+              terminology={t}
               onClose={() => setWizardOpen(false)}
               onConfirm={confirmWizard}
             />
@@ -2487,10 +2483,7 @@ function TeacherDashboard() {
               </div>
 
               {durationUnit !== "minutes" && (
-                <p className="text-xs text-muted-foreground">
-                  Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne
-                  pas définir de zone de retour (ci-dessous) pour ne pas bloquer les retardataires.
-                </p>
+                <p className="text-xs text-muted-foreground">{t.challengeModeHelp}</p>
               )}
             </>
           )}
@@ -2510,13 +2503,7 @@ function TeacherDashboard() {
             <div className="section-title">
               <Users className="h-4 w-4" /> Mode chacun chez soi
             </div>
-            <p className="text-sm text-muted-foreground">
-              Pour une conquête qui s'étale sur plusieurs jours ou semaines (ex. une promenade du
-              chien chaque soir) : chaque élève lance une boucle quand il le peut, plutôt que de
-              garder l'appli ouverte en continu. Les équipes doivent être créées à l'avance (import
-              CSV avec une équipe par classe, ou créées à la main ci-dessous) et plusieurs élèves
-              d'une même équipe peuvent jouer en même temps depuis leur propre téléphone.
-            </p>
+            <p className="text-sm text-muted-foreground">{t.asyncModeExplainer}</p>
             {isOwner ? (
               <>
                 <label className="flex items-center justify-between gap-3">
@@ -2550,15 +2537,13 @@ function TeacherDashboard() {
                       </button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {loopCloseMode === "auto"
-                        ? "La boucle se ferme toute seule dès que l'élève repasse près de son point de départ."
-                        : "L'élève doit confirmer lui-même la fin de sa boucle, une fois revenu près du départ."}
+                      {loopCloseMode === "auto" ? t.loopCloseAutoHelp : t.loopCloseManualHelp}
                     </p>
                   </div>
                 )}
                 {asyncMode && (
                   <div className="flex flex-col gap-2 border-t border-border pt-3">
-                    <span className="text-sm font-semibold">Identification de l'élève</span>
+                    <span className="text-sm font-semibold">{t.participantIdSectionTitle}</span>
                     <div className="grid grid-cols-3 gap-2">
                       <button
                         type="button"
@@ -2587,10 +2572,10 @@ function TeacherDashboard() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {studentIdMode === "roster"
-                        ? "L'élève choisit son prénom dans la liste importée par CSV — nécessaire pour les stats individuelles, mais demande d'avoir importé la classe à l'avance."
+                        ? t.studentIdRosterHelp
                         : studentIdMode === "freetext"
-                          ? "L'élève tape lui-même son prénom en rejoignant l'équipe — fonctionne même sans import CSV, et donne quand même des stats individuelles."
-                          : "L'élève rejoint directement son équipe sans dire qui il est — le plus rapide, mais pas de stats par élève."}
+                          ? t.studentIdFreetextHelp
+                          : t.studentIdNoneHelp}
                     </p>
                   </div>
                 )}
@@ -2637,7 +2622,7 @@ function TeacherDashboard() {
           <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("theme")}>
             <CollapseToggle id="theme" collapsed={!!collapsed["theme"]} onToggle={toggleSection} />
             <div className="section-title">
-              <Smartphone className="h-4 w-4" /> Thème de l'écran élève
+              <Smartphone className="h-4 w-4" /> {t.participantScreenThemeTitle}
             </div>
             <div className="flex items-center gap-2">
               <span className="flex shrink-0 gap-1">
@@ -2731,7 +2716,7 @@ function TeacherDashboard() {
             </div>
             <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
               <iframe
-                title="Aperçu grandeur nature du thème élève"
+                title={t.participantPreviewIframeTitle}
                 src={`/apercu-theme/${themePreview}`}
                 className="h-full w-full"
               />
@@ -2767,7 +2752,7 @@ function TeacherDashboard() {
             </div>
             <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
               <iframe
-                title="Aperçu de la vue élève"
+                title={`Aperçu de la vue ${t.participantNoun}`}
                 src={`/jouer/${previewTeamId}`}
                 className="h-full w-full"
                 allow="geolocation"
@@ -4557,7 +4542,7 @@ function TeacherDashboard() {
         <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("apercu")}>
           <CollapseToggle id="apercu" collapsed={!!collapsed["apercu"]} onToggle={toggleSection} />
           <div className="section-title">
-            <Smartphone className="h-4 w-4" /> Aperçu élève
+            <Smartphone className="h-4 w-4" /> {t.participantPreviewSectionTitle}
           </div>
           <p className="text-sm text-muted-foreground">
             Ouvrez l'écran tel que le voit un groupe (carte, bouton de boucle, messages). En lecture
@@ -4670,7 +4655,7 @@ function TeacherDashboard() {
           )}
           {finished && students.length > 0 && (
             <button className="btn-huge btn-huge-dark mt-2" onClick={exportIdoceoCsv}>
-              <Download className="h-5 w-5" /> Exporter CSV (iDoceo)
+              <Download className="h-5 w-5" /> {t.exportCsvButton}
             </button>
           )}
         </section>

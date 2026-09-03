@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import type { Terminology } from "@/lib/terminology";
+import { getTerminology, type Terminology } from "@/lib/terminology";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -33,6 +33,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [terminology, setTerminology] = useState<Terminology>("enseignant");
   const [busy, setBusy] = useState(false);
+  const t = getTerminology(terminology);
 
   useEffect(() => {
     if (!loading && user) void navigate({ to: "/" });
@@ -74,7 +75,7 @@ function AuthPage() {
         </Link>
         <header>
           <div className="pill">
-            <Flag className="h-3.5 w-3.5" /> Enseignant
+            <Flag className="h-3.5 w-3.5" /> {t.roleNounCap}
           </div>
           <h1 className="mt-4 text-5xl leading-[0.9]">
             {mode === "signup" ? "Créer un compte" : "Se connecter"}
@@ -143,9 +144,7 @@ function AuthPage() {
           className="text-center text-base font-semibold underline"
           onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
         >
-          {mode === "signup"
-            ? "J'ai déjà un compte — se connecter"
-            : "Nouveau ? Créer un compte enseignant"}
+          {mode === "signup" ? "J'ai déjà un compte — se connecter" : "Nouveau ? Créer un compte"}
         </button>
       </div>
     </main>
