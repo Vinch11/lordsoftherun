@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ArrowLeft, ArrowRight, Check, Shuffle, UserMinus, Users, X } from "lucide-react";
 import { TEAM_COLORS } from "@/lib/conquete";
 import type { ParsedStudent } from "@/lib/students";
+import type { TerminologyLabels } from "@/lib/terminology";
 
 export type ComposedTeam = { name: string; color: string; members: string[] };
 
@@ -10,6 +11,7 @@ type Props = {
   players: ParsedStudent[];
   open: boolean;
   busy?: boolean;
+  terminology: TerminologyLabels;
   onClose: () => void;
   onConfirm: (
     roster: { name: string; present: boolean }[],
@@ -24,7 +26,14 @@ type TeamMode = "auto" | "manual" | "classe";
  * Two-step import assistant, mirroring the flow used in "Tournoi Facile":
  * 1. check who is present, 2. build the teams automatically or by hand.
  */
-export function RosterWizard({ players, open, busy = false, onClose, onConfirm }: Props) {
+export function RosterWizard({
+  players,
+  open,
+  busy = false,
+  terminology: t,
+  onClose,
+  onConfirm,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [step, setStep] = useState<Step>("presence");
   const [absent, setAbsent] = useState<Set<string>>(new Set());
@@ -213,7 +222,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
                   data-active={mode === "classe"}
                   onClick={() => setMode("classe")}
                 >
-                  Par classe
+                  {t.rosterWizardGroupButtonLabel}
                 </button>
               )}
               <button
@@ -236,10 +245,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
 
             {mode === "classe" ? (
               <p className="text-sm text-muted-foreground">
-                {groups.length} classe{groups.length > 1 ? "s" : ""} détectée
-                {groups.length > 1 ? "s" : ""} dans le fichier importé — une équipe par classe.
-                {unassigned.length > 0 &&
-                  ` ${unassigned.length} élève${unassigned.length > 1 ? "s" : ""} sans classe à placer à la main ci-dessous.`}
+                {t.rosterWizardGroupsDetectedHelp(groups.length, unassigned.length)}
               </p>
             ) : (
               <div className="flex items-center justify-between gap-3">
@@ -284,7 +290,7 @@ export function RosterWizard({ players, open, busy = false, onClose, onConfirm }
                   onDrop={() => dragged && unassign(dragged)}
                 >
                   <p className="mb-1 text-xs text-muted-foreground">
-                    Élèves à placer ({unassigned.length}) — touchez un nom puis une équipe.
+                    {t.rosterWizardUnassignedHelp(unassigned.length)}
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {unassigned.map((name) => (

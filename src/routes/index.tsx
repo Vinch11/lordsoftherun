@@ -271,7 +271,7 @@ function Home() {
 
         <section className="panel flex flex-col gap-4 p-5">
           <div className="section-title">
-            <Users className="h-4 w-4" /> Groupe d'élèves
+            <Users className="h-4 w-4" /> {t.joinPanelTitle}
           </div>
           <input
             className="field text-center text-3xl font-bold tracking-[0.4em]"
