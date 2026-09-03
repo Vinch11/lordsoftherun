@@ -428,6 +428,13 @@
       "when": 1788600000000,
       "tag": "0060_skip_anonymous_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1788472173175,
+      "tag": "0061_skip_anonymous_profiles",
+      "breakpoints": true
     }
   ]
 }
