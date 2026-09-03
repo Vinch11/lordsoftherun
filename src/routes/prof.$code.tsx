@@ -723,6 +723,19 @@ function TeacherDashboard() {
     toast("Partie terminée.");
   }
 
+  async function adjustRemaining(deltaMinutes: number) {
+    if (!gameId || !game?.ends_at) return;
+    if (!isOwner) {
+      toast.error(t.ownerOnlyError);
+      return;
+    }
+    const newEnds = new Date(new Date(game.ends_at).getTime() + deltaMinutes * 60_000);
+    await supabase.from("games").update({ ends_at: newEnds.toISOString() }).eq("id", gameId);
+    toast.success(
+      deltaMinutes > 0 ? `+${deltaMinutes} min ajoutées` : `${-deltaMinutes} min retirées`,
+    );
+  }
+
   useEffect(() => {
     if (game?.status === "running" && remaining <= 0 && isOwner) {
       void stop();
@@ -2152,51 +2165,94 @@ function TeacherDashboard() {
         )}
 
         <section className="panel flex flex-col gap-3 p-4">
-          <div className="flex items-center justify-between">
-            <span className="section-title">Durée</span>
-            <div className="flex items-center gap-3">
-              <button
-                aria-label="Réduire"
-                className="icon-btn"
-                onClick={() => setDurationValue((v) => Math.max(1, v - UNIT_STEP[durationUnit]))}
-              >
-                <Minus className="h-5 w-5" />
-              </button>
-              <span className="display w-16 text-center text-2xl">{durationValue}</span>
-              <button
-                aria-label="Augmenter"
-                className="icon-btn"
-                onClick={() =>
-                  setDurationValue((v) =>
-                    Math.min(UNIT_MAX[durationUnit], v + UNIT_STEP[durationUnit]),
-                  )
-                }
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(["minutes", "heures", "jours"] as DurationUnit[]).map((u) => (
-              <button
-                key={u}
-                className="seg-btn"
-                data-active={durationUnit === u}
-                onClick={() => {
-                  setDurationUnit(u);
-                  setDurationValue(UNIT_DEFAULT[u]);
-                }}
-              >
-                {u}
-              </button>
-            ))}
-          </div>
+          {running ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="section-title">Temps restant</span>
+                <span className="display text-2xl tabular-nums">{formatCountdown(remaining)}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                <button
+                  className="seg-btn"
+                  disabled={!isOwner}
+                  onClick={() => void adjustRemaining(-5)}
+                >
+                  −5 min
+                </button>
+                <button
+                  className="seg-btn"
+                  disabled={!isOwner}
+                  onClick={() => void adjustRemaining(-1)}
+                >
+                  −1 min
+                </button>
+                <button
+                  className="seg-btn"
+                  disabled={!isOwner}
+                  onClick={() => void adjustRemaining(1)}
+                >
+                  +1 min
+                </button>
+                <button
+                  className="seg-btn"
+                  disabled={!isOwner}
+                  onClick={() => void adjustRemaining(5)}
+                >
+                  +5 min
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="section-title">Durée</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    aria-label="Réduire"
+                    className="icon-btn"
+                    onClick={() =>
+                      setDurationValue((v) => Math.max(1, v - UNIT_STEP[durationUnit]))
+                    }
+                  >
+                    <Minus className="h-5 w-5" />
+                  </button>
+                  <span className="display w-16 text-center text-2xl">{durationValue}</span>
+                  <button
+                    aria-label="Augmenter"
+                    className="icon-btn"
+                    onClick={() =>
+                      setDurationValue((v) =>
+                        Math.min(UNIT_MAX[durationUnit], v + UNIT_STEP[durationUnit]),
+                      )
+                    }
+                  >
+                    <Plus className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["minutes", "heures", "jours"] as DurationUnit[]).map((u) => (
+                  <button
+                    key={u}
+                    className="seg-btn"
+                    data-active={durationUnit === u}
+                    onClick={() => {
+                      setDurationUnit(u);
+                      setDurationValue(UNIT_DEFAULT[u]);
+                    }}
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
 
-          {durationUnit !== "minutes" && (
-            <p className="text-xs text-muted-foreground">
-              Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne pas
-              définir de zone de retour (ci-dessous) pour ne pas bloquer les retardataires.
-            </p>
+              {durationUnit !== "minutes" && (
+                <p className="text-xs text-muted-foreground">
+                  Mode Challenge : idéal pour un défi inter-classes sur plusieurs jours. Pensez à ne
+                  pas définir de zone de retour (ci-dessous) pour ne pas bloquer les retardataires.
+                </p>
+              )}
+            </>
           )}
           <div className="grid grid-cols-2 gap-3">
             <button className="btn-huge btn-huge-accent" disabled={!isOwner} onClick={start}>
