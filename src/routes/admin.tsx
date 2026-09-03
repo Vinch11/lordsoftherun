@@ -38,10 +38,12 @@ function AdminPage() {
   const isAdmin = profile?.role === "admin";
 
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
+    if (loading) return;
+    if (!user || !isAdmin) {
       void navigate({ to: "/" });
     }
   }, [loading, user, isAdmin, navigate]);
+
 
   async function refresh() {
     setLoadingTeachers(true);
