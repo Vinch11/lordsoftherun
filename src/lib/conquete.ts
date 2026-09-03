@@ -142,6 +142,25 @@ export const DEFAULT_GRID_HEIGHT_M = 80;
 export const MIN_GRID_SIDE_M = 20;
 export const MAX_GRID_SIDE_M = 300;
 
+/** Grille mode's explosive bonuses: spawned by hand or on a timer, claimed by
+ * walking over them, colorizing every cell within their radius. */
+export type GridBonusSpawnMode = "manual" | "random";
+export const DEFAULT_GRID_BONUS_SPAWN_MODE: GridBonusSpawnMode = "manual";
+export const DEFAULT_GRID_BONUS_RADIUS_M = 12;
+export const MIN_GRID_BONUS_RADIUS_M = 3;
+export const MAX_GRID_BONUS_RADIUS_M = 60;
+export const DEFAULT_GRID_BONUS_LIFETIME_S = 60;
+export const MIN_GRID_BONUS_LIFETIME_S = 10;
+export const MAX_GRID_BONUS_LIFETIME_S = 600;
+export const DEFAULT_GRID_BONUS_INTERVAL_S = 45;
+export const MIN_GRID_BONUS_INTERVAL_S = 15;
+export const MAX_GRID_BONUS_INTERVAL_S = 600;
+export const DEFAULT_GRID_BONUS_MAX_ACTIVE = 2;
+export const MIN_GRID_BONUS_MAX_ACTIVE = 1;
+export const MAX_GRID_BONUS_MAX_ACTIVE = 8;
+/** How close a team must get to an active bonus to trigger its explosion. */
+export const GRID_BONUS_CLAIM_RADIUS_M = 8;
+
 export type GracePenaltyMode = "cancel" | "per_second";
 export const DEFAULT_GRACE_MINUTES = 5;
 export const DEFAULT_GRACE_PENALTY_PER_SECOND_M2 = 2;

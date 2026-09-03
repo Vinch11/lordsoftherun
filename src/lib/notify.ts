@@ -207,23 +207,59 @@ function vibrate(urgent: boolean) {
   }
 }
 
-// Which sound the current screen's game is configured to use — set once via
-// setNotificationSound() when the game loads, so every notifyMessage/
-// notifyUrgent call site doesn't need to thread the game's setting through.
-let currentSound: NotificationSoundId = DEFAULT_NOTIFICATION_SOUND;
+/**
+ * A game can give its three most distinctive alerts (chat message, photo
+ * request, end of game) their own sound; anything else — bonuses, penalties,
+ * territoire perdu, item results — always plays "default". A category left
+ * unset by the teacher falls back to "default" too, so a game configured
+ * before this existed keeps sounding exactly the way it always did.
+ */
+export type NotificationCategory = "default" | "message" | "photo" | "end";
 
-export function setNotificationSound(id: NotificationSoundId | null | undefined) {
-  currentSound = id && SOUND_PRESETS[id] ? id : DEFAULT_NOTIFICATION_SOUND;
+type NotificationSoundSettings = {
+  notification_sound?: NotificationSoundId | null;
+  notification_sound_message?: NotificationSoundId | null;
+  notification_sound_photo?: NotificationSoundId | null;
+  notification_sound_end?: NotificationSoundId | null;
+};
+
+// Which sound each category currently resolves to — set once via
+// setNotificationSounds() when the game loads, so every notifyMessage/
+// notifyUrgent call site doesn't need to thread the game's settings through.
+let currentSounds: Record<NotificationCategory, NotificationSoundId> = {
+  default: DEFAULT_NOTIFICATION_SOUND,
+  message: DEFAULT_NOTIFICATION_SOUND,
+  photo: DEFAULT_NOTIFICATION_SOUND,
+  end: DEFAULT_NOTIFICATION_SOUND,
+};
+
+function resolveSoundId(id: NotificationSoundId | null | undefined): NotificationSoundId | null {
+  return id && SOUND_PRESETS[id] ? id : null;
+}
+
+export function setNotificationSounds(game: NotificationSoundSettings | null | undefined) {
+  const base = resolveSoundId(game?.notification_sound) ?? DEFAULT_NOTIFICATION_SOUND;
+  currentSounds = {
+    default: base,
+    message: resolveSoundId(game?.notification_sound_message) ?? base,
+    photo: resolveSoundId(game?.notification_sound_photo) ?? base,
+    end: resolveSoundId(game?.notification_sound_end) ?? base,
+  };
 }
 
 /**
- * Alerts the user something happened: the game's chosen sound plus
+ * Alerts the user something happened: the category's chosen sound plus
  * vibration every time, and an OS notification whenever permission was
  * granted (kept on screen for urgent alerts so it isn't missed while the
  * phone is in a pocket).
  */
-export function notifyMessage(title: string, body: string, urgent = false) {
-  playAlarm(currentSound, urgent);
+export function notifyMessage(
+  title: string,
+  body: string,
+  urgent = false,
+  category: NotificationCategory = "default",
+) {
+  playAlarm(currentSounds[category], urgent);
   vibrate(urgent);
   if (typeof Notification !== "undefined" && Notification.permission === "granted") {
     try {
@@ -240,6 +276,10 @@ export function notifyMessage(title: string, body: string, urgent = false) {
 }
 
 /** Highest-priority alert (photo demandée, fin de partie, territoire perdu). */
-export function notifyUrgent(title: string, body: string) {
-  notifyMessage(title, body, true);
+export function notifyUrgent(
+  title: string,
+  body: string,
+  category: NotificationCategory = "default",
+) {
+  notifyMessage(title, body, true, category);
 }

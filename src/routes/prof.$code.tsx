@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   Flag,
+  Flame,
   Gamepad2,
   Grid3x3,
   Maximize2,
@@ -32,6 +33,7 @@ import {
   Trophy,
   Upload,
   Users,
+  Volume2,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +57,7 @@ import {
   notifyMessage,
   previewSound,
   requestNotificationPermission,
-  setNotificationSound,
+  setNotificationSounds,
   type NotificationSoundId,
 } from "@/lib/notify";
 import { getPhotoUrl, requestPhotoCheck, usePhotoSubmissions } from "@/lib/photoCheck";
@@ -69,7 +71,8 @@ import {
 } from "@/lib/landmarks";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import { placeFlag, useFlags } from "@/lib/flags";
-import { cellCenter, useGridCells } from "@/lib/grid";
+import { cellCenter, randomPointInGridZone, useGridCells } from "@/lib/grid";
+import { addGridBonus, isGridBonusActive, removeGridBonus, useGridBonuses } from "@/lib/gridBonus";
 import {
   addCircuitBox,
   appendCheckpoint,
@@ -129,6 +132,11 @@ import {
   DEFAULT_FORBIDDEN_RADIUS_M,
   DEFAULT_GRACE_MINUTES,
   DEFAULT_GRACE_PENALTY_PER_SECOND_M2,
+  DEFAULT_GRID_BONUS_INTERVAL_S,
+  DEFAULT_GRID_BONUS_LIFETIME_S,
+  DEFAULT_GRID_BONUS_MAX_ACTIVE,
+  DEFAULT_GRID_BONUS_RADIUS_M,
+  DEFAULT_GRID_BONUS_SPAWN_MODE,
   DEFAULT_GRID_CELL_SIZE_M,
   DEFAULT_GRID_HEIGHT_M,
   DEFAULT_GRID_MIN_SPEED_KMH,
@@ -146,11 +154,19 @@ import {
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
   LANDMARK_ICONS,
   MAX_CIRCUIT_CHECKPOINT_COUNT,
+  MAX_GRID_BONUS_INTERVAL_S,
+  MAX_GRID_BONUS_LIFETIME_S,
+  MAX_GRID_BONUS_MAX_ACTIVE,
+  MAX_GRID_BONUS_RADIUS_M,
   MAX_GRID_CELL_SIZE_M,
   MAX_GRID_MIN_SPEED_KMH,
   MAX_GRID_RADIUS_M,
   MAX_GRID_SIDE_M,
   MIN_CIRCUIT_CHECKPOINT_COUNT,
+  MIN_GRID_BONUS_INTERVAL_S,
+  MIN_GRID_BONUS_LIFETIME_S,
+  MIN_GRID_BONUS_MAX_ACTIVE,
+  MIN_GRID_BONUS_RADIUS_M,
   MIN_GRID_CELL_SIZE_M,
   MIN_GRID_RADIUS_M,
   MIN_GRID_SIDE_M,
@@ -162,6 +178,7 @@ import {
   randomCode,
   type CaptureConsequence,
   type GameMode,
+  type GridBonusSpawnMode,
   type GridShape,
   type GracePenaltyMode,
   type LoopCloseMode,
@@ -394,7 +411,14 @@ function TeacherDashboard() {
   const [durationValue, setDurationValue] = useState(UNIT_DEFAULT.minutes);
   const [now, setNow] = useState(() => Date.now());
   const [placingMode, setPlacingMode] = useState<
-    "none" | "zone" | "landmark" | "forbidden" | "grid_zone" | "circuit_box" | "circuit_point"
+    | "none"
+    | "zone"
+    | "landmark"
+    | "forbidden"
+    | "grid_zone"
+    | "grid_bonus"
+    | "circuit_box"
+    | "circuit_point"
   >("none");
   const [circuitDrawing, setCircuitDrawing] = useState(false);
   const [zoneRadius, setZoneRadius] = useState(DEFAULT_ZONE_RADIUS);
@@ -416,9 +440,23 @@ function TeacherDashboard() {
   const [gridCellSize, setGridCellSize] = useState(DEFAULT_GRID_CELL_SIZE_M);
   const [gridShowOverlay, setGridShowOverlay] = useState(true);
   const [gridMinSpeed, setGridMinSpeed] = useState(DEFAULT_GRID_MIN_SPEED_KMH);
+  const [gridBonusEnabled, setGridBonusEnabled] = useState(false);
+  const [gridBonusSpawnMode, setGridBonusSpawnModeState] = useState<GridBonusSpawnMode>(
+    DEFAULT_GRID_BONUS_SPAWN_MODE,
+  );
+  const [gridBonusRadius, setGridBonusRadius] = useState(DEFAULT_GRID_BONUS_RADIUS_M);
+  const [gridBonusLifetime, setGridBonusLifetime] = useState(DEFAULT_GRID_BONUS_LIFETIME_S);
+  const [gridBonusInterval, setGridBonusInterval] = useState(DEFAULT_GRID_BONUS_INTERVAL_S);
+  const [gridBonusMaxActive, setGridBonusMaxActive] = useState(DEFAULT_GRID_BONUS_MAX_ACTIVE);
   const [notificationSound, setNotificationSoundChoice] = useState<NotificationSoundId>(
     DEFAULT_NOTIFICATION_SOUND,
   );
+  const [notificationSoundMessage, setNotificationSoundMessageChoice] =
+    useState<NotificationSoundId | null>(null);
+  const [notificationSoundPhoto, setNotificationSoundPhotoChoice] =
+    useState<NotificationSoundId | null>(null);
+  const [notificationSoundEnd, setNotificationSoundEndChoice] =
+    useState<NotificationSoundId | null>(null);
   const [graceEnabled, setGraceEnabled] = useState(false);
   const [graceMinutes, setGraceMinutes] = useState(DEFAULT_GRACE_MINUTES);
   const [gracePenaltyMode, setGracePenaltyMode] = useState<GracePenaltyMode>("cancel");
@@ -522,7 +560,16 @@ function TeacherDashboard() {
   }, [code]);
 
   const { game, teams, territories, refresh } = useGameState(gameId);
-  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
+  useEffect(
+    () => setNotificationSounds(game),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      game?.notification_sound,
+      game?.notification_sound_message,
+      game?.notification_sound_photo,
+      game?.notification_sound_end,
+    ],
+  );
   const [gameNameDraft, setGameNameDraft] = useState("");
   const gameNameRef = useRef<string | null>(null);
   useEffect(() => {
@@ -555,6 +602,7 @@ function TeacherDashboard() {
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
+  const { bonuses: gridBonuses } = useGridBonuses(gameId);
   const { checkpoints } = useCheckpoints(gameId);
   const { boxes: circuitBoxes } = useCircuitBoxes(gameId);
   const { bananas } = useBananas(gameId);
@@ -603,7 +651,22 @@ function TeacherDashboard() {
       setGridCellSize(game.grid_cell_size_m);
       setGridShowOverlay(game.grid_show_overlay);
       setGridMinSpeed(game.grid_min_speed_kmh);
+      setGridBonusEnabled(game.grid_bonus_enabled);
+      setGridBonusSpawnModeState(game.grid_bonus_spawn_mode);
+      setGridBonusRadius(game.grid_bonus_radius_m);
+      setGridBonusLifetime(game.grid_bonus_lifetime_s);
+      setGridBonusInterval(game.grid_bonus_interval_s);
+      setGridBonusMaxActive(game.grid_bonus_max_active);
       setNotificationSoundChoice(game.notification_sound);
+      setNotificationSoundMessageChoice(
+        (game.notification_sound_message as NotificationSoundId | null) ?? null,
+      );
+      setNotificationSoundPhotoChoice(
+        (game.notification_sound_photo as NotificationSoundId | null) ?? null,
+      );
+      setNotificationSoundEndChoice(
+        (game.notification_sound_end as NotificationSoundId | null) ?? null,
+      );
       setGraceEnabled(game.grace_enabled);
       setGraceMinutes(game.grace_minutes);
       setGracePenaltyMode(game.grace_penalty_mode);
@@ -635,7 +698,7 @@ function TeacherDashboard() {
       if (latest?.sender !== "prof") {
         const teamName = teams.find((t) => t.id === latest?.team_id)?.name ?? "Équipe";
         toast(`💬 ${teamName} : ${latest?.body}`);
-        notifyMessage(`💬 ${teamName}`, latest?.body ?? "");
+        notifyMessage(`💬 ${teamName}`, latest?.body ?? "", false, "message");
       }
     }
     seenMessageCount.current = messages.length;
@@ -942,6 +1005,20 @@ function TeacherDashboard() {
   const mapBananas = useMemo(
     () => bananas.map((b) => ({ id: b.id, lat: b.lat, lng: b.lng })),
     [bananas],
+  );
+
+  const mapGridBonuses = useMemo(
+    () =>
+      gridBonuses
+        .filter((b) => isGridBonusActive(b, now))
+        .map((b) => ({
+          id: b.id,
+          lat: b.lat,
+          lng: b.lng,
+          radiusM: b.radius_m,
+          remainingS: (new Date(b.expires_at).getTime() - now) / 1000,
+        })),
+    [gridBonuses, now],
   );
 
   const joinUrl =
@@ -1278,10 +1355,98 @@ function TeacherDashboard() {
     await supabase.from("games").update({ grid_min_speed_kmh: next }).eq("id", gameId);
   }
 
+  async function updateGridBonusEnabled(next: boolean) {
+    setGridBonusEnabled(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_enabled: next }).eq("id", gameId);
+  }
+
+  async function updateGridBonusSpawnMode(next: GridBonusSpawnMode) {
+    setGridBonusSpawnModeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_spawn_mode: next }).eq("id", gameId);
+  }
+
+  async function updateGridBonusRadius(next: number) {
+    setGridBonusRadius(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_radius_m: next }).eq("id", gameId);
+  }
+
+  async function updateGridBonusLifetime(next: number) {
+    setGridBonusLifetime(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_lifetime_s: next }).eq("id", gameId);
+  }
+
+  async function updateGridBonusInterval(next: number) {
+    setGridBonusInterval(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_interval_s: next }).eq("id", gameId);
+  }
+
+  async function updateGridBonusMaxActive(next: number) {
+    setGridBonusMaxActive(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ grid_bonus_max_active: next }).eq("id", gameId);
+  }
+
+  async function placeGridBonus(lat: number, lng: number) {
+    if (!gameId || !isOwner) return;
+    await addGridBonus(gameId, lat, lng, gridBonusRadius, gridBonusLifetime);
+    setPlacingMode("none");
+  }
+
+  // Random spawning is driven entirely by the teacher's own open browser tab —
+  // there is no server/cron in this app — so a bonus only appears while the
+  // dashboard stays open, same trust model as every other prof-driven timer.
+  useEffect(() => {
+    if (!isOwner || !running || gameMode !== "grille") return;
+    if (!gridBonusEnabled || gridBonusSpawnMode !== "random" || !gridZone || !gameId) return;
+    const id = setInterval(() => {
+      const activeCount = gridBonuses.filter((b) => isGridBonusActive(b, Date.now())).length;
+      if (activeCount >= gridBonusMaxActive) return;
+      const [lat, lng] = randomPointInGridZone(gridZone);
+      void addGridBonus(gameId, lat, lng, gridBonusRadius, gridBonusLifetime);
+    }, gridBonusInterval * 1000);
+    return () => clearInterval(id);
+  }, [
+    isOwner,
+    running,
+    gameMode,
+    gridBonusEnabled,
+    gridBonusSpawnMode,
+    gridBonusInterval,
+    gridBonusMaxActive,
+    gridBonusRadius,
+    gridBonusLifetime,
+    gridBonuses,
+    gridZone,
+    gameId,
+  ]);
+
   async function updateNotificationSound(next: NotificationSoundId) {
     setNotificationSoundChoice(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ notification_sound: next }).eq("id", gameId);
+  }
+
+  async function updateNotificationSoundMessage(next: NotificationSoundId | null) {
+    setNotificationSoundMessageChoice(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ notification_sound_message: next }).eq("id", gameId);
+  }
+
+  async function updateNotificationSoundPhoto(next: NotificationSoundId | null) {
+    setNotificationSoundPhotoChoice(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ notification_sound_photo: next }).eq("id", gameId);
+  }
+
+  async function updateNotificationSoundEnd(next: NotificationSoundId | null) {
+    setNotificationSoundEndChoice(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ notification_sound_end: next }).eq("id", gameId);
   }
 
   async function clearGridZone() {
@@ -1674,6 +1839,7 @@ function TeacherDashboard() {
             checkpoints={mapCheckpoints}
             circuitBoxes={mapCircuitBoxes}
             bananas={mapBananas}
+            gridBonuses={mapGridBonuses}
             mapStyle={game?.map_style}
           />
         </div>
@@ -1784,6 +1950,7 @@ function TeacherDashboard() {
           checkpoints={mapCheckpoints}
           circuitBoxes={mapCircuitBoxes}
           bananas={mapBananas}
+          gridBonuses={mapGridBonuses}
           mapStyle={game?.map_style}
           drawingEnabled={circuitDrawing}
           onFreehandDraw={(path) => {
@@ -1801,11 +1968,13 @@ function TeacherDashboard() {
                     ? placeForbidden
                     : placingMode === "grid_zone"
                       ? placeGridZone
-                      : placingMode === "circuit_box"
-                        ? placeCircuitBox
-                        : placingMode === "circuit_point"
-                          ? placeCheckpoint
-                          : undefined
+                      : placingMode === "grid_bonus"
+                        ? placeGridBonus
+                        : placingMode === "circuit_box"
+                          ? placeCircuitBox
+                          : placingMode === "circuit_point"
+                            ? placeCheckpoint
+                            : undefined
           }
         />
         <div
@@ -1868,13 +2037,15 @@ function TeacherDashboard() {
                   ? "Touchez la carte pour placer le repère bonus"
                   : placingMode === "grid_zone"
                     ? "Touchez la carte pour placer le centre de la zone de jeu"
-                    : placingMode === "circuit_box"
-                      ? "Touchez la carte pour placer une boîte mystère"
-                      : placingMode === "circuit_point"
-                        ? checkpoints.length === 0
-                          ? "Touchez la carte pour placer la ligne de départ/arrivée"
-                          : `Touchez la carte pour placer le checkpoint ${checkpoints.length}`
-                        : "Touchez la carte pour placer la zone interdite"}
+                    : placingMode === "grid_bonus"
+                      ? "Touchez la carte pour placer un bonus explosif"
+                      : placingMode === "circuit_box"
+                        ? "Touchez la carte pour placer une boîte mystère"
+                        : placingMode === "circuit_point"
+                          ? checkpoints.length === 0
+                            ? "Touchez la carte pour placer la ligne de départ/arrivée"
+                            : `Touchez la carte pour placer le checkpoint ${checkpoints.length}`
+                          : "Touchez la carte pour placer la zone interdite"}
           </div>
         )}
       </div>
@@ -2719,8 +2890,8 @@ function TeacherDashboard() {
             <Bell className="h-4 w-4" /> Son des notifications
           </div>
           <p className="text-sm text-muted-foreground">
-            Le son joué (avec vibration) sur votre écran et celui des équipes à chaque alerte —
-            message, effet reçu, fin de partie, etc.
+            Le son général, joué (avec vibration) sur votre écran et celui des équipes à chaque
+            alerte — effet reçu, pénalité, territoire perdu, etc.
           </p>
           {isOwner ? (
             <div className="grid grid-cols-2 gap-2">
@@ -2747,6 +2918,68 @@ function TeacherDashboard() {
               {NOTIFICATION_SOUND_OPTIONS.find((o) => o.id === notificationSound)?.label}
             </p>
           )}
+
+          <div className="flex flex-col gap-2 border-t border-border pt-3">
+            <p className="label-xs">Sons spécifiques (facultatif)</p>
+            {(
+              [
+                {
+                  key: "message" as const,
+                  label: "Message reçu",
+                  value: notificationSoundMessage,
+                  update: updateNotificationSoundMessage,
+                },
+                {
+                  key: "photo" as const,
+                  label: "Demande de photo",
+                  value: notificationSoundPhoto,
+                  update: updateNotificationSoundPhoto,
+                },
+                {
+                  key: "end" as const,
+                  label: "Fin de partie",
+                  value: notificationSoundEnd,
+                  update: updateNotificationSoundEnd,
+                },
+              ] as const
+            ).map((row) => (
+              <div key={row.key} className="flex items-center gap-2">
+                <span className="flex-1 truncate text-sm font-semibold">{row.label}</span>
+                {isOwner ? (
+                  <>
+                    <select
+                      className="field w-auto"
+                      value={row.value ?? ""}
+                      onChange={(e) =>
+                        void row.update((e.target.value || null) as NotificationSoundId | null)
+                      }
+                    >
+                      <option value="">Son général</option>
+                      {NOTIFICATION_SOUND_OPTIONS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      aria-label={`Écouter le son : ${row.label}`}
+                      className="icon-btn"
+                      onClick={() => previewSound(row.value ?? notificationSound)}
+                    >
+                      <Volume2 className="h-4 w-4" />
+                    </button>
+                  </>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    {row.value
+                      ? NOTIFICATION_SOUND_OPTIONS.find((o) => o.id === row.value)?.label
+                      : "Son général"}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
 
         {gameMode === "grille" && (
@@ -2932,6 +3165,222 @@ function TeacherDashboard() {
                       ? "Déplacer la zone"
                       : "Placer sur la carte"}
                 </button>
+              </>
+            )}
+          </section>
+        )}
+
+        {gameMode === "grille" && (
+          <section className="panel flex flex-col gap-3 p-4">
+            <div className="section-title">
+              <Flame className="h-4 w-4" /> Bonus explosifs
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Une équipe qui marche dessus le fait exploser : toutes les cases dans un certain rayon
+              deviennent siennes. Un bonus non ramassé disparaît au bout de son minuteur.
+            </p>
+            <div className="flex flex-col gap-2">
+              <span className="label-xs">Bonus activés</span>
+              <button
+                type="button"
+                aria-pressed={gridBonusEnabled}
+                className={`btn-huge ${gridBonusEnabled ? "btn-huge-accent" : "btn-huge-dark"}`}
+                onClick={() => void updateGridBonusEnabled(!gridBonusEnabled)}
+                disabled={!isOwner}
+              >
+                {gridBonusEnabled ? "Activés" : "Désactivés"}
+              </button>
+            </div>
+            {gridBonusEnabled && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="seg-btn"
+                    data-active={gridBonusSpawnMode === "manual"}
+                    onClick={() => void updateGridBonusSpawnMode("manual")}
+                    disabled={!isOwner}
+                  >
+                    Placement manuel
+                  </button>
+                  <button
+                    type="button"
+                    className="seg-btn"
+                    data-active={gridBonusSpawnMode === "random"}
+                    onClick={() => void updateGridBonusSpawnMode("random")}
+                    disabled={!isOwner}
+                  >
+                    Apparition aléatoire
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Rayon de l'explosion</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le rayon"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridBonusRadius(
+                          Math.max(MIN_GRID_BONUS_RADIUS_M, gridBonusRadius - 3),
+                        )
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{gridBonusRadius} m</span>
+                    <button
+                      aria-label="Augmenter le rayon"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridBonusRadius(
+                          Math.min(MAX_GRID_BONUS_RADIUS_M, gridBonusRadius + 3),
+                        )
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Minuteur avant disparition</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le minuteur"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridBonusLifetime(
+                          Math.max(MIN_GRID_BONUS_LIFETIME_S, gridBonusLifetime - 10),
+                        )
+                      }
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">
+                      {formatClock(gridBonusLifetime)}
+                    </span>
+                    <button
+                      aria-label="Augmenter le minuteur"
+                      className="icon-btn"
+                      onClick={() =>
+                        void updateGridBonusLifetime(
+                          Math.min(MAX_GRID_BONUS_LIFETIME_S, gridBonusLifetime + 10),
+                        )
+                      }
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {gridBonusSpawnMode === "random" ? (
+                  <>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">Fréquence d'apparition</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          aria-label="Réduire la fréquence"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridBonusInterval(
+                              Math.max(MIN_GRID_BONUS_INTERVAL_S, gridBonusInterval - 15),
+                            )
+                          }
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="display w-20 text-center text-lg">
+                          {formatClock(gridBonusInterval)}
+                        </span>
+                        <button
+                          aria-label="Augmenter la fréquence"
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridBonusInterval(
+                              Math.min(MAX_GRID_BONUS_INTERVAL_S, gridBonusInterval + 15),
+                            )
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold">Nombre max. simultané</span>
+                      <div className="flex items-center gap-3">
+                        <button
+                          aria-label="Réduire le nombre max."
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridBonusMaxActive(
+                              Math.max(MIN_GRID_BONUS_MAX_ACTIVE, gridBonusMaxActive - 1),
+                            )
+                          }
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="display w-12 text-center text-lg">
+                          {gridBonusMaxActive}
+                        </span>
+                        <button
+                          aria-label="Augmenter le nombre max."
+                          className="icon-btn"
+                          onClick={() =>
+                            void updateGridBonusMaxActive(
+                              Math.min(MAX_GRID_BONUS_MAX_ACTIVE, gridBonusMaxActive + 1),
+                            )
+                          }
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Un nouveau bonus apparaît à un endroit aléatoire de la zone de jeu tant que la
+                      partie tourne et que ce tableau de bord reste ouvert.
+                    </p>
+                  </>
+                ) : (
+                  gridZone && (
+                    <button
+                      className={`btn-huge ${placingMode === "grid_bonus" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                      onClick={() =>
+                        setPlacingMode((p) => (p === "grid_bonus" ? "none" : "grid_bonus"))
+                      }
+                    >
+                      {placingMode === "grid_bonus" ? "Touchez la carte..." : "Placer un bonus"}
+                    </button>
+                  )
+                )}
+
+                {gridBonuses.filter((b) => isGridBonusActive(b, now)).length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <span className="label-xs">Bonus actifs</span>
+                    {gridBonuses
+                      .filter((b) => isGridBonusActive(b, now))
+                      .map((b) => (
+                        <div
+                          key={b.id}
+                          className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2"
+                        >
+                          <span className="text-sm">
+                            💥 rayon {Math.round(b.radius_m)} m —{" "}
+                            {formatClock(
+                              Math.max(0, (new Date(b.expires_at).getTime() - now) / 1000),
+                            )}
+                          </span>
+                          <button
+                            aria-label="Retirer ce bonus"
+                            className="icon-btn"
+                            onClick={() => void removeGridBonus(b.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </>
             )}
           </section>
