@@ -269,12 +269,6 @@ export type Database = {
           grace_minutes: number
           grace_penalty_mode: string
           grace_penalty_per_second_m2: number
-          grid_bonus_enabled: boolean
-          grid_bonus_interval_s: number
-          grid_bonus_lifetime_s: number
-          grid_bonus_max_active: number
-          grid_bonus_radius_m: number
-          grid_bonus_spawn_mode: string
           grid_cell_size_m: number
           grid_center_lat: number | null
           grid_center_lng: number | null
@@ -290,9 +284,6 @@ export type Database = {
           mode: string
           name: string | null
           notification_sound: string
-          notification_sound_end: string | null
-          notification_sound_message: string | null
-          notification_sound_photo: string | null
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
@@ -331,12 +322,6 @@ export type Database = {
           grace_minutes?: number
           grace_penalty_mode?: string
           grace_penalty_per_second_m2?: number
-          grid_bonus_enabled?: boolean
-          grid_bonus_interval_s?: number
-          grid_bonus_lifetime_s?: number
-          grid_bonus_max_active?: number
-          grid_bonus_radius_m?: number
-          grid_bonus_spawn_mode?: string
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
@@ -352,9 +337,6 @@ export type Database = {
           mode?: string
           name?: string | null
           notification_sound?: string
-          notification_sound_end?: string | null
-          notification_sound_message?: string | null
-          notification_sound_photo?: string | null
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -393,12 +375,6 @@ export type Database = {
           grace_minutes?: number
           grace_penalty_mode?: string
           grace_penalty_per_second_m2?: number
-          grid_bonus_enabled?: boolean
-          grid_bonus_interval_s?: number
-          grid_bonus_lifetime_s?: number
-          grid_bonus_max_active?: number
-          grid_bonus_radius_m?: number
-          grid_bonus_spawn_mode?: string
           grid_cell_size_m?: number
           grid_center_lat?: number | null
           grid_center_lng?: number | null
@@ -414,9 +390,6 @@ export type Database = {
           mode?: string
           name?: string | null
           notification_sound?: string
-          notification_sound_end?: string | null
-          notification_sound_message?: string | null
-          notification_sound_photo?: string | null
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
@@ -434,57 +407,6 @@ export type Database = {
           vehicle_speed_threshold_kmh?: number
         }
         Relationships: []
-      }
-      grid_bonuses: {
-        Row: {
-          claimed_at: string | null
-          claimed_by_team_id: string | null
-          created_at: string
-          expires_at: string
-          game_id: string
-          id: string
-          lat: number
-          lng: number
-          radius_m: number
-        }
-        Insert: {
-          claimed_at?: string | null
-          claimed_by_team_id?: string | null
-          created_at?: string
-          expires_at: string
-          game_id: string
-          id?: string
-          lat: number
-          lng: number
-          radius_m: number
-        }
-        Update: {
-          claimed_at?: string | null
-          claimed_by_team_id?: string | null
-          created_at?: string
-          expires_at?: string
-          game_id?: string
-          id?: string
-          lat?: number
-          lng?: number
-          radius_m?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grid_bonuses_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "grid_bonuses_claimed_by_team_id_fkey"
-            columns: ["claimed_by_team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       grid_cells: {
         Row: {
