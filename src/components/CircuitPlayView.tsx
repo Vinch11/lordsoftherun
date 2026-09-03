@@ -55,6 +55,7 @@ import {
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
+import { getTerminology } from "@/lib/terminology";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -105,6 +106,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
   }, []);
 
   const { game, teams } = useGameState(gameId);
+  const t = getTerminology(game?.terminology);
   const gameRef = useRef(game);
   gameRef.current = game;
   useEffect(
@@ -178,13 +180,13 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
     if (myMessages.length > seenMessageCount.current) {
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
-        toast(`💬 Prof : ${latest.body}`);
-        notifyUrgent("💬 Message du prof", latest.body, "message");
+        toast(t.hostMessageToast(latest.body));
+        notifyUrgent(t.hostMessageNotificationTitle, latest.body, "message");
         if (!chatOpen) setUnread(true);
       }
     }
     seenMessageCount.current = myMessages.length;
-  }, [myMessages, chatOpen]);
+  }, [myMessages, chatOpen, t]);
 
   async function sendChat() {
     if (!chatBody.trim()) return;
@@ -580,7 +582,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
         >
           <div className="flex items-center justify-between">
             <span className="section-title">
-              <MessageCircle className="h-4 w-4" /> Messages avec le prof
+              <MessageCircle className="h-4 w-4" /> {t.chatWithHostTitle}
             </span>
             <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
               <X className="h-5 w-5" />
@@ -599,7 +601,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
                     : "self-end bg-primary/20"
                 }`}
               >
-                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
+                <div className="label-xs">{m.sender === "prof" ? t.hostChatLabel : "Vous"}</div>
                 <div>{m.body}</div>
               </div>
             ))}
@@ -607,7 +609,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
           <div className="flex items-center gap-2">
             <input
               className="field"
-              placeholder="Votre message au prof..."
+              placeholder={t.hostChatPlaceholder}
               value={chatBody}
               onChange={(e) => setChatBody(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void sendChat()}
@@ -642,7 +644,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
 
         {checkpoints.length < 2 && (
           <div className="panel px-4 py-3 text-sm font-semibold text-muted-foreground">
-            En attente que le prof dessine le circuit…
+            {t.waitingForCircuitHelp}
           </div>
         )}
 
@@ -658,6 +660,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
           requestedAt={game?.photo_requested_at}
           photoDeadline={game?.photo_deadline}
           nowMs={now}
+          terminology={game?.terminology}
         />
 
         {finished && (

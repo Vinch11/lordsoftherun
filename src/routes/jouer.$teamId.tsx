@@ -49,6 +49,7 @@ import { SpeedTracker } from "@/lib/speed";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { CircuitPlayView } from "@/components/CircuitPlayView";
+import { getTerminology } from "@/lib/terminology";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -191,6 +192,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   }, []);
 
   const { game, teams, territories } = useGameState(gameId);
+  const t = getTerminology(game?.terminology);
   const gameRef = useRef(game);
   gameRef.current = game;
   useEffect(
@@ -252,8 +254,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (myMessages.length > seenMessageCount.current) {
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
-        toast(`💬 Prof : ${latest.body}`);
-        notifyUrgent("💬 Message du prof", latest.body, "message");
+        toast(t.hostMessageToast(latest.body));
+        notifyUrgent(t.hostMessageNotificationTitle, latest.body, "message");
         if (!chatOpen) setUnread(true);
       } else if (latest?.sender === "system") {
         toast.error(latest.body, { duration: 8000 });
@@ -261,7 +263,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       }
     }
     seenMessageCount.current = myMessages.length;
-  }, [myMessages, chatOpen]);
+  }, [myMessages, chatOpen, t]);
 
   async function sendChat() {
     if (!gameId || !chatBody.trim()) return;
@@ -768,7 +770,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         >
           <div className="flex items-center justify-between">
             <span className="section-title">
-              <MessageCircle className="h-4 w-4" /> Messages avec le prof
+              <MessageCircle className="h-4 w-4" /> {t.chatWithHostTitle}
             </span>
             <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
               <X className="h-5 w-5" />
@@ -787,7 +789,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
                     : "self-end bg-primary/20"
                 }`}
               >
-                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
+                <div className="label-xs">{m.sender === "prof" ? t.hostChatLabel : "Vous"}</div>
                 <div>{m.body}</div>
               </div>
             ))}
@@ -795,7 +797,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           <div className="flex items-center gap-2">
             <input
               className="field"
-              placeholder="Votre message au prof..."
+              placeholder={t.hostChatPlaceholder}
               value={chatBody}
               onChange={(e) => setChatBody(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void sendChat()}
@@ -862,6 +864,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           requestedAt={game?.photo_requested_at}
           photoDeadline={game?.photo_deadline}
           nowMs={now}
+          terminology={game?.terminology}
         />
 
         {returnZone && (!finished || graceStatus?.remainingS != null) && (

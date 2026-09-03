@@ -120,15 +120,22 @@ export const GAME_MODE_LABELS: Record<GameMode, string> = {
   circuit: "Circuit",
 };
 
-export const GAME_MODE_DESCRIPTIONS: Record<GameMode, string> = {
-  territoire: "Les équipes ferment des boucles GPS pour capturer du territoire.",
-  capture_drapeau:
-    "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt.",
-  grille:
-    "La zone de jeu est divisée en cases : chaque case prend la couleur de la dernière équipe qui l'a traversée.",
-  circuit:
-    "Course chronométrée façon Mario Kart : bouclez le circuit dessiné par le prof, ramassez des objets, le temps le plus rapide gagne.",
-};
+/**
+ * `circuitHostPhrase` is a full pre-elided article+noun phrase ("le prof" /
+ * "l'organisateur") from getTerminology().circuitHostPhrase — kept whole
+ * rather than interpolating a bare noun, since "le organisateur" would be
+ * bad French.
+ */
+export function getGameModeDescriptions(circuitHostPhrase: string): Record<GameMode, string> {
+  return {
+    territoire: "Les équipes ferment des boucles GPS pour capturer du territoire.",
+    capture_drapeau:
+      "Chaque équipe défend un drapeau et doit capturer ceux des autres pour les ramener à la zone de dépôt.",
+    grille:
+      "La zone de jeu est divisée en cases : chaque case prend la couleur de la dernière équipe qui l'a traversée.",
+    circuit: `Course chronométrée façon Mario Kart : bouclez le circuit dessiné par ${circuitHostPhrase}, ramassez des objets, le temps le plus rapide gagne.`,
+  };
+}
 
 export type CircuitItemKind = "shield" | "boost" | "banana" | "lightning";
 

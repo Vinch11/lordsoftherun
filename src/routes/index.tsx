@@ -223,7 +223,11 @@ function Home() {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c, owner_id: account.id })
+          .insert({
+            code: c,
+            owner_id: account.id,
+            terminology: profile?.terminology ?? "enseignant",
+          })
           .select()
           .maybeSingle();
         if (!error && data) {
