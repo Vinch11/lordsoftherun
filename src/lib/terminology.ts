@@ -12,6 +12,7 @@ export type TerminologyLabels = {
   ownerOnlyError: string;
   readOnlyNotice: string;
   pendingApproval: string;
+  accessRejected: string;
 
   // Participants (élèves / participants)
   participantNoun: string;
@@ -91,6 +92,7 @@ const LABELS: Record<Terminology, TerminologyLabels> = {
     ownerOnlyError: "Seul l'enseignant propriétaire peut piloter cette partie.",
     readOnlyNotice: "seul l'enseignant qui l'a créée peut la",
     pendingApproval: "Compte enseignant en attente de validation par l'administrateur.",
+    accessRejected: "Accès refusé par l'administrateur. Contactez-le pour plus d'informations.",
 
     participantNoun: "élève",
     participantNounPlural: "élèves",
@@ -172,6 +174,7 @@ const LABELS: Record<Terminology, TerminologyLabels> = {
     ownerOnlyError: "Seul l'organisateur propriétaire peut piloter cette partie.",
     readOnlyNotice: "seul l'organisateur qui l'a créée peut la",
     pendingApproval: "Compte organisateur en attente de validation par l'administrateur.",
+    accessRejected: "Accès refusé par l'administrateur. Contactez-le pour plus d'informations.",
 
     participantNoun: "participant",
     participantNounPlural: "participants",

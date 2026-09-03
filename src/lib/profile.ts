@@ -6,6 +6,7 @@ export type Profile = {
   email: string | null;
   role: "teacher" | "admin";
   approved: boolean;
+  rejected_at: string | null;
   terminology: "enseignant" | "organisateur";
 };
 

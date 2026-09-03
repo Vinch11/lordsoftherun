@@ -702,6 +702,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          rejected_at: string | null
           role: string
           terminology: string
         }
@@ -710,6 +711,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id: string
+          rejected_at?: string | null
           role?: string
           terminology?: string
         }
@@ -718,6 +720,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          rejected_at?: string | null
           role?: string
           terminology?: string
         }

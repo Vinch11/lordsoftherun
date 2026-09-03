@@ -87,12 +87,28 @@ function AdminPage() {
   }, [isAdmin]);
 
   async function setApproved(id: string, approved: boolean) {
-    const { error } = await supabase.from("profiles").update({ approved }).eq("id", id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ approved, rejected_at: null })
+      .eq("id", id);
     if (error) {
       toast.error("Action impossible.");
       return;
     }
     toast.success(approved ? "Compte approuvé." : "Accès révoqué.");
+    void refresh();
+  }
+
+  async function setRejected(id: string, rejected: boolean) {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ approved: false, rejected_at: rejected ? new Date().toISOString() : null })
+      .eq("id", id);
+    if (error) {
+      toast.error("Action impossible.");
+      return;
+    }
+    toast.success(rejected ? "Compte refusé." : "Compte remis en attente.");
     void refresh();
   }
 
@@ -105,8 +121,9 @@ function AdminPage() {
   }
   if (!isAdmin) return null;
 
-  const pending = teachers.filter((t) => t.role === "teacher" && !t.approved);
+  const pending = teachers.filter((t) => t.role === "teacher" && !t.approved && !t.rejected_at);
   const approved = teachers.filter((t) => t.role === "teacher" && t.approved);
+  const rejected = teachers.filter((t) => t.role === "teacher" && !t.approved && t.rejected_at);
   const emailById = new Map(teachers.map((t) => [t.id, t.email]));
   const runningCount = games.filter((g) => g.status === "running").length;
 
@@ -125,7 +142,7 @@ function AdminPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="stat">
             <span className="label-xs">Comptes</span>
-            <span className="stat-value">{approved.length + pending.length}</span>
+            <span className="stat-value">{approved.length + pending.length + rejected.length}</span>
           </div>
           <div className="stat">
             <span className="label-xs">En attente</span>
@@ -154,6 +171,12 @@ function AdminPage() {
             >
               <span className="flex-1 truncate text-sm">{t.email}</span>
               <button
+                className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-destructive"
+                onClick={() => void setRejected(t.id, true)}
+              >
+                Refuser
+              </button>
+              <button
                 className="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
                 onClick={() => void setApproved(t.id, true)}
               >
@@ -179,6 +202,27 @@ function AdminPage() {
                 onClick={() => void setApproved(t.id, false)}
               >
                 Révoquer
+              </button>
+            </div>
+          ))}
+        </section>
+
+        <section className="panel flex flex-col gap-1 p-4">
+          <div className="section-title mb-2">Comptes refusés ({rejected.length})</div>
+          {rejected.length === 0 && (
+            <p className="py-2 text-center text-muted-foreground">Aucun pour l'instant.</p>
+          )}
+          {rejected.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center justify-between gap-3 border-b border-border py-3 last:border-0"
+            >
+              <span className="flex-1 truncate text-sm">{t.email}</span>
+              <button
+                className="rounded-xl bg-muted px-3 py-2 text-sm font-semibold text-muted-foreground"
+                onClick={() => void setRejected(t.id, false)}
+              >
+                Remettre en attente
               </button>
             </div>
           ))}
