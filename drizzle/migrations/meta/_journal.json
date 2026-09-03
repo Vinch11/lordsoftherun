@@ -421,13 +421,6 @@
       "when": 1788500000000,
       "tag": "0059_game_terminology",
       "breakpoints": true
-    },
-    {
-      "idx": 60,
-      "version": "7",
-      "when": 1788469473655,
-      "tag": "0060_game_terminology",
-      "breakpoints": true
     }
   ]
 }
