@@ -471,17 +471,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "grid_bonuses_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "grid_bonuses_claimed_by_team_id_fkey"
             columns: ["claimed_by_team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "grid_bonuses_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
             referencedColumns: ["id"]
           },
         ]
