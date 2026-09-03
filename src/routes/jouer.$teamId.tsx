@@ -29,6 +29,7 @@ import {
   kmhToMs,
   studentStorageKey,
   withTimeout,
+  studentThemeClass,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
@@ -299,7 +300,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (elapsedS > 0) {
       void supabase.rpc("add_distance", {
         _team_id: teamId,
-        _student_id: myStudentIdRef.current,
+        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
         _delta_active_s: elapsedS,
       });
     }
@@ -437,7 +438,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           void supabase
             .rpc("add_distance", {
               _team_id: teamId,
-              _student_id: myStudentIdRef.current,
+              ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
               _delta_m: delta,
             })
             .then(({ error }) => {
@@ -663,7 +664,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (elapsedS > 0) {
       void supabase.rpc("add_distance", {
         _team_id: teamId,
-        _student_id: myStudentIdRef.current,
+        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
         _delta_active_s: elapsedS,
       });
     }
@@ -680,7 +681,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   }
 
   return (
-    <main className="relative h-[100dvh] w-full overflow-hidden">
+    <main
+      className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
+    >
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}

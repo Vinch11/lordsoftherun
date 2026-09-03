@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.add_distance(uuid, uuid, double precision, double precision);

@@ -36,6 +36,60 @@ export const DEFAULT_LOOP_CLOSE_MODE: LoopCloseMode = "auto";
 export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
+/** Visual skin of the student screens, picked by the teacher per game. */
+export type StudentTheme = "classic" | "dossard" | "apple" | "athletic";
+export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
+
+export const STUDENT_THEMES: {
+  id: StudentTheme;
+  label: string;
+  description: string;
+  swatches: [string, string, string];
+}[] = [
+  {
+    id: "classic",
+    label: "Classique (par défaut)",
+    description:
+      "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
+    swatches: ["#ffffff", "#0f3460", "#39ff88"],
+  },
+  {
+    id: "dossard",
+    label: "Dossard de course",
+    description:
+      "Haute visibilité : aplats clairs, contours noirs épais, vert fluo. Le plus lisible en plein soleil.",
+    swatches: ["#f5f7f5", "#1f2933", "#39ff88"],
+  },
+  {
+    id: "apple",
+    label: "Apple Premium",
+    description:
+      "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
+    swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
+  },
+  {
+    id: "athletic",
+    label: "Apple Pro Athletics",
+    description:
+      "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium.",
+    swatches: ["#fafafa", "#2563eb", "#111827"],
+  },
+];
+
+/** CSS classes to put on the student screen root for a given theme. */
+export function studentThemeClass(theme: string | null | undefined): string {
+  switch (theme) {
+    case "apple":
+      return "bib skin-apple";
+    case "athletic":
+      return "bib skin-athletic";
+    case "dossard":
+      return "bib";
+    default:
+      return "";
+  }
+}
+
 /** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
 export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;
 /** A loop closed at or above this average speed (~8 km/h, a brisk jog) counts as "run". */

@@ -847,3 +847,459 @@
     opacity: 0.25;
   }
 }
+
+/* ============================================================
+   Direction « Dossard de course » — écrans élèves uniquement.
+   Palette haute visibilité sport (fond clair, encre noire,
+   vert fluo, bleu marine), typo Bebas Neue + Barlow,
+   disposition carte plein écran + HUD flottant type dossard.
+   ============================================================ */
+.bib {
+  --background: oklch(0.97 0.005 150);
+  --foreground: oklch(0.24 0.02 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.02 250);
+  --primary: oklch(0.32 0.09 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.93 0.008 150);
+  --secondary-foreground: oklch(0.24 0.02 250);
+  --muted: oklch(0.93 0.008 150);
+  --muted-foreground: oklch(0.45 0.02 250);
+  --accent: oklch(0.87 0.24 155);
+  --accent-foreground: oklch(0.2 0.05 160);
+  --destructive: oklch(0.55 0.24 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.7 0.2 150);
+  --success-foreground: oklch(0.16 0.04 150);
+  --border: oklch(0.24 0.02 250 / 100%);
+  --input: oklch(0.24 0.02 250 / 100%);
+  --ring: oklch(0.32 0.09 258);
+  --font-display: "Bebas Neue", "Barlow", system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  background-color: var(--background);
+  background-image: none;
+  color: var(--foreground);
+  font-family: "Barlow", system-ui, sans-serif;
+}
+
+.bib h1,
+.bib h2,
+.bib h3,
+.bib .display,
+.bib .page-title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-shadow: none;
+  color: var(--foreground);
+}
+
+/* Pastilles HUD : opaques, contour noir épais — lisibles en plein soleil. */
+.bib .hud-badge,
+.bib .nav-back {
+  background-color: oklch(1 0 0);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1rem;
+  box-shadow: 0 3px 0 0 var(--foreground);
+  color: var(--foreground);
+}
+
+.bib .panel,
+.bib .sheet {
+  background-color: oklch(1 0 0);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 0 0 var(--foreground);
+  color: var(--foreground);
+}
+
+/* Boutons dossard : aplat saturé, contour noir, ombre portée nette. */
+.bib .btn-huge {
+  background-image: none;
+  border: 3px solid var(--foreground);
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 0 0 var(--foreground);
+  font-size: 1.6rem;
+  letter-spacing: 0.04em;
+  padding: 1rem 1.25rem;
+}
+
+.bib .btn-huge:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 0 var(--foreground);
+}
+
+.bib .btn-huge-accent {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  animation: none;
+  box-shadow: 0 4px 0 0 var(--foreground);
+}
+
+.bib .btn-huge-dark {
+  background-color: var(--foreground);
+  color: oklch(0.99 0 0);
+}
+
+.bib .field {
+  background-color: oklch(1 0 0);
+  border: 3px solid var(--foreground);
+  border-radius: 1rem;
+  color: var(--foreground);
+}
+
+.bib .field:focus {
+  border-color: var(--accent-foreground);
+  box-shadow: 0 0 0 4px var(--accent);
+}
+
+.bib .pill {
+  background-color: var(--accent);
+  border: 3px solid var(--foreground);
+  color: var(--foreground);
+}
+
+.bib .pill,
+.bib .section-title,
+.bib .label-xs {
+  color: var(--foreground);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bib .text-muted-foreground {
+  color: var(--muted-foreground);
+}
+
+/* Bandeau de scores : chips dossard numérotés. */
+.bib .score-chip {
+  background-color: oklch(1 0 0);
+  border: 3px solid var(--foreground);
+  box-shadow: 0 3px 0 0 var(--foreground);
+}
+
+.bib .score-chip-leader {
+  background-color: var(--accent);
+}
+
+.bib .score-chip-me {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   Skins alternatifs de l'écran élève (choisis par le prof).
+   Ils se posent par-dessus la base .bib.
+   ============================================================ */
+
+/* --- HUD Esport : panneaux sombres, accents cyan/rose, typo massive. --- */
+.bib.skin-esport {
+  --background: oklch(0.22 0.01 260);
+  --foreground: oklch(0.97 0.005 250);
+  --card: oklch(0.26 0.015 260);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.26 0.015 260);
+  --popover-foreground: oklch(0.97 0.005 250);
+  --primary: oklch(0.75 0.16 200);
+  --primary-foreground: oklch(0.18 0.02 260);
+  --secondary: oklch(0.3 0.015 260);
+  --secondary-foreground: oklch(0.97 0.005 250);
+  --muted: oklch(0.3 0.015 260);
+  --muted-foreground: oklch(0.78 0.01 260);
+  --accent: oklch(0.78 0.17 195);
+  --accent-foreground: oklch(0.18 0.03 250);
+  --border: oklch(0.45 0.02 260 / 100%);
+  --input: oklch(0.45 0.02 260 / 100%);
+  --ring: oklch(0.78 0.17 195);
+  --font-display: "Archivo Black", "Space Grotesk", system-ui, sans-serif;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+}
+
+.bib.skin-esport h1,
+.bib.skin-esport h2,
+.bib.skin-esport h3,
+.bib.skin-esport .display,
+.bib.skin-esport .page-title {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+.bib.skin-esport .hud-badge,
+.bib.skin-esport .nav-back,
+.bib.skin-esport .panel,
+.bib.skin-esport .sheet,
+.bib.skin-esport .score-chip,
+.bib.skin-esport .field {
+  background-color: oklch(0.24 0.015 260 / 94%);
+  border: 2px solid oklch(0.55 0.02 260);
+  border-radius: 0.85rem;
+  box-shadow: 0 10px 24px -12px oklch(0 0 0 / 80%);
+  color: var(--foreground);
+}
+
+.bib.skin-esport .score-chip-leader {
+  background-color: oklch(0.35 0.09 200 / 96%);
+  border-color: var(--accent);
+}
+
+.bib.skin-esport .score-chip-me {
+  outline: 2px solid var(--accent);
+}
+
+.bib.skin-esport .btn-huge {
+  border: 2px solid oklch(0.6 0.02 260);
+  border-radius: 1rem;
+  box-shadow: 0 12px 28px -12px oklch(0 0 0 / 85%);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.bib.skin-esport .btn-huge-accent {
+  background-color: var(--accent);
+  background-image: linear-gradient(180deg, oklch(0.86 0.15 195), oklch(0.7 0.16 205));
+  border-color: oklch(0.9 0.12 195);
+  color: oklch(0.18 0.03 250);
+}
+
+.bib.skin-esport .btn-huge-dark {
+  background-color: oklch(0.18 0.015 260);
+  color: var(--foreground);
+}
+
+.bib.skin-esport .pill {
+  background-color: oklch(0.32 0.08 200);
+  border: 2px solid var(--accent);
+  color: var(--foreground);
+}
+
+/* --- Apple Premium : verre dépoli clair, bouton principal noir. --- */
+.bib.skin-apple {
+  --background: oklch(0.96 0.003 250);
+  --foreground: oklch(0.2 0.01 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.01 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.01 260);
+  --primary: oklch(0.22 0.01 260);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.93 0.004 250);
+  --secondary-foreground: oklch(0.2 0.01 260);
+  --muted: oklch(0.93 0.004 250);
+  --muted-foreground: oklch(0.48 0.01 260);
+  --accent: oklch(0.22 0.01 260);
+  --accent-foreground: oklch(0.99 0 0);
+  --border: oklch(0.85 0.005 250 / 100%);
+  --input: oklch(0.85 0.005 250 / 100%);
+  --ring: oklch(0.22 0.01 260);
+  --font-display: "Inter", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.bib.skin-apple h1,
+.bib.skin-apple h2,
+.bib.skin-apple h3,
+.bib.skin-apple .display,
+.bib.skin-apple .page-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-transform: none;
+}
+
+.bib.skin-apple .hud-badge,
+.bib.skin-apple .nav-back,
+.bib.skin-apple .panel,
+.bib.skin-apple .sheet,
+.bib.skin-apple .score-chip {
+  background-color: oklch(1 0 0 / 88%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 60%);
+  border-radius: 1.25rem;
+  box-shadow: 0 12px 30px -16px oklch(0.2 0.01 260 / 55%);
+  color: var(--foreground);
+}
+
+.bib.skin-apple .score-chip-leader {
+  background-color: oklch(0.97 0.02 150 / 92%);
+}
+
+.bib.skin-apple .score-chip-me {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+.bib.skin-apple .field {
+  background-color: oklch(1 0 0);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+}
+
+.bib.skin-apple .btn-huge {
+  border: none;
+  border-radius: 2rem;
+  box-shadow: 0 18px 34px -18px oklch(0.2 0.01 260 / 70%);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: none;
+}
+
+.bib.skin-apple .btn-huge:active {
+  transform: scale(0.98);
+  box-shadow: 0 10px 22px -16px oklch(0.2 0.01 260 / 70%);
+}
+
+.bib.skin-apple .btn-huge-accent,
+.bib.skin-apple .btn-huge-dark {
+  background-color: oklch(0.2 0.01 260);
+  background-image: linear-gradient(180deg, oklch(0.3 0.01 260), oklch(0.17 0.01 260));
+  color: oklch(0.99 0 0);
+}
+
+.bib.skin-apple .pill {
+  background-color: oklch(0.93 0.004 250);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+}
+
+/* --- Apple Pro Athletics : blanc net, bleu sportif, ombres douces. --- */
+.bib.skin-athletic {
+  --background: oklch(0.98 0.002 250);
+  --foreground: oklch(0.22 0.02 260);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.02 260);
+  --primary: oklch(0.55 0.2 260);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.01 250);
+  --secondary-foreground: oklch(0.22 0.02 260);
+  --muted: oklch(0.95 0.01 250);
+  --muted-foreground: oklch(0.5 0.02 260);
+  --accent: oklch(0.55 0.2 260);
+  --accent-foreground: oklch(0.99 0 0);
+  --border: oklch(0.87 0.01 250 / 100%);
+  --input: oklch(0.87 0.01 250 / 100%);
+  --ring: oklch(0.55 0.2 260);
+  --font-display: "Inter", system-ui, sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+.bib.skin-athletic h1,
+.bib.skin-athletic h2,
+.bib.skin-athletic h3,
+.bib.skin-athletic .display,
+.bib.skin-athletic .page-title {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.bib.skin-athletic .hud-badge,
+.bib.skin-athletic .nav-back,
+.bib.skin-athletic .panel,
+.bib.skin-athletic .sheet,
+.bib.skin-athletic .score-chip {
+  background-color: oklch(1 0 0 / 94%);
+  backdrop-filter: blur(14px);
+  border: 2px solid oklch(0.9 0.01 250);
+  border-radius: 1.25rem;
+  box-shadow: 0 14px 30px -18px oklch(0.3 0.05 260 / 60%);
+  color: var(--foreground);
+}
+
+.bib.skin-athletic .score-chip-leader {
+  border-color: var(--primary);
+}
+
+.bib.skin-athletic .score-chip-me {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.bib.skin-athletic .field {
+  background-color: oklch(1 0 0);
+  border: 2px solid var(--border);
+  border-radius: 1rem;
+}
+
+.bib.skin-athletic .btn-huge {
+  border: none;
+  border-radius: 2rem;
+  box-shadow: 0 20px 40px -14px oklch(0.55 0.2 260 / 45%);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.bib.skin-athletic .btn-huge:active {
+  transform: scale(0.97);
+}
+
+.bib.skin-athletic .btn-huge-accent {
+  background-color: var(--primary);
+  background-image: linear-gradient(180deg, oklch(0.62 0.2 260), oklch(0.5 0.2 262));
+  color: oklch(0.99 0 0);
+}
+
+.bib.skin-athletic .btn-huge-dark {
+  background-color: oklch(0.22 0.02 260);
+  color: oklch(0.99 0 0);
+}
+
+.bib.skin-athletic .pill {
+  background-color: oklch(0.94 0.04 260);
+  border: 2px solid oklch(0.85 0.06 260);
+  color: oklch(0.4 0.16 262);
+}
+
+.collapse-toggle {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--color-foreground) 18%, transparent);
+  background: color-mix(in oklab, var(--color-background) 70%, transparent);
+  color: var(--color-foreground);
+  z-index: 2;
+}
+
+section[data-collapsed="true"] > *:not(.section-title):not(.section-head):not(.collapse-toggle) {
+  display: none !important;
+}
+
+section[data-collapsed="true"] {
+  padding-bottom: 0.75rem;
+}

@@ -71,6 +71,7 @@ export type Game = {
   async_mode: boolean;
   loop_close_mode: LoopCloseMode;
   student_id_mode: StudentIdMode;
+  student_theme: string;
 };
 
 export type Team = {

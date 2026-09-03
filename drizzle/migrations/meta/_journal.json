@@ -355,15 +355,64 @@
     {
       "idx": 50,
       "version": "7",
-      "when": 1788270000000,
-      "tag": "0050_notification_sound_categories",
+      "when": 1788378575871,
+      "tag": "0050_student_modes_and_distance",
       "breakpoints": true
     },
     {
       "idx": 51,
       "version": "7",
-      "when": 1788275000000,
-      "tag": "0051_grid_bonus",
+      "when": 1788378592857,
+      "tag": "0051_drop_duplicate_add_distance_overload",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1788378656468,
+      "tag": "0052_drop_duplicate_add_distance_overload",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1788380583979,
+      "tag": "0053_student_theme",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1788382096374,
+      "tag": "0054_student_theme_values",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1788382643269,
+      "tag": "0055_student_theme_classic_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1788384695165,
+      "tag": "0056_remove_esport_theme",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1788390000000,
+      "tag": "0057_notification_sound_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1788395000000,
+      "tag": "0058_grid_bonus",
       "breakpoints": true
     }
   ]

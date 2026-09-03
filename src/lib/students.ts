@@ -253,8 +253,8 @@ export async function joinTeamMember(
 ): Promise<string | null> {
   const { data, error } = await supabase.rpc("join_team_member", {
     _team_id: teamId,
-    _student_id: studentId,
-    _student_name: studentName ?? null,
+    ...(studentId ? { _student_id: studentId } : {}),
+    ...(studentName ? { _student_name: studentName } : {}),
   });
   if (error) throw error;
   return data ?? null;
