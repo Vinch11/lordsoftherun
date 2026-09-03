@@ -50,6 +50,32 @@ export type TerminologyLabels = {
   rosterWizardGroupButtonLabel: string;
   rosterWizardGroupsDetectedHelp: (groupCount: number, unassignedCount: number) => string;
   rosterWizardUnassignedHelp: (n: number) => string;
+
+  // Join flow (rejoindre.$code.tsx)
+  joinCodeHelp: string;
+  emptyTeamRosterHelp: string;
+  yourGroupOrTeamLabel: string;
+  noTeamsYetHelp: string;
+
+  // Chat with the host, shown on every participant screen
+  chatWithHostTitle: string;
+  hostChatLabel: string;
+  hostChatPlaceholder: string;
+  hostMessageToast: (body: string) => string;
+  hostMessageNotificationTitle: string;
+
+  // Photo check-in
+  photoRequestedToast: string;
+  photoSentToast: string;
+  photoSentLabel: string;
+  photoRequestedCardText: string;
+
+  // Waiting-for-setup messages
+  waitingForGridZoneHelp: string;
+  waitingForCircuitHelp: string;
+
+  /** Pre-elided article+noun ("le prof" / "l'organisateur") for mid-sentence use. */
+  circuitHostPhrase: string;
 };
 
 const LABELS: Record<Terminology, TerminologyLabels> = {
@@ -111,6 +137,28 @@ const LABELS: Record<Terminology, TerminologyLabels> = {
         ? ` ${unassignedCount} élève${unassignedCount > 1 ? "s" : ""} sans classe à placer à la main ci-dessous.`
         : ""),
     rosterWizardUnassignedHelp: (n) => `Élèves à placer (${n}) — touchez un nom puis une équipe.`,
+
+    joinCodeHelp: "Entrez le code, puis retrouvez votre classe.",
+    emptyTeamRosterHelp:
+      "Aucun élève dans cette équipe pour l'instant — demande à ton prof de t'ajouter.",
+    yourGroupOrTeamLabel: "Ta classe / équipe",
+    noTeamsYetHelp:
+      "Aucune équipe pour ce code pour l'instant — demandez à votre prof de créer les équipes.",
+
+    chatWithHostTitle: "Messages avec le prof",
+    hostChatLabel: "Prof",
+    hostChatPlaceholder: "Votre message au prof...",
+    hostMessageToast: (body) => `💬 Prof : ${body}`,
+    hostMessageNotificationTitle: "💬 Message du prof",
+
+    photoRequestedToast: "📸 Le prof demande une photo !",
+    photoSentToast: "Photo envoyée au prof !",
+    photoSentLabel: "Photo envoyée au prof ✅",
+    photoRequestedCardText: "Le prof demande une photo de votre groupe",
+
+    waitingForGridZoneHelp: "En attente que le prof définisse la zone de jeu…",
+    waitingForCircuitHelp: "En attente que le prof dessine le circuit…",
+    circuitHostPhrase: "le prof",
   },
   organisateur: {
     term: "organisateur",
@@ -171,6 +219,28 @@ const LABELS: Record<Terminology, TerminologyLabels> = {
         : ""),
     rosterWizardUnassignedHelp: (n) =>
       `Participant${n > 1 ? "s" : ""} à placer (${n}) — touchez un nom puis une équipe.`,
+
+    joinCodeHelp: "Entrez le code, puis retrouvez votre groupe.",
+    emptyTeamRosterHelp:
+      "Aucun participant dans cette équipe pour l'instant — demande à ton organisateur de t'ajouter.",
+    yourGroupOrTeamLabel: "Ton groupe / équipe",
+    noTeamsYetHelp:
+      "Aucune équipe pour ce code pour l'instant — demandez à votre organisateur de créer les équipes.",
+
+    chatWithHostTitle: "Messages avec l'organisateur",
+    hostChatLabel: "Organisateur",
+    hostChatPlaceholder: "Votre message à l'organisateur...",
+    hostMessageToast: (body) => `💬 Organisateur : ${body}`,
+    hostMessageNotificationTitle: "💬 Message de l'organisateur",
+
+    photoRequestedToast: "📸 L'organisateur demande une photo !",
+    photoSentToast: "Photo envoyée à l'organisateur !",
+    photoSentLabel: "Photo envoyée à l'organisateur ✅",
+    photoRequestedCardText: "L'organisateur demande une photo de votre groupe",
+
+    waitingForGridZoneHelp: "En attente que l'organisateur définisse la zone de jeu…",
+    waitingForCircuitHelp: "En attente que l'organisateur dessine le circuit…",
+    circuitHostPhrase: "l'organisateur",
   },
 };
 

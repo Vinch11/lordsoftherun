@@ -36,6 +36,7 @@ import { applyCapture, deliverFlag, tryPickupFlag, useFlags } from "@/lib/flags"
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
+import { getTerminology } from "@/lib/terminology";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { useMotionHint } from "@/hooks/useMotionHint";
 
@@ -73,6 +74,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
   }, []);
 
   const { game, teams } = useGameState(gameId);
+  const t = getTerminology(game?.terminology);
   const gameRef = useRef(game);
   gameRef.current = game;
   useEffect(
@@ -146,13 +148,13 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
     if (myMessages.length > seenMessageCount.current) {
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
-        toast(`💬 Prof : ${latest.body}`);
-        notifyUrgent("💬 Message du prof", latest.body, "message");
+        toast(t.hostMessageToast(latest.body));
+        notifyUrgent(t.hostMessageNotificationTitle, latest.body, "message");
         if (!chatOpen) setUnread(true);
       }
     }
     seenMessageCount.current = myMessages.length;
-  }, [myMessages, chatOpen]);
+  }, [myMessages, chatOpen, t]);
 
   async function sendChat() {
     if (!chatBody.trim()) return;
@@ -575,7 +577,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
         >
           <div className="flex items-center justify-between">
             <span className="section-title">
-              <MessageCircle className="h-4 w-4" /> Messages avec le prof
+              <MessageCircle className="h-4 w-4" /> {t.chatWithHostTitle}
             </span>
             <button className="icon-btn" aria-label="Fermer" onClick={() => setChatOpen(false)}>
               <X className="h-5 w-5" />
@@ -594,7 +596,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
                     : "self-end bg-primary/20"
                 }`}
               >
-                <div className="label-xs">{m.sender === "prof" ? "Prof" : "Vous"}</div>
+                <div className="label-xs">{m.sender === "prof" ? t.hostChatLabel : "Vous"}</div>
                 <div>{m.body}</div>
               </div>
             ))}
@@ -602,7 +604,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           <div className="flex items-center gap-2">
             <input
               className="field"
-              placeholder="Votre message au prof..."
+              placeholder={t.hostChatPlaceholder}
               value={chatBody}
               onChange={(e) => setChatBody(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && void sendChat()}
@@ -660,6 +662,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           requestedAt={game?.photo_requested_at}
           photoDeadline={game?.photo_deadline}
           nowMs={now}
+          terminology={game?.terminology}
         />
 
         {finished && game?.grace_ends_at && graceStatus?.remainingS != null && (

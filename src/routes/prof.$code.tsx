@@ -153,7 +153,7 @@ import {
   type StudentTheme,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
-  GAME_MODE_DESCRIPTIONS,
+  getGameModeDescriptions,
   GAME_MODE_LABELS,
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
   LANDMARK_ICONS,
@@ -1808,7 +1808,7 @@ function TeacherDashboard() {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c, owner_id: user.id })
+          .insert({ code: c, owner_id: user.id, terminology: profile?.terminology ?? "enseignant" })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -2204,7 +2204,9 @@ function TeacherDashboard() {
               {game?.status !== "lobby" && isOwner && " (verrouillé après le lancement)"}
             </p>
           )}
-          <p className="text-xs text-muted-foreground">{GAME_MODE_DESCRIPTIONS[gameMode]}</p>
+          <p className="text-xs text-muted-foreground">
+            {getGameModeDescriptions(t.circuitHostPhrase)[gameMode]}
+          </p>
         </section>
 
         {isOwner && game?.status === "lobby" && (
@@ -2717,7 +2719,7 @@ function TeacherDashboard() {
             <div className="h-[75vh] w-full max-w-[380px] overflow-hidden rounded-3xl border-4 border-foreground/20 shadow-xl">
               <iframe
                 title={t.participantPreviewIframeTitle}
-                src={`/apercu-theme/${themePreview}`}
+                src={`/apercu-theme/${themePreview}?term=${t.term}`}
                 className="h-full w-full"
               />
             </div>

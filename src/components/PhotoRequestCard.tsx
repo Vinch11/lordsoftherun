@@ -4,6 +4,7 @@ import { Camera } from "lucide-react";
 import { formatClock } from "@/lib/conquete";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { notifyUrgent } from "@/lib/notify";
+import { getTerminology, type Terminology } from "@/lib/terminology";
 
 type Props = {
   gameId: string;
@@ -13,13 +14,22 @@ type Props = {
   photoDeadline: string | null | undefined;
   /** Ticking clock from the parent view, so the countdown stays in sync. */
   nowMs: number;
+  terminology: Terminology | null | undefined;
 };
 
 /**
  * The teacher's photo check-in, shown identically in every game mode.
  * Lives in one component so a new mode can never silently lose the feature.
  */
-export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, nowMs }: Props) {
+export function PhotoRequestCard({
+  gameId,
+  teamId,
+  requestedAt,
+  photoDeadline,
+  nowMs,
+  terminology,
+}: Props) {
+  const t = getTerminology(terminology);
   const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -45,9 +55,9 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
     const first = alertedRef.current === null;
     alertedRef.current = requestedAt;
     if (first && localStorage.getItem(`conquete:photo:${teamId}:${requestedAt}`)) return;
-    toast("📸 Le prof demande une photo !", { duration: 10000 });
+    toast(t.photoRequestedToast, { duration: 10000 });
     notifyUrgent("📸 Photo demandée !", "Prenez une photo de votre groupe maintenant.", "photo");
-  }, [requestedAt, teamId]);
+  }, [requestedAt, teamId, t]);
 
   async function sendPhoto(file: File) {
     if (!storageKey) return;
@@ -59,7 +69,7 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
       const at = new Date().toISOString();
       localStorage.setItem(storageKey, at);
       setSentAt(at);
-      toast.success("Photo envoyée au prof !");
+      toast.success(t.photoSentToast);
     } catch (e) {
       setFailed(true);
       toast.error(`Échec de l'envoi : ${e instanceof Error ? e.message : "réessayez"}`);
@@ -76,7 +86,7 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
     return (
       <div className="panel flex items-center gap-2 px-4 py-3">
         <Camera className="h-4 w-4 shrink-0 text-accent" />
-        <span className="text-sm font-semibold">Photo envoyée au prof ✅</span>
+        <span className="text-sm font-semibold">{t.photoSentLabel}</span>
       </div>
     );
   }
@@ -87,7 +97,7 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
         <Camera className="h-4 w-4" /> Photo demandée
       </div>
       <div className="text-sm font-semibold">
-        Le prof demande une photo de votre groupe
+        {t.photoRequestedCardText}
         {remaining !== null && remaining > 0
           ? ` — il reste ${formatClock(remaining)}`
           : " — délai dépassé, envoyez-la quand même"}

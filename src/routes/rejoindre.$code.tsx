@@ -15,6 +15,7 @@ import {
   DEFAULT_STUDENT_THEME,
 } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
+import { getTerminology, type Terminology } from "@/lib/terminology";
 
 export const Route = createFileRoute("/rejoindre/$code")({
   head: () => ({
@@ -95,6 +96,8 @@ function Join() {
   // team pre-formed by the teacher (CSV roster split) or their own team
   // from earlier, after a dead phone forced them onto a different device.
   const [studentTheme, setStudentTheme] = useState<string>(DEFAULT_STUDENT_THEME);
+  const [terminology, setTerminology] = useState<Terminology>("enseignant");
+  const t = getTerminology(terminology);
 
   useEffect(() => {
     let active = true;
@@ -104,7 +107,7 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id, async_mode, student_id_mode, student_theme")
+      .select("id, async_mode, student_id_mode, student_theme, terminology")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
@@ -125,6 +128,7 @@ function Join() {
           setAsyncMode(game.async_mode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
           setStudentTheme(game.student_theme);
+          setTerminology(game.terminology as Terminology);
         }
       });
     return () => {
@@ -298,7 +302,7 @@ function Join() {
         <div className="mx-auto flex max-w-md flex-col gap-6">
           <header className="pt-4">
             <div className="pill">
-              <Users className="h-3.5 w-3.5" /> Groupe d'élèves
+              <Users className="h-3.5 w-3.5" /> {t.joinPanelTitle}
             </div>
             <h1 className="page-title mt-4">
               Re<em>joindre</em>
@@ -308,7 +312,7 @@ function Join() {
                 ? `Qui es-tu dans ${namePickTeam.name} ?`
                 : nameEntryTeam
                   ? `Qui es-tu dans ${nameEntryTeam.name} ?`
-                  : "Entrez le code, puis retrouvez votre classe."}
+                  : t.joinCodeHelp}
             </p>
           </header>
 
@@ -340,9 +344,7 @@ function Join() {
                 {rosterLoading ? (
                   <p className="text-sm text-muted-foreground">Chargement…</p>
                 ) : roster.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Aucun élève dans cette équipe pour l'instant — demande à ton prof de t'ajouter.
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t.emptyTeamRosterHelp}</p>
                 ) : (
                   roster.map((s) => (
                     <button
@@ -390,16 +392,13 @@ function Join() {
             </>
           ) : (
             <section className="panel flex flex-col gap-2 p-5">
-              <span className="section-title">Ta classe / équipe</span>
+              <span className="section-title">{t.yourGroupOrTeamLabel}</span>
               {code.length !== 4 ? (
                 <p className="text-sm text-muted-foreground">
                   Entrez le code à 4 chiffres ci-dessus.
                 </p>
               ) : existingTeams.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Aucune équipe pour ce code pour l'instant — demandez à votre prof de créer les
-                  équipes.
-                </p>
+                <p className="text-sm text-muted-foreground">{t.noTeamsYetHelp}</p>
               ) : (
                 existingTeams.map((t) => (
                   <button
@@ -431,7 +430,7 @@ function Join() {
       <div className="mx-auto flex max-w-md flex-col gap-6">
         <header className="pt-4">
           <div className="pill">
-            <Users className="h-3.5 w-3.5" /> Groupe d'élèves
+            <Users className="h-3.5 w-3.5" /> {t.joinPanelTitle}
           </div>
           <h1 className="page-title mt-4">
             Re<em>joindre</em>

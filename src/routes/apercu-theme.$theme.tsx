@@ -3,8 +3,12 @@ import { Crosshair, Flag, HelpCircle, MessageCircle } from "lucide-react";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { formatArea, formatCountdown, studentThemeClass } from "@/lib/conquete";
+import { getTerminology, type Terminology } from "@/lib/terminology";
 
 export const Route = createFileRoute("/apercu-theme/$theme")({
+  validateSearch: (search: Record<string, unknown>): { term: Terminology } => ({
+    term: search["term"] === "organisateur" ? "organisateur" : "enseignant",
+  }),
   head: () => ({
     meta: [
       { title: "Aperçu du thème élève — Conquête" },
@@ -42,12 +46,14 @@ const DEMO_TRAIL: [number, number][] = [
 
 function ThemePreviewScreen() {
   const { theme } = Route.useParams();
+  const { term } = Route.useSearch();
+  const t = getTerminology(term);
   const me = DEMO_TEAMS[0]!;
 
   return (
     <main
       className={`${studentThemeClass(theme)} relative h-[100dvh] w-full overflow-hidden`}
-      aria-label="Aperçu de l'écran élève"
+      aria-label={`Aperçu de l'écran ${t.participantNoun}`}
     >
       <div className="absolute inset-0">
         <MapCanvas
@@ -131,7 +137,7 @@ function ThemePreviewScreen() {
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         <div className="panel px-4 py-2 text-sm font-semibold">
-          Prof : regroupement à la zone Nord dans 5 minutes !
+          {t.hostChatLabel} : regroupement à la zone Nord dans 5 minutes !
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="stat">

@@ -10,6 +10,7 @@ import type {
   StudentIdMode,
 } from "@/lib/conquete";
 import type { NotificationSoundId } from "@/lib/notify";
+import type { Terminology } from "@/lib/terminology";
 
 export type Game = {
   id: string;
@@ -72,6 +73,7 @@ export type Game = {
   loop_close_mode: LoopCloseMode;
   student_id_mode: StudentIdMode;
   student_theme: string;
+  terminology: Terminology;
 };
 
 export type Team = {
