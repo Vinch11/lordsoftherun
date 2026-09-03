@@ -432,8 +432,8 @@
     {
       "idx": 61,
       "version": "7",
-      "when": 1788472173175,
-      "tag": "0061_skip_anonymous_profiles",
+      "when": 1788700000000,
+      "tag": "0061_profile_rejection",
       "breakpoints": true
     }
   ]

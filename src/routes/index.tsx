@@ -392,7 +392,9 @@ function Home() {
                   <ShieldCheck className="h-4 w-4" /> Administration
                 </Link>
               )}
-              {profile && !profile.approved && profile.role !== "admin" ? (
+              {profile && profile.rejected_at && profile.role !== "admin" ? (
+                <p className="text-sm text-muted-foreground">{t.accessRejected}</p>
+              ) : profile && !profile.approved && profile.role !== "admin" ? (
                 <p className="text-sm text-muted-foreground">{t.pendingApproval}</p>
               ) : (
                 <button
