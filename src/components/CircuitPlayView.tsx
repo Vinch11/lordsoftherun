@@ -36,7 +36,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
-  setNotificationSound,
+  setNotificationSounds,
 } from "@/lib/notify";
 import {
   advanceCircuitProgress,
@@ -107,7 +107,16 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
-  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
+  useEffect(
+    () => setNotificationSounds(game),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      game?.notification_sound,
+      game?.notification_sound_message,
+      game?.notification_sound_photo,
+      game?.notification_sound_end,
+    ],
+  );
   const { messages } = useMessages(gameId);
   const { checkpoints } = useCheckpoints(gameId);
   const checkpointsRef = useRef(checkpoints);
@@ -170,7 +179,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyUrgent("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body, "message");
         if (!chatOpen) setUnread(true);
       }
     }
@@ -407,7 +416,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
         void advanceCircuitProgress(teamId, nextCheckpointRef.current, newLap, finished);
         if (finished) {
           toast.success("🏁 Vous avez terminé la course !");
-          notifyUrgent("🏁 Course terminée !", "Regardez le classement final.");
+          notifyUrgent("🏁 Course terminée !", "Regardez le classement final.", "end");
         } else {
           toast.success(`🏁 Tour ${newLap}/${lapCount} !`);
           notifyUrgent("🏁 Nouveau tour !", `Tour ${newLap + 1}/${lapCount}`);
@@ -478,7 +487,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !", "end");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
@@ -494,7 +503,9 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       : null;
 
   return (
-    <main className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}>
+    <main
+      className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
+    >
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}

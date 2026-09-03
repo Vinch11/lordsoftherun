@@ -48,6 +48,13 @@ export type MapGridCell = { id: string; lat: number; lng: number; sizeM: number;
 export type MapCheckpoint = { id: string; lat: number; lng: number; seq: number };
 export type MapCircuitBox = { id: string; lat: number; lng: number };
 export type MapBanana = { id: string; lat: number; lng: number };
+export type MapGridBonus = {
+  id: string;
+  lat: number;
+  lng: number;
+  radiusM: number;
+  remainingS: number;
+};
 
 type Props = {
   center: [number, number] | null;
@@ -65,6 +72,7 @@ type Props = {
   checkpoints?: MapCheckpoint[];
   circuitBoxes?: MapCircuitBox[];
   bananas?: MapBanana[];
+  gridBonuses?: MapGridBonus[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
   hudFrame?: boolean;
@@ -189,6 +197,21 @@ const bananaIcon = () =>
     iconAnchor: [13, 13],
   });
 
+const gridBonusIcon = (remainingS: number) =>
+  L.divIcon({
+    html: `<div style="
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      width:36px;height:36px;border-radius:50%;
+      background:radial-gradient(circle at 35% 30%, #ff9d3d, #d6360f 70%);
+      border:2px solid #ffffff;
+      box-shadow:0 0 6px 2px rgba(214,54,15,.7);
+      font-size:16px; line-height:1; color:#1a0500;
+    "><span>💥</span><span style="font-size:9px;font-weight:800;">${Math.max(0, Math.ceil(remainingS))}s</span></div>`,
+    className: "",
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+
 const DEFAULT_CENTER: [number, number] = [48.8566, 2.3522];
 
 export default function GameMap({
@@ -207,6 +230,7 @@ export default function GameMap({
   checkpoints = [],
   circuitBoxes = [],
   bananas = [],
+  gridBonuses = [],
   onMapClick,
   mapStyle = "classic",
   hudFrame = false,
@@ -232,6 +256,7 @@ export default function GameMap({
   const checkpointLayer = useRef<L.LayerGroup | null>(null);
   const boxLayer = useRef<L.LayerGroup | null>(null);
   const bananaLayer = useRef<L.LayerGroup | null>(null);
+  const gridBonusLayer = useRef<L.LayerGroup | null>(null);
   const drawLine = useRef<L.Polyline | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -272,6 +297,7 @@ export default function GameMap({
     checkpointLayer.current = L.layerGroup().addTo(map);
     boxLayer.current = L.layerGroup().addTo(map);
     bananaLayer.current = L.layerGroup().addTo(map);
+    gridBonusLayer.current = L.layerGroup().addTo(map);
     teamTrailLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
@@ -556,6 +582,25 @@ export default function GameMap({
       L.marker([b.lat, b.lng], { icon: bananaIcon() }).bindTooltip("Banane").addTo(layer);
     }
   }, [bananas]);
+
+  useEffect(() => {
+    const layer = gridBonusLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const b of gridBonuses) {
+      L.circle([b.lat, b.lng], {
+        radius: b.radiusM,
+        color: "#d6360f",
+        weight: 2,
+        dashArray: "4 6",
+        fillColor: "#ff9d3d",
+        fillOpacity: 0.12,
+      }).addTo(layer);
+      L.marker([b.lat, b.lng], { icon: gridBonusIcon(b.remainingS) })
+        .bindTooltip(`💥 Bonus — ${Math.max(0, Math.ceil(b.remainingS))}s`)
+        .addTo(layer);
+    }
+  }, [gridBonuses]);
 
   useEffect(() => {
     const layer = teamTrailLayer.current;

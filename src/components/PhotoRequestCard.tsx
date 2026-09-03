@@ -46,7 +46,7 @@ export function PhotoRequestCard({ gameId, teamId, requestedAt, photoDeadline, n
     alertedRef.current = requestedAt;
     if (first && localStorage.getItem(`conquete:photo:${teamId}:${requestedAt}`)) return;
     toast("📸 Le prof demande une photo !", { duration: 10000 });
-    notifyUrgent("📸 Photo demandée !", "Prenez une photo de votre groupe maintenant.");
+    notifyUrgent("📸 Photo demandée !", "Prenez une photo de votre groupe maintenant.", "photo");
   }, [requestedAt, teamId]);
 
   async function sendPhoto(file: File) {

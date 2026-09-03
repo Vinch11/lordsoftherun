@@ -4,6 +4,7 @@ import type {
   CaptureConsequence,
   GameMode,
   GracePenaltyMode,
+  GridBonusSpawnMode,
   GridShape,
   LoopCloseMode,
   StudentIdMode,
@@ -42,7 +43,16 @@ export type Game = {
   grid_width_m: number;
   grid_height_m: number;
   grid_min_speed_kmh: number;
+  grid_bonus_enabled: boolean;
+  grid_bonus_spawn_mode: GridBonusSpawnMode;
+  grid_bonus_radius_m: number;
+  grid_bonus_lifetime_s: number;
+  grid_bonus_interval_s: number;
+  grid_bonus_max_active: number;
   notification_sound: NotificationSoundId;
+  notification_sound_message: NotificationSoundId | null;
+  notification_sound_photo: NotificationSoundId | null;
+  notification_sound_end: NotificationSoundId | null;
   grace_enabled: boolean;
   grace_minutes: number;
   grace_penalty_mode: GracePenaltyMode;

@@ -53,6 +53,32 @@ export function isWithinGridZone(
   return haversine(point, center) <= radiusM;
 }
 
+/** A uniformly-random point inside the play zone — used to spawn random bonuses. */
+export function randomPointInGridZone(zone: {
+  lat: number;
+  lng: number;
+  shape: GridShape;
+  radiusM: number;
+  widthM: number;
+  heightM: number;
+}): [number, number] {
+  const { lat, lng, shape, radiusM, widthM, heightM } = zone;
+  let dx: number;
+  let dy: number;
+  if (shape === "rectangle") {
+    dx = (Math.random() - 0.5) * widthM;
+    dy = (Math.random() - 0.5) * heightM;
+  } else {
+    // Uniform over the disk's area (not its radius) needs r ∝ sqrt(random),
+    // otherwise points cluster near the center.
+    const r = radiusM * Math.sqrt(Math.random());
+    const theta = Math.random() * 2 * Math.PI;
+    dx = r * Math.cos(theta);
+    dy = r * Math.sin(theta);
+  }
+  return [lat + dy / METERS_PER_DEG_LAT, lng + dx / metersPerDegLng(lat)];
+}
+
 /** Center lat/lng of a grid cell, for rendering. */
 export function cellCenter(
   center: [number, number],

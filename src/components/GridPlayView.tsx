@@ -13,6 +13,7 @@ import {
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
+  GRID_BONUS_CLAIM_RADIUS_M,
   VEHICLE_SUSTAINED_MS,
   formatArea,
   formatCountdown,
@@ -27,7 +28,7 @@ import {
   notifyMessage,
   notifyUrgent,
   requestNotificationPermission,
-  setNotificationSound,
+  setNotificationSounds,
 } from "@/lib/notify";
 import {
   awardRunningBonusCell,
@@ -37,6 +38,7 @@ import {
   pointToCell,
   useGridCells,
 } from "@/lib/grid";
+import { checkGridBonusClaims, isGridBonusActive, useGridBonuses } from "@/lib/gridBonus";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
@@ -82,11 +84,23 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const { game, teams } = useGameState(gameId);
   const gameRef = useRef(game);
   gameRef.current = game;
-  useEffect(() => setNotificationSound(game?.notification_sound), [game?.notification_sound]);
+  useEffect(
+    () => setNotificationSounds(game),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      game?.notification_sound,
+      game?.notification_sound_message,
+      game?.notification_sound_photo,
+      game?.notification_sound_end,
+    ],
+  );
   const { messages } = useMessages(gameId);
   const { cells } = useGridCells(gameId);
   const cellsRef = useRef(cells);
   cellsRef.current = cells;
+  const { bonuses: gridBonuses } = useGridBonuses(gameId);
+  const gridBonusesRef = useRef(gridBonuses);
+  gridBonusesRef.current = gridBonuses;
 
   const me = teams.find((t) => t.id === teamId) ?? null;
   const meRef = useRef(me);
@@ -136,7 +150,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       const latest = myMessages[myMessages.length - 1];
       if (latest?.sender === "prof") {
         toast(`💬 Prof : ${latest.body}`);
-        notifyUrgent("💬 Message du prof", latest.body);
+        notifyUrgent("💬 Message du prof", latest.body, "message");
         if (!chatOpen) setUnread(true);
       }
     }
@@ -292,6 +306,27 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       const center = gridCenterRef.current;
       if (!center) return;
       if (finishedRef.current) return; // board frozen at the final whistle
+
+      const activeBonuses = gridBonusesRef.current.filter((b) => isGridBonusActive(b, Date.now()));
+      if (activeBonuses.length > 0) {
+        void checkGridBonusClaims(
+          activeBonuses,
+          teamId,
+          point,
+          GRID_BONUS_CLAIM_RADIUS_M,
+          center,
+          cellSizeRef.current,
+        ).then((result) => {
+          if (!result) return;
+          const n = result.cellsClaimed;
+          toast.success(`💥 Bonus activé ! +${n} case${n > 1 ? "s" : ""}`);
+          notifyMessage(
+            "💥 Bonus activé !",
+            `+${n} case${n > 1 ? "s" : ""} colorée${n > 1 ? "s" : ""}`,
+          );
+        });
+      }
+
       if (
         !isWithinGridZone(
           gridShapeRef.current,
@@ -365,6 +400,20 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
     });
   }, [cells, gridCenter, game?.grid_cell_size_m, teams]);
 
+  const mapGridBonuses = useMemo(
+    () =>
+      gridBonuses
+        .filter((b) => isGridBonusActive(b, now))
+        .map((b) => ({
+          id: b.id,
+          lat: b.lat,
+          lng: b.lng,
+          radiusM: b.radius_m,
+          remainingS: (new Date(b.expires_at).getTime() - now) / 1000,
+        })),
+    [gridBonuses, now],
+  );
+
   const remaining = game?.ends_at ? (new Date(game.ends_at).getTime() - now) / 1000 : null;
   const finished = game?.status === "finished" || (remaining !== null && remaining <= 0);
   const graceStatus = game && me ? resolveGraceStatus(game, me, now) : null;
@@ -392,13 +441,15 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   useEffect(() => {
     if (finished && !prevFinishedRef.current) {
       toast.success("🏁 Partie terminée !");
-      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !");
+      notifyUrgent("🏁 Partie terminée !", "Regardez le classement final !", "end");
     }
     prevFinishedRef.current = finished;
   }, [finished]);
 
   return (
-    <main className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}>
+    <main
+      className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
+    >
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}
@@ -406,6 +457,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           territories={[]}
           gridZone={game?.grid_show_overlay === false ? null : gridZone}
           gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
+          gridBonuses={mapGridBonuses}
           mapStyle={game?.map_style}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}

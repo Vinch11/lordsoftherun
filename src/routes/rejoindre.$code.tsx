@@ -265,7 +265,9 @@ function Join() {
 
   if (checkingResume) {
     return (
-      <main className={`${studentThemeClass(studentTheme)} flex min-h-screen items-center justify-center p-6 text-center`}>
+      <main
+        className={`${studentThemeClass(studentTheme)} flex min-h-screen items-center justify-center p-6 text-center`}
+      >
         <p className="text-lg text-muted-foreground">Reconnexion à votre équipe…</p>
       </main>
     );
@@ -273,7 +275,9 @@ function Join() {
 
   if (resumeFailed) {
     return (
-      <main className={`${studentThemeClass(studentTheme)} flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}>
+      <main
+        className={`${studentThemeClass(studentTheme)} flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center`}
+      >
         <p className="text-lg">Connexion impossible pour le moment. Vérifiez le réseau.</p>
         <button
           className="btn-huge btn-huge-accent"

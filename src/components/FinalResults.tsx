@@ -73,10 +73,7 @@ export function FinalResults({ teams, myTeamId, formatScore, statusLabel, onClos
           Retour à la carte
         </button>
 
-        <Link
-          to="/"
-          className="btn-huge btn-huge-dark flex items-center justify-center gap-2"
-        >
+        <Link to="/" className="btn-huge btn-huge-dark flex items-center justify-center gap-2">
           <Home className="h-5 w-5" /> Accueil — mes parties
         </Link>
       </div>

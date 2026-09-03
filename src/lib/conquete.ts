@@ -49,25 +49,29 @@ export const STUDENT_THEMES: {
   {
     id: "classic",
     label: "Classique (par défaut)",
-    description: "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
+    description:
+      "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
     swatches: ["#ffffff", "#0f3460", "#39ff88"],
   },
   {
     id: "dossard",
     label: "Dossard de course",
-    description: "Haute visibilité : aplats clairs, contours noirs épais, vert fluo. Le plus lisible en plein soleil.",
+    description:
+      "Haute visibilité : aplats clairs, contours noirs épais, vert fluo. Le plus lisible en plein soleil.",
     swatches: ["#f5f7f5", "#1f2933", "#39ff88"],
   },
   {
     id: "apple",
     label: "Apple Premium",
-    description: "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
+    description:
+      "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
     swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
   },
   {
     id: "athletic",
     label: "Apple Pro Athletics",
-    description: "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium.",
+    description:
+      "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium.",
     swatches: ["#fafafa", "#2563eb", "#111827"],
   },
 ];
@@ -85,7 +89,6 @@ export function studentThemeClass(theme: string | null | undefined): string {
       return "";
   }
 }
-
 
 /** Default speed (km/h) above which a closed loop counts as "run"; configurable per game. */
 export const DEFAULT_RUNNING_BONUS_SPEED_KMH = 8;
@@ -192,6 +195,25 @@ export const DEFAULT_GRID_WIDTH_M = 80;
 export const DEFAULT_GRID_HEIGHT_M = 80;
 export const MIN_GRID_SIDE_M = 20;
 export const MAX_GRID_SIDE_M = 300;
+
+/** Grille mode's explosive bonuses: spawned by hand or on a timer, claimed by
+ * walking over them, colorizing every cell within their radius. */
+export type GridBonusSpawnMode = "manual" | "random";
+export const DEFAULT_GRID_BONUS_SPAWN_MODE: GridBonusSpawnMode = "manual";
+export const DEFAULT_GRID_BONUS_RADIUS_M = 12;
+export const MIN_GRID_BONUS_RADIUS_M = 3;
+export const MAX_GRID_BONUS_RADIUS_M = 60;
+export const DEFAULT_GRID_BONUS_LIFETIME_S = 60;
+export const MIN_GRID_BONUS_LIFETIME_S = 10;
+export const MAX_GRID_BONUS_LIFETIME_S = 600;
+export const DEFAULT_GRID_BONUS_INTERVAL_S = 45;
+export const MIN_GRID_BONUS_INTERVAL_S = 15;
+export const MAX_GRID_BONUS_INTERVAL_S = 600;
+export const DEFAULT_GRID_BONUS_MAX_ACTIVE = 2;
+export const MIN_GRID_BONUS_MAX_ACTIVE = 1;
+export const MAX_GRID_BONUS_MAX_ACTIVE = 8;
+/** How close a team must get to an active bonus to trigger its explosion. */
+export const GRID_BONUS_CLAIM_RADIUS_M = 8;
 
 export type GracePenaltyMode = "cancel" | "per_second";
 export const DEFAULT_GRACE_MINUTES = 5;
