@@ -3258,7 +3258,7 @@ function TeacherDashboard() {
                         aria-label="Réduire le rayon"
                         className="icon-btn"
                         onClick={() =>
-                          void updateGridRadius(Math.max(MIN_GRID_RADIUS_M, gridRadius - 10))
+                          void updateGridRadius(Math.max(MIN_GRID_RADIUS_M, gridRadius - 25))
                         }
                       >
                         <Minus className="h-4 w-4" />
@@ -3268,7 +3268,7 @@ function TeacherDashboard() {
                         aria-label="Augmenter le rayon"
                         className="icon-btn"
                         onClick={() =>
-                          void updateGridRadius(Math.min(MAX_GRID_RADIUS_M, gridRadius + 10))
+                          void updateGridRadius(Math.min(MAX_GRID_RADIUS_M, gridRadius + 25))
                         }
                       >
                         <Plus className="h-4 w-4" />
@@ -3284,7 +3284,7 @@ function TeacherDashboard() {
                           aria-label="Réduire la largeur"
                           className="icon-btn"
                           onClick={() =>
-                            void updateGridWidth(Math.max(MIN_GRID_SIDE_M, gridWidth - 10))
+                            void updateGridWidth(Math.max(MIN_GRID_SIDE_M, gridWidth - 25))
                           }
                         >
                           <Minus className="h-4 w-4" />
@@ -3294,7 +3294,7 @@ function TeacherDashboard() {
                           aria-label="Augmenter la largeur"
                           className="icon-btn"
                           onClick={() =>
-                            void updateGridWidth(Math.min(MAX_GRID_SIDE_M, gridWidth + 10))
+                            void updateGridWidth(Math.min(MAX_GRID_SIDE_M, gridWidth + 25))
                           }
                         >
                           <Plus className="h-4 w-4" />
@@ -3308,7 +3308,7 @@ function TeacherDashboard() {
                           aria-label="Réduire la hauteur"
                           className="icon-btn"
                           onClick={() =>
-                            void updateGridHeight(Math.max(MIN_GRID_SIDE_M, gridHeight - 10))
+                            void updateGridHeight(Math.max(MIN_GRID_SIDE_M, gridHeight - 25))
                           }
                         >
                           <Minus className="h-4 w-4" />
@@ -3318,7 +3318,7 @@ function TeacherDashboard() {
                           aria-label="Augmenter la hauteur"
                           className="icon-btn"
                           onClick={() =>
-                            void updateGridHeight(Math.min(MAX_GRID_SIDE_M, gridHeight + 10))
+                            void updateGridHeight(Math.min(MAX_GRID_SIDE_M, gridHeight + 25))
                           }
                         >
                           <Plus className="h-4 w-4" />
