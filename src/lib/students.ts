@@ -260,6 +260,66 @@ export async function joinTeamMember(
   return data ?? null;
 }
 
+export type TeamMemberPosition = {
+  team_id: string;
+  member_uid: string;
+  lat: number | null;
+  lng: number | null;
+  total_distance_m: number;
+  updated_at: string;
+};
+
+/**
+ * This device's live position + the distance covered since its last sync,
+ * added onto the member's running total rather than overwriting it — so
+ * several teammates playing at once each keep their own progress instead
+ * of clobbering one another the way an absolute write would.
+ */
+export async function updateTeamMemberPosition(
+  teamId: string,
+  lat: number,
+  lng: number,
+  distanceDeltaM: number,
+): Promise<void> {
+  const { error } = await supabase.rpc("update_team_member_position", {
+    _team_id: teamId,
+    _lat: lat,
+    _lng: lng,
+    _distance_delta_m: distanceDeltaM,
+  });
+  if (error) throw error;
+}
+
+/** Every participant's live position for a game, one row per (team, device). */
+export function useTeamMemberPositions(gameId: string | null) {
+  const [positions, setPositions] = useState<TeamMemberPosition[]>([]);
+
+  const refresh = useCallback(async () => {
+    if (!gameId) return;
+    const { data } = await supabase
+      .from("team_members")
+      .select("team_id, member_uid, lat, lng, total_distance_m, updated_at")
+      .eq("game_id", gameId);
+    setPositions((data ?? []) as unknown as TeamMemberPosition[]);
+  }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    void refresh();
+    const channel = supabase
+      .channel(`team-member-positions-${gameId}-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "team_members", filter: `game_id=eq.${gameId}` },
+        () => void refresh(),
+      )
+      .subscribe();
+    return () => void supabase.removeChannel(channel);
+  }, [gameId, refresh]);
+
+  return positions;
+}
+
 /**
  * Wipes any teams already created for this game and deals the present
  * students evenly into `teamCount` fresh ones — safe pre-game, since at

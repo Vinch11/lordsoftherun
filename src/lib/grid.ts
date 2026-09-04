@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { haversine, type GridShape } from "@/lib/conquete";
+import type { TeamMemberPosition } from "@/lib/students";
 
 export type GridCell = {
   id: string;
@@ -119,19 +120,16 @@ export async function claimGridCell(gameId: string, teamId: string, row: number,
 /**
  * Grants one extra "cell point" for a cell claimed while running.
  * In grille mode landmarks are disabled, so `landmark_bonus_m2` is free to
- * hold the running-bonus cell count for the team.
+ * hold the running-bonus cell count for the team. Goes through an atomic
+ * SQL increment (not a JS read-modify-write) so two teammates capturing a
+ * bonus cell at the same moment never silently clobber each other's point.
  */
 export async function awardRunningBonusCell(teamId: string, amount = 1) {
-  const { data } = await supabase
-    .from("teams")
-    .select("landmark_bonus_m2")
-    .eq("id", teamId)
-    .maybeSingle();
-  if (!data) return;
-  await supabase
-    .from("teams")
-    .update({ landmark_bonus_m2: (data.landmark_bonus_m2 ?? 0) + amount })
-    .eq("id", teamId);
+  const { error } = await supabase.rpc("increment_team_bonus_cells", {
+    _team_id: teamId,
+    _amount: amount,
+  });
+  if (error) throw error;
 }
 
 export function useGridCells(gameId: string | null) {
@@ -158,4 +156,23 @@ export function useGridCells(gameId: string | null) {
   }, [gameId, refresh]);
 
   return { cells, refresh };
+}
+
+/**
+ * Enriches each team with the live positions of its individual members, for
+ * Grille's multi-participant mode: the map then draws one marker per device
+ * instead of the single (and otherwise last-write-wins) team.lat/lng blip.
+ */
+export function teamsWithMemberMarkers<T extends { id: string }>(
+  teams: T[],
+  positions: TeamMemberPosition[],
+): (T & { members: { lat: number; lng: number }[] })[] {
+  const byTeam = new Map<string, { lat: number; lng: number }[]>();
+  for (const p of positions) {
+    if (p.lat == null || p.lng == null) continue;
+    const arr = byTeam.get(p.team_id) ?? [];
+    arr.push({ lat: p.lat, lng: p.lng });
+    byTeam.set(p.team_id, arr);
+  }
+  return teams.map((t) => ({ ...t, members: byTeam.get(t.id) ?? [] }));
 }

@@ -13,6 +13,7 @@ import {
   type StudentIdMode,
   studentThemeClass,
   DEFAULT_STUDENT_THEME,
+  type GameMode,
 } from "@/lib/conquete";
 import { fetchTeamRoster, joinTeamMember, type Student } from "@/lib/students";
 import { getTerminology, type Terminology } from "@/lib/terminology";
@@ -51,6 +52,7 @@ function Join() {
   const [creatingNew, setCreatingNew] = useState(false);
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
+  const [gameMode, setGameMode] = useState<GameMode | null>(null);
   const [studentIdMode, setStudentIdMode] = useState<StudentIdMode>(DEFAULT_STUDENT_ID_MODE);
   const [namePickTeam, setNamePickTeam] = useState<ExistingTeam | null>(null);
   const [nameEntryTeam, setNameEntryTeam] = useState<ExistingTeam | null>(null);
@@ -98,6 +100,10 @@ function Join() {
   const [studentTheme, setStudentTheme] = useState<string>(DEFAULT_STUDENT_THEME);
   const [terminology, setTerminology] = useState<Terminology>("enseignant");
   const t = getTerminology(terminology);
+  // Grille lets several students of the same team play at once too, the
+  // same way async Territoire already does — both need the non-exclusive,
+  // "who are you" join flow instead of the single-device exclusive claim.
+  const multiParticipant = asyncMode || gameMode === "grille";
 
   useEffect(() => {
     let active = true;
@@ -107,7 +113,7 @@ function Join() {
     }
     void supabase
       .from("games")
-      .select("id, async_mode, student_id_mode, student_theme, terminology")
+      .select("id, mode, async_mode, student_id_mode, student_theme, terminology")
       .eq("code", code)
       .maybeSingle()
       .then(async ({ data: game }) => {
@@ -115,6 +121,7 @@ function Join() {
           if (active) {
             setExistingTeams([]);
             setAsyncMode(false);
+            setGameMode(null);
           }
           return;
         }
@@ -126,6 +133,7 @@ function Join() {
         if (active) {
           setExistingTeams(teams ?? []);
           setAsyncMode(game.async_mode);
+          setGameMode(game.mode as GameMode);
           setStudentIdMode(game.student_id_mode as StudentIdMode);
           setStudentTheme(game.student_theme);
           setTerminology(game.terminology as Terminology);
@@ -259,6 +267,12 @@ function Join() {
         toast.error("Impossible de rejoindre la partie.");
         return;
       }
+      // Grille's per-participant position tracking (team_members) needs the
+      // creator registered too, not just later joiners — claimed_by alone
+      // (set by the insert above) isn't enough for update_team_member_position.
+      if (gameMode === "grille") {
+        await joinTeamMember(team.id, null);
+      }
       localStorage.setItem(teamStorageKey(game.code), team.id);
       rememberMyTeam(team.id, game.code);
       await navigate({ to: "/jouer/$teamId", params: { teamId: team.id } });
@@ -296,7 +310,10 @@ function Join() {
     );
   }
 
-  if (asyncMode) {
+  // Shared by both async Territoire and multi-participant Grille: picking
+  // who you are within a team you've already selected. Kept outside the
+  // asyncMode/sync branches below so either flow can reach it.
+  if (namePickTeam || nameEntryTeam) {
     return (
       <main className={`${studentThemeClass(studentTheme)} min-h-screen px-5 py-8`}>
         <div className="mx-auto flex max-w-md flex-col gap-6">
@@ -308,27 +325,9 @@ function Join() {
               Re<em>joindre</em>
             </h1>
             <p className="mt-3 text-muted-foreground">
-              {namePickTeam
-                ? `Qui es-tu dans ${namePickTeam.name} ?`
-                : nameEntryTeam
-                  ? `Qui es-tu dans ${nameEntryTeam.name} ?`
-                  : t.joinCodeHelp}
+              Qui es-tu dans {(namePickTeam ?? nameEntryTeam)!.name} ?
             </p>
           </header>
-
-          {!namePickTeam && !nameEntryTeam && (
-            <label className="flex flex-col gap-2">
-              <span className="section-title">Code de la partie</span>
-              <input
-                className="field text-center text-3xl font-bold tracking-[0.4em]"
-                inputMode="numeric"
-                placeholder="0000"
-                maxLength={4}
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
-              />
-            </label>
-          )}
 
           {namePickTeam ? (
             <>
@@ -360,7 +359,7 @@ function Join() {
                 )}
               </section>
             </>
-          ) : nameEntryTeam ? (
+          ) : (
             <>
               <button
                 type="button"
@@ -390,34 +389,64 @@ function Join() {
                 </button>
               </section>
             </>
-          ) : (
-            <section className="panel flex flex-col gap-2 p-5">
-              <span className="section-title">{t.yourGroupOrTeamLabel}</span>
-              {code.length !== 4 ? (
-                <p className="text-sm text-muted-foreground">
-                  Entrez le code à 4 chiffres ci-dessus.
-                </p>
-              ) : existingTeams.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t.noTeamsYetHelp}</p>
-              ) : (
-                existingTeams.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    disabled={busy}
-                    onClick={() => selectTeam(t)}
-                    className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
-                  >
-                    <span
-                      className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
-                      style={{ backgroundColor: t.color }}
-                    />
-                    {t.name}
-                  </button>
-                ))
-              )}
-            </section>
           )}
+        </div>
+      </main>
+    );
+  }
+
+  if (asyncMode) {
+    return (
+      <main className={`${studentThemeClass(studentTheme)} min-h-screen px-5 py-8`}>
+        <div className="mx-auto flex max-w-md flex-col gap-6">
+          <header className="pt-4">
+            <div className="pill">
+              <Users className="h-3.5 w-3.5" /> {t.joinPanelTitle}
+            </div>
+            <h1 className="page-title mt-4">
+              Re<em>joindre</em>
+            </h1>
+            <p className="mt-3 text-muted-foreground">{t.joinCodeHelp}</p>
+          </header>
+
+          <label className="flex flex-col gap-2">
+            <span className="section-title">Code de la partie</span>
+            <input
+              className="field text-center text-3xl font-bold tracking-[0.4em]"
+              inputMode="numeric"
+              placeholder="0000"
+              maxLength={4}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            />
+          </label>
+
+          <section className="panel flex flex-col gap-2 p-5">
+            <span className="section-title">{t.yourGroupOrTeamLabel}</span>
+            {code.length !== 4 ? (
+              <p className="text-sm text-muted-foreground">
+                Entrez le code à 4 chiffres ci-dessus.
+              </p>
+            ) : existingTeams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t.noTeamsYetHelp}</p>
+            ) : (
+              existingTeams.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => selectTeam(t)}
+                  className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+                >
+                  <span
+                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
+                    style={{ backgroundColor: t.color }}
+                  />
+                  {t.name}
+                </button>
+              ))
+            )}
+          </section>
         </div>
       </main>
     );
@@ -463,7 +492,7 @@ function Join() {
                   key={t.id}
                   type="button"
                   disabled={busy}
-                  onClick={() => void rejoin(t.id)}
+                  onClick={() => (multiParticipant ? selectTeam(t) : void rejoin(t.id))}
                   className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
                 >
                   <span
