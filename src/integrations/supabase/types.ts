@@ -882,6 +882,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "team_members_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "team_members_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
