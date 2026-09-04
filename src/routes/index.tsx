@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { MapPin, Pencil, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
+import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
 import { getTerminology } from "@/lib/terminology";
@@ -63,6 +64,7 @@ function Home() {
   }
   const [code, setCode] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showKindPicker, setShowKindPicker] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
   const [resumeTeams, setResumeTeams] = useState<ResumeTeam[]>([]);
   const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
@@ -212,11 +214,17 @@ function Home() {
     }
   }
 
-  async function createGame() {
+  function openCreateGame() {
     if (!account) {
-      await navigate({ to: "/auth" });
+      void navigate({ to: "/auth" });
       return;
     }
+    setShowKindPicker(true);
+  }
+
+  async function createGame(kind: GameKind) {
+    if (!account) return;
+    setShowKindPicker(false);
     setCreating(true);
     try {
       for (let i = 0; i < 6; i++) {
@@ -227,6 +235,7 @@ function Home() {
             code: c,
             owner_id: account.id,
             terminology: profile?.terminology ?? "enseignant",
+            async_mode: kind === "team",
           })
           .select()
           .maybeSingle();
@@ -381,6 +390,13 @@ function Home() {
           </div>
         )}
 
+        <GameKindDialog
+          open={showKindPicker}
+          busy={creating}
+          onSelect={(kind) => void createGame(kind)}
+          onClose={() => setShowKindPicker(false)}
+        />
+
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
           {account ? (
             <>
@@ -400,7 +416,7 @@ function Home() {
                 <button
                   className="text-sm font-semibold text-muted-foreground underline disabled:opacity-50"
                   disabled={creating || loading}
-                  onClick={createGame}
+                  onClick={openCreateGame}
                 >
                   {creating ? "Création..." : t.createGameButton}
                 </button>

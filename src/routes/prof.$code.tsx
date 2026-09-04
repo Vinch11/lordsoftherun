@@ -116,6 +116,7 @@ import {
   type ParsedStudent,
 } from "@/lib/students";
 import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
+import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
 
 import {
   applySavedPoint,
@@ -434,6 +435,7 @@ function TeacherDashboard() {
   const { profile } = useProfile(user?.id);
   const t = getTerminology(profile?.terminology);
   const [creatingGame, setCreatingGame] = useState(false);
+  const [showKindPicker, setShowKindPicker] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
   const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
@@ -1573,12 +1575,6 @@ function TeacherDashboard() {
     await supabase.from("games").update({ running_bonus_speed_kmh: next }).eq("id", gameId);
   }
 
-  async function updateAsyncMode(next: boolean) {
-    setAsyncModeState(next);
-    if (!gameId || !isOwner) return;
-    await supabase.from("games").update({ async_mode: next }).eq("id", gameId);
-  }
-
   async function updateLoopCloseMode(next: LoopCloseMode) {
     setLoopCloseModeState(next);
     if (!gameId || !isOwner) return;
@@ -1811,15 +1807,21 @@ function TeacherDashboard() {
     }
   }
 
-  async function createAnotherGame() {
+  async function createAnotherGame(kind: GameKind) {
     if (!user) return;
+    setShowKindPicker(false);
     setCreatingGame(true);
     try {
       for (let i = 0; i < 6; i++) {
         const c = randomCode();
         const { data, error } = await supabase
           .from("games")
-          .insert({ code: c, owner_id: user.id, terminology: profile?.terminology ?? "enseignant" })
+          .insert({
+            code: c,
+            owner_id: user.id,
+            terminology: profile?.terminology ?? "enseignant",
+            async_mode: kind === "team",
+          })
           .select()
           .maybeSingle();
         if (!error && data) {
@@ -2069,7 +2071,7 @@ function TeacherDashboard() {
               className="nav-back pointer-events-auto"
               aria-label="Lancer une nouvelle partie"
               disabled={creatingGame}
-              onClick={() => void createAnotherGame()}
+              onClick={() => setShowKindPicker(true)}
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -2092,6 +2094,12 @@ function TeacherDashboard() {
             <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
           </div>
         </div>
+        <GameKindDialog
+          open={showKindPicker}
+          busy={creatingGame}
+          onSelect={(kind) => void createAnotherGame(kind)}
+          onClose={() => setShowKindPicker(false)}
+        />
         {(placingMode !== "none" || placingFlagForTeam) && (
           <div
             className="panel pointer-events-none absolute inset-x-3 z-[1000] px-4 py-3 text-center text-sm font-semibold"
@@ -2179,7 +2187,7 @@ function TeacherDashboard() {
             <Gamepad2 className="h-4 w-4" /> Mode de jeu
           </div>
           {isOwner && game?.status === "lobby" ? (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className={`grid grid-cols-2 gap-2 ${asyncMode ? "" : "sm:grid-cols-4"}`}>
               <button
                 className="seg-btn"
                 data-active={gameMode === "territoire"}
@@ -2189,25 +2197,29 @@ function TeacherDashboard() {
               </button>
               <button
                 className="seg-btn"
-                data-active={gameMode === "capture_drapeau"}
-                onClick={() => void updateMode("capture_drapeau")}
-              >
-                Drapeau
-              </button>
-              <button
-                className="seg-btn"
                 data-active={gameMode === "grille"}
                 onClick={() => void updateMode("grille")}
               >
                 Grille
               </button>
-              <button
-                className="seg-btn"
-                data-active={gameMode === "circuit"}
-                onClick={() => void updateMode("circuit")}
-              >
-                Circuit
-              </button>
+              {!asyncMode && (
+                <>
+                  <button
+                    className="seg-btn"
+                    data-active={gameMode === "capture_drapeau"}
+                    onClick={() => void updateMode("capture_drapeau")}
+                  >
+                    Drapeau
+                  </button>
+                  <button
+                    className="seg-btn"
+                    data-active={gameMode === "circuit"}
+                    onClick={() => void updateMode("circuit")}
+                  >
+                    Circuit
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <p className="text-sm font-semibold">
@@ -2409,7 +2421,7 @@ function TeacherDashboard() {
           </section>
         )}
 
-        {gameMode === "grille" && isOwner && game?.status === "lobby" && (
+        {gameMode === "grille" && asyncMode && isOwner && game?.status === "lobby" && (
           <section
             className="panel relative flex flex-col gap-3 p-4"
             {...sectionProps("grille-participants")}
@@ -2564,7 +2576,7 @@ function TeacherDashboard() {
           </div>
         </section>
 
-        {gameMode === "territoire" && (
+        {gameMode === "territoire" && asyncMode && (
           <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("async")}>
             <CollapseToggle id="async" collapsed={!!collapsed["async"]} onToggle={toggleSection} />
             <div className="section-title">
@@ -2573,113 +2585,96 @@ function TeacherDashboard() {
             <p className="text-sm text-muted-foreground">{t.asyncModeExplainer}</p>
             {isOwner ? (
               <>
-                <label className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">Activer le mode chacun chez soi</span>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5"
-                    checked={asyncMode}
-                    onChange={(e) => void updateAsyncMode(e.target.checked)}
-                  />
-                </label>
-                {asyncMode && (
-                  <div className="flex flex-col gap-2 border-t border-border pt-3">
-                    <span className="text-sm font-semibold">Fermeture d'une boucle</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        className="seg-btn"
-                        data-active={loopCloseMode === "auto"}
-                        onClick={() => void updateLoopCloseMode("auto")}
-                      >
-                        Automatique
-                      </button>
-                      <button
-                        type="button"
-                        className="seg-btn"
-                        data-active={loopCloseMode === "manual"}
-                        onClick={() => void updateLoopCloseMode("manual")}
-                      >
-                        Manuelle
-                      </button>
-                    </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-3">
+                  <span className="text-sm font-semibold">Fermeture d'une boucle</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="seg-btn"
+                      data-active={loopCloseMode === "auto"}
+                      onClick={() => void updateLoopCloseMode("auto")}
+                    >
+                      Automatique
+                    </button>
+                    <button
+                      type="button"
+                      className="seg-btn"
+                      data-active={loopCloseMode === "manual"}
+                      onClick={() => void updateLoopCloseMode("manual")}
+                    >
+                      Manuelle
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {loopCloseMode === "auto" ? t.loopCloseAutoHelp : t.loopCloseManualHelp}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-3">
+                  <span className="text-sm font-semibold">{t.participantIdSectionTitle}</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      className="seg-btn"
+                      data-active={studentIdMode === "roster"}
+                      onClick={() => void updateStudentIdMode("roster")}
+                    >
+                      Liste importée
+                    </button>
+                    <button
+                      type="button"
+                      className="seg-btn"
+                      data-active={studentIdMode === "freetext"}
+                      onClick={() => void updateStudentIdMode("freetext")}
+                    >
+                      Tape son prénom
+                    </button>
+                    <button
+                      type="button"
+                      className="seg-btn"
+                      data-active={studentIdMode === "none"}
+                      onClick={() => void updateStudentIdMode("none")}
+                    >
+                      Aucune
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {studentIdMode === "roster"
+                      ? t.studentIdRosterHelp
+                      : studentIdMode === "freetext"
+                        ? t.studentIdFreetextHelp
+                        : t.studentIdNoneHelp}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-3">
+                  <span className="text-sm font-semibold">Créer une équipe à la main</span>
+                  <div className="flex gap-2">
+                    <input
+                      className="field flex-1"
+                      placeholder="Nom de l'équipe"
+                      maxLength={24}
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && void addTeamManually()}
+                    />
+                    <button
+                      type="button"
+                      className="btn-huge-dark w-auto px-5"
+                      disabled={addingTeam || !newTeamName.trim()}
+                      onClick={() => void addTeamManually()}
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                  {teams.length > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {loopCloseMode === "auto" ? t.loopCloseAutoHelp : t.loopCloseManualHelp}
+                      Équipes actuelles : {teams.map((tm) => tm.name).join(", ")}
                     </p>
-                  </div>
-                )}
-                {asyncMode && (
-                  <div className="flex flex-col gap-2 border-t border-border pt-3">
-                    <span className="text-sm font-semibold">{t.participantIdSectionTitle}</span>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        className="seg-btn"
-                        data-active={studentIdMode === "roster"}
-                        onClick={() => void updateStudentIdMode("roster")}
-                      >
-                        Liste importée
-                      </button>
-                      <button
-                        type="button"
-                        className="seg-btn"
-                        data-active={studentIdMode === "freetext"}
-                        onClick={() => void updateStudentIdMode("freetext")}
-                      >
-                        Tape son prénom
-                      </button>
-                      <button
-                        type="button"
-                        className="seg-btn"
-                        data-active={studentIdMode === "none"}
-                        onClick={() => void updateStudentIdMode("none")}
-                      >
-                        Aucune
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {studentIdMode === "roster"
-                        ? t.studentIdRosterHelp
-                        : studentIdMode === "freetext"
-                          ? t.studentIdFreetextHelp
-                          : t.studentIdNoneHelp}
-                    </p>
-                  </div>
-                )}
-                {asyncMode && (
-                  <div className="flex flex-col gap-2 border-t border-border pt-3">
-                    <span className="text-sm font-semibold">Créer une équipe à la main</span>
-                    <div className="flex gap-2">
-                      <input
-                        className="field flex-1"
-                        placeholder="Nom de l'équipe"
-                        maxLength={24}
-                        value={newTeamName}
-                        onChange={(e) => setNewTeamName(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && void addTeamManually()}
-                      />
-                      <button
-                        type="button"
-                        className="btn-huge-dark w-auto px-5"
-                        disabled={addingTeam || !newTeamName.trim()}
-                        onClick={() => void addTeamManually()}
-                      >
-                        Ajouter
-                      </button>
-                    </div>
-                    {teams.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Équipes actuelles : {teams.map((tm) => tm.name).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {asyncMode
-                  ? `Mode chacun chez soi activé — fermeture ${loopCloseMode === "auto" ? "automatique" : "manuelle"} des boucles.`
-                  : "Mode chacun chez soi désactivé."}
+                {`Mode chacun chez soi activé — fermeture ${loopCloseMode === "auto" ? "automatique" : "manuelle"} des boucles.`}
               </p>
             )}
           </section>

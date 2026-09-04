@@ -100,10 +100,11 @@ function Join() {
   const [studentTheme, setStudentTheme] = useState<string>(DEFAULT_STUDENT_THEME);
   const [terminology, setTerminology] = useState<Terminology>("enseignant");
   const t = getTerminology(terminology);
-  // Grille lets several students of the same team play at once too, the
-  // same way async Territoire already does — both need the non-exclusive,
-  // "who are you" join flow instead of the single-device exclusive claim.
-  const multiParticipant = asyncMode || gameMode === "grille";
+  // async_mode is now decided once at creation ("Match par équipe" vs
+  // "Individuel") and applies the same way to Territoire and Grille: the
+  // non-exclusive, "who are you" join flow instead of the single-device
+  // exclusive claim used by "Individuel" games.
+  const multiParticipant = asyncMode;
 
   useEffect(() => {
     let active = true;
@@ -270,7 +271,7 @@ function Join() {
       // Grille's per-participant position tracking (team_members) needs the
       // creator registered too, not just later joiners — claimed_by alone
       // (set by the insert above) isn't enough for update_team_member_position.
-      if (gameMode === "grille") {
+      if (gameMode === "grille" && multiParticipant) {
         await joinTeamMember(team.id, null);
       }
       localStorage.setItem(teamStorageKey(game.code), team.id);
@@ -395,7 +396,12 @@ function Join() {
     );
   }
 
-  if (asyncMode) {
+  // Territoire's async ("chacun chez soi") join screen assumes teams are
+  // pre-created by the teacher (a CSV roster, one team per class) and never
+  // offers ad-hoc team creation. Grille keeps the ordinary flow below even
+  // in team-match mode — its teams are commonly formed on the spot — just
+  // routed through the non-exclusive join via `multiParticipant`.
+  if (asyncMode && gameMode === "territoire") {
     return (
       <main className={`${studentThemeClass(studentTheme)} min-h-screen px-5 py-8`}>
         <div className="mx-auto flex max-w-md flex-col gap-6">
