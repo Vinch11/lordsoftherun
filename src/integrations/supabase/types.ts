@@ -848,24 +848,46 @@ export type Database = {
       }
       team_members: {
         Row: {
+          game_id: string
           joined_at: string
+          lat: number | null
+          lng: number | null
           member_uid: string
           student_id: string | null
           team_id: string
+          total_distance_m: number
+          updated_at: string
         }
         Insert: {
+          game_id: string
           joined_at?: string
+          lat?: number | null
+          lng?: number | null
           member_uid: string
           student_id?: string | null
           team_id: string
+          total_distance_m?: number
+          updated_at?: string
         }
         Update: {
+          game_id?: string
           joined_at?: string
+          lat?: number | null
+          lng?: number | null
           member_uid?: string
           student_id?: string | null
           team_id?: string
+          total_distance_m?: number
+          updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "team_members_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "team_members_student_id_fkey"
             columns: ["student_id"]
@@ -1042,11 +1064,24 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_team_bonus_cells: {
+        Args: { _amount?: number; _team_id: string }
+        Returns: undefined
+      }
       join_team_member: {
         Args: { _student_id?: string; _student_name?: string; _team_id: string }
         Returns: string
       }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
+      update_team_member_position: {
+        Args: {
+          _distance_delta_m: number
+          _lat: number
+          _lng: number
+          _team_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
