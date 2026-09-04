@@ -186,10 +186,14 @@ export const FLAG_PICKUP_RADIUS_M = 15;
 
 export const DEFAULT_GRID_RADIUS_M = 40;
 export const MIN_GRID_RADIUS_M = 10;
-export const MAX_GRID_RADIUS_M = 300;
+export const MAX_GRID_RADIUS_M = 600;
 export const DEFAULT_GRID_CELL_SIZE_M = 6;
 export const MIN_GRID_CELL_SIZE_M = 3;
-export const MAX_GRID_CELL_SIZE_M = 15;
+// Raised alongside MAX_GRID_RADIUS_M/MAX_GRID_SIDE_M: a large zone kept at
+// the smallest cell size would multiply grid_cells rows (and realtime
+// traffic) far beyond what the map can render smoothly, so a bigger zone
+// needs the option of bigger cells too.
+export const MAX_GRID_CELL_SIZE_M = 25;
 /** Below this cell size, GPS jitter alone can flip a cell's color; shown as a warning. */
 export const GRID_CELL_SIZE_WARNING_THRESHOLD_M = 5;
 /** 0 = disabled (any speed captures a cell, as before); otherwise a cell only
@@ -201,7 +205,7 @@ export type GridShape = "circle" | "rectangle";
 export const DEFAULT_GRID_WIDTH_M = 80;
 export const DEFAULT_GRID_HEIGHT_M = 80;
 export const MIN_GRID_SIDE_M = 20;
-export const MAX_GRID_SIDE_M = 300;
+export const MAX_GRID_SIDE_M = 600;
 
 /** Grille mode's explosive bonuses: spawned by hand or on a timer, claimed by
  * walking over them, colorizing every cell within their radius. */
