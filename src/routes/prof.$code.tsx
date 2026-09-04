@@ -72,7 +72,12 @@ import {
 } from "@/lib/landmarks";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import { placeFlag, useFlags } from "@/lib/flags";
-import { cellCenter, randomPointInGridZone, useGridCells } from "@/lib/grid";
+import {
+  cellCenter,
+  randomPointInGridZone,
+  teamsWithMemberMarkers,
+  useGridCells,
+} from "@/lib/grid";
 import { addGridBonus, isGridBonusActive, removeGridBonus, useGridBonuses } from "@/lib/gridBonus";
 import {
   addCircuitBox,
@@ -107,6 +112,7 @@ import {
   setStudentPresent,
   shuffleTeams,
   useStudents,
+  useTeamMemberPositions,
   type ParsedStudent,
 } from "@/lib/students";
 import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
@@ -612,6 +618,11 @@ function TeacherDashboard() {
   }, [code]);
 
   const { game, teams, territories, refresh } = useGameState(gameId);
+  const memberPositions = useTeamMemberPositions(gameId);
+  const mapTeams = useMemo(
+    () => (gameMode === "grille" ? teamsWithMemberMarkers(teams, memberPositions) : teams),
+    [gameMode, teams, memberPositions],
+  );
   useEffect(
     () => setNotificationSounds(game),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1885,7 +1896,7 @@ function TeacherDashboard() {
         <div className="absolute inset-0">
           <MapCanvas
             center={center}
-            teams={teams}
+            teams={mapTeams}
             territories={mapTerritories}
             returnZone={returnZone}
             landmarks={mapLandmarks}
@@ -1996,7 +2007,7 @@ function TeacherDashboard() {
       >
         <MapCanvas
           center={center}
-          teams={teams}
+          teams={mapTeams}
           territories={mapTerritories}
           returnZone={returnZone}
           landmarks={mapLandmarks}
@@ -2395,6 +2406,60 @@ function TeacherDashboard() {
               onClose={() => setWizardOpen(false)}
               onConfirm={confirmWizard}
             />
+          </section>
+        )}
+
+        {gameMode === "grille" && isOwner && game?.status === "lobby" && (
+          <section
+            className="panel relative flex flex-col gap-3 p-4"
+            {...sectionProps("grille-participants")}
+          >
+            <CollapseToggle
+              id="grille-participants"
+              collapsed={!!collapsed["grille-participants"]}
+              onToggle={toggleSection}
+            />
+            <div className="section-title">
+              <Users className="h-4 w-4" /> {t.participantIdSectionTitle}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Plusieurs {t.participantNounPlural} d'une même équipe peuvent jouer en même temps,
+              chacun depuis son téléphone : leurs cases capturées comptent toutes pour la même
+              équipe.
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                className="seg-btn"
+                data-active={studentIdMode === "roster"}
+                onClick={() => void updateStudentIdMode("roster")}
+              >
+                Liste importée
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                data-active={studentIdMode === "freetext"}
+                onClick={() => void updateStudentIdMode("freetext")}
+              >
+                Tape son prénom
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                data-active={studentIdMode === "none"}
+                onClick={() => void updateStudentIdMode("none")}
+              >
+                Aucune
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {studentIdMode === "roster"
+                ? t.studentIdRosterHelp
+                : studentIdMode === "freetext"
+                  ? t.studentIdFreetextHelp
+                  : t.studentIdNoneHelp}
+            </p>
           </section>
         )}
 

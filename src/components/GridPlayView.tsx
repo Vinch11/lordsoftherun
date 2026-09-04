@@ -36,8 +36,10 @@ import {
   claimGridCell,
   isWithinGridZone,
   pointToCell,
+  teamsWithMemberMarkers,
   useGridCells,
 } from "@/lib/grid";
+import { useTeamMemberPositions } from "@/lib/students";
 import { checkGridBonusClaims, isGridBonusActive, useGridBonuses } from "@/lib/gridBonus";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
@@ -66,8 +68,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const lastClaimedCellRef = useRef<string | null>(null);
   const instSpeedRef = useRef(0);
   const lastPosRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  // Distance not yet flushed to the server — a delta added onto the
+  // member's and team's running totals, not an absolute value, so several
+  // teammates' phones syncing at once never clobber one another.
   const totalDistanceRef = useRef(0);
-  const totalDistanceInitRef = useRef(false);
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
   // period players are still moving, but nothing they do may change the board.
@@ -103,18 +107,17 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const { bonuses: gridBonuses } = useGridBonuses(gameId);
   const gridBonusesRef = useRef(gridBonuses);
   gridBonusesRef.current = gridBonuses;
+  const memberPositions = useTeamMemberPositions(gameId);
+  const mapTeams = useMemo(
+    () => teamsWithMemberMarkers(teams, memberPositions),
+    [teams, memberPositions],
+  );
 
   const me = teams.find((t) => t.id === teamId) ?? null;
   const meRef = useRef(me);
   meRef.current = me;
   const myColor = me?.color ?? "#e63946";
 
-  useEffect(() => {
-    if (!totalDistanceInitRef.current && me) {
-      totalDistanceRef.current = me.total_distance_m;
-      totalDistanceInitRef.current = true;
-    }
-  }, [me]);
   const myCellCount = useMemo(
     () => cells.filter((c) => c.owner_team_id === teamId).length,
     [cells, teamId],
@@ -239,28 +242,44 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
+        const delta = totalDistanceRef.current;
         void withTimeout(
-          supabase
-            .from("teams")
-            .update({
-              lat: point[0],
-              lng: point[1],
-              total_distance_m: totalDistanceRef.current,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", teamId),
+          supabase.rpc("update_team_member_position", {
+            _team_id: teamId,
+            _lat: point[0],
+            _lng: point[1],
+            _distance_delta_m: delta,
+          }),
           8000,
         ).then(
-          ({ error }) => {
-            if (error && !syncFailWarnedRef.current) {
-              syncFailWarnedRef.current = true;
-              console.error("Échec de synchronisation de la position :", error);
-              toast.error("Position non synchronisée — vérifiez votre connexion.", {
-                duration: 8000,
-              });
-            } else if (!error) {
-              syncFailWarnedRef.current = false;
+          async ({ error }) => {
+            if (error) {
+              if (!syncFailWarnedRef.current) {
+                syncFailWarnedRef.current = true;
+                console.error("Échec de synchronisation de la position :", error);
+                toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                  duration: 8000,
+                });
+              }
+              return;
             }
+            syncFailWarnedRef.current = false;
+            if (delta > 0) {
+              // The member's own row already has this delta; add it to the
+              // team's aggregate too — kept as a separate call rather than
+              // rolled into one RPC so the two can fail independently.
+              const { error: distError } = await supabase.rpc("add_distance", {
+                _team_id: teamId,
+                _delta_m: delta,
+              });
+              if (distError) {
+                console.error("Échec de synchronisation de la distance :", distError);
+                return;
+              }
+            }
+            // Only clear what we just flushed — more may have accumulated
+            // while this round-trip was in flight.
+            totalDistanceRef.current -= delta;
           },
           (err: unknown) => {
             if (!syncFailWarnedRef.current) {
@@ -455,7 +474,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}
-          teams={teams}
+          teams={mapTeams}
           territories={[]}
           gridZone={game?.grid_show_overlay === false ? null : gridZone}
           gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}

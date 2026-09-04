@@ -12,6 +12,13 @@ export type MapTeam = {
   lat: number | null;
   lng: number | null;
   current_trail?: [number, number][];
+  /**
+   * Per-participant positions (Grille's multi-device mode). When present
+   * and non-empty, one marker is drawn per member instead of the single
+   * team.lat/lng blip, which under several simultaneous devices only ever
+   * holds whichever one last synced.
+   */
+  members?: { lat: number; lng: number }[];
 };
 
 export type MapTerritory = {
@@ -622,6 +629,19 @@ export default function GameMap({
     if (!layer) return;
     layer.clearLayers();
     for (const t of teams) {
+      if (t.members && t.members.length > 0) {
+        const multiple = t.members.length > 1;
+        t.members.forEach((m, i) => {
+          L.marker([m.lat, m.lng], { icon: blipIcon(t.color, spec) })
+            .bindTooltip(multiple ? `${t.name} #${i + 1}` : t.name, {
+              permanent: true,
+              direction: "top",
+              offset: [0, -12],
+            })
+            .addTo(layer);
+        });
+        continue;
+      }
       if (t.lat == null || t.lng == null) continue;
       L.marker([t.lat, t.lng], { icon: blipIcon(t.color, spec) })
         .bindTooltip(t.name, { permanent: true, direction: "top", offset: [0, -12] })
