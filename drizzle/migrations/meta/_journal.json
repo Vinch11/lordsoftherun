@@ -463,6 +463,13 @@
       "when": 1788779559774,
       "tag": "0065_position_upsert_fallback_reapply",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1788900000000,
+      "tag": "0066_rejoin_team_members",
+      "breakpoints": true
     }
   ]
 }

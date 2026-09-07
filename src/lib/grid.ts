@@ -198,7 +198,6 @@ export function useGridCells(gameId: string | null) {
   return { cells, refresh };
 }
 
-
 /**
  * Enriches each team with the live positions of its individual members, for
  * Grille's multi-participant mode: the map then draws one marker per device
