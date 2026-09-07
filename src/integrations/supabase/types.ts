@@ -1150,10 +1150,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      close_quiz_question: {
-        Args: { _game_id: string }
-        Returns: undefined
-      }
+      close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {
         Args: { _amount?: number; _team_id: string }
         Returns: undefined
@@ -1164,7 +1161,12 @@ export type Database = {
       }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
       send_quiz_question: {
-        Args: { _answer: string; _bonus: number; _game_id: string; _question: string }
+        Args: {
+          _answer: string
+          _bonus: number
+          _game_id: string
+          _question: string
+        }
         Returns: undefined
       }
       submit_quiz_answer: {
