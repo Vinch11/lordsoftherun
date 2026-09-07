@@ -268,12 +268,13 @@ function Join() {
         toast.error("Impossible de rejoindre la partie.");
         return;
       }
-      // Grille's per-participant position tracking (team_members) needs the
-      // creator registered too, not just later joiners — claimed_by alone
-      // (set by the insert above) isn't enough for update_team_member_position.
-      if (gameMode === "grille" && multiParticipant) {
-        await joinTeamMember(team.id, null);
-      }
+      // Registers the creator in team_members too, not just claimed_by (set
+      // by the insert above): claimed_by is exclusive and gets silently
+      // reassigned the moment anyone else rejoins this team, which used to
+      // permanently break the creator's own participant-gated actions
+      // (photo uploads included). team_members membership never gets
+      // evicted, so this keeps the creator's session working regardless.
+      await joinTeamMember(team.id, null);
       localStorage.setItem(teamStorageKey(game.code), team.id);
       rememberMyTeam(team.id, game.code);
       await navigate({ to: "/jouer/$teamId", params: { teamId: team.id } });
