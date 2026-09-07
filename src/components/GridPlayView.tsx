@@ -234,11 +234,15 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
             totalDistanceRef.current += dist;
+            // Time actually spent playing, capped per sample so a phone that
+            // slept for ten minutes doesn't inflate the average-speed stat.
+            totalActiveRef.current += Math.min(dt, 30);
           }
         }
       } else {
         lastPosRef.current = { point, t: nowMs };
       }
+
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
