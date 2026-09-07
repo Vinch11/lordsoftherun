@@ -72,6 +72,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   // member's and team's running totals, not an absolute value, so several
   // teammates' phones syncing at once never clobber one another.
   const totalDistanceRef = useRef(0);
+  // Seconds actually spent moving, flushed with the distance so the teacher
+  // dashboard can compute an average speed.
+  const totalActiveRef = useRef(0);
+
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
   // period players are still moving, but nothing they do may change the board.
