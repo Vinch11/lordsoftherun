@@ -27,6 +27,9 @@ export type Game = {
   return_radius_m: number;
   photo_requested_at: string | null;
   photo_deadline: string | null;
+  quiz_question: string | null;
+  quiz_bonus: number;
+  quiz_sent_at: string | null;
   map_style: string | null;
   running_bonus_enabled: boolean;
   running_bonus_speed_kmh: number;
