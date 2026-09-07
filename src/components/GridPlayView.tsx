@@ -251,6 +251,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
         const delta = totalDistanceRef.current;
+        const activeDelta = totalActiveRef.current;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -272,13 +273,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
               return;
             }
             syncFailWarnedRef.current = false;
-            if (delta > 0) {
+            if (delta > 0 || activeDelta > 0) {
               // The member's own row already has this delta; add it to the
               // team's aggregate too — kept as a separate call rather than
               // rolled into one RPC so the two can fail independently.
               const { error: distError } = await supabase.rpc("add_distance", {
                 _team_id: teamId,
                 _delta_m: delta,
+                _delta_active_s: activeDelta,
               });
               if (distError) {
                 console.error("Échec de synchronisation de la distance :", distError);
@@ -288,7 +290,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             // Only clear what we just flushed — more may have accumulated
             // while this round-trip was in flight.
             totalDistanceRef.current -= delta;
+            totalActiveRef.current -= activeDelta;
           },
+
           (err: unknown) => {
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
