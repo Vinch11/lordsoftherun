@@ -296,6 +296,9 @@ export type Database = {
           owner_id: string | null
           photo_deadline: string | null
           photo_requested_at: string | null
+          quiz_bonus: number
+          quiz_question: string | null
+          quiz_sent_at: string | null
           return_lat: number | null
           return_lng: number | null
           return_radius_m: number
@@ -359,6 +362,9 @@ export type Database = {
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
+          quiz_bonus?: number
+          quiz_question?: string | null
+          quiz_sent_at?: string | null
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
@@ -422,6 +428,9 @@ export type Database = {
           owner_id?: string | null
           photo_deadline?: string | null
           photo_requested_at?: string | null
+          quiz_bonus?: number
+          quiz_question?: string | null
+          quiz_sent_at?: string | null
           return_lat?: number | null
           return_lng?: number | null
           return_radius_m?: number
@@ -725,6 +734,83 @@ export type Database = {
           terminology?: string
         }
         Relationships: []
+      }
+      quiz_answers: {
+        Row: {
+          answer: string
+          answered_at: string
+          correct: boolean
+          game_id: string
+          id: string
+          round_sent_at: string
+          team_id: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          correct: boolean
+          game_id: string
+          id?: string
+          round_sent_at: string
+          team_id: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          correct?: boolean
+          game_id?: string
+          id?: string
+          round_sent_at?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_answers_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_rounds: {
+        Row: {
+          bonus_amount: number
+          correct_answer: string
+          game_id: string
+          id: string
+          sent_at: string
+        }
+        Insert: {
+          bonus_amount: number
+          correct_answer: string
+          game_id: string
+          id?: string
+          sent_at: string
+        }
+        Update: {
+          bonus_amount?: number
+          correct_answer?: string
+          game_id?: string
+          id?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_rounds_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       saved_circuits: {
         Row: {
@@ -1064,6 +1150,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {
         Args: { _amount?: number; _team_id: string }
         Returns: undefined
@@ -1073,6 +1160,19 @@ export type Database = {
         Returns: string
       }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
+      send_quiz_question: {
+        Args: {
+          _answer: string
+          _bonus: number
+          _game_id: string
+          _question: string
+        }
+        Returns: undefined
+      }
+      submit_quiz_answer: {
+        Args: { _answer: string; _team_id: string }
+        Returns: boolean
+      }
       update_team_member_position: {
         Args: {
           _distance_delta_m: number
