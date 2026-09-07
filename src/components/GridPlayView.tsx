@@ -373,9 +373,16 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         (gameRef.current?.running_bonus_enabled ?? true) &&
         instSpeedRef.current >=
           kmhToMs(gameRef.current?.running_bonus_speed_kmh ?? DEFAULT_RUNNING_BONUS_SPEED_KMH);
-      void claimGridCell(gameId, teamId, row, col).then(() => {
-        if (runningBonus) void awardRunningBonusCell(teamId);
-      });
+      void claimGridCell(gameId, teamId, row, col)
+        .then(() => {
+          if (runningBonus) void awardRunningBonusCell(teamId);
+        })
+        .catch(() => {
+          // Capture ratée (réseau) : on oublie la case pour pouvoir réessayer
+          // au prochain point GPS au lieu de la considérer comme prise.
+          if (lastClaimedCellRef.current === key) lastClaimedCellRef.current = null;
+        });
+
     },
     [teamId, gameId],
   );
