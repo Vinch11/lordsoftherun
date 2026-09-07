@@ -247,7 +247,6 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         lastPosRef.current = { point, t: nowMs };
       }
 
-
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
         const delta = totalDistanceRef.current;
@@ -402,7 +401,6 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           // au prochain point GPS au lieu de la considérer comme prise.
           if (lastClaimedCellRef.current === key) lastClaimedCellRef.current = null;
         });
-
     },
     [teamId, gameId],
   );
