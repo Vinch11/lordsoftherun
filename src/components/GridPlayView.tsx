@@ -7,6 +7,7 @@ import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
+import { QuizCard } from "@/components/QuizCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
@@ -651,6 +652,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           photoDeadline={game?.photo_deadline}
           nowMs={now}
           terminology={game?.terminology}
+        />
+
+        <QuizCard
+          teamId={teamId}
+          question={game?.quiz_question}
+          bonus={game?.quiz_bonus}
+          sentAt={game?.quiz_sent_at}
         />
 
         {finished && returnZone && graceStatus?.remainingS != null && (

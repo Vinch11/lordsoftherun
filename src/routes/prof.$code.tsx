@@ -15,6 +15,7 @@ import {
   Flame,
   Gamepad2,
   Grid3x3,
+  HelpCircle,
   Maximize2,
   MapPin,
   Medal,
@@ -115,6 +116,7 @@ import {
   useTeamMemberPositions,
   type ParsedStudent,
 } from "@/lib/students";
+import { closeQuizQuestion, sendQuizQuestion, useQuizAnswers } from "@/lib/quiz";
 import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
 import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
 
@@ -438,6 +440,11 @@ function TeacherDashboard() {
   const [showKindPicker, setShowKindPicker] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
   const [previewTeamId, setPreviewTeamId] = useState<string | null>(null);
+  const [colorPickerTeamId, setColorPickerTeamId] = useState<string | null>(null);
+  const [quizQuestionDraft, setQuizQuestionDraft] = useState("");
+  const [quizAnswerDraft, setQuizAnswerDraft] = useState("");
+  const [quizBonusDraft, setQuizBonusDraft] = useState(25);
+  const [sendingQuiz, setSendingQuiz] = useState(false);
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
 
@@ -620,6 +627,11 @@ function TeacherDashboard() {
   }, [code]);
 
   const { game, teams, territories, refresh } = useGameState(gameId);
+  const quizAnswers = useQuizAnswers(gameId);
+  const currentQuizAnswers = useMemo(
+    () => quizAnswers.filter((a) => a.round_sent_at === game?.quiz_sent_at),
+    [quizAnswers, game?.quiz_sent_at],
+  );
   const memberPositions = useTeamMemberPositions(gameId);
   const mapTeams = useMemo(
     () => (gameMode === "grille" ? teamsWithMemberMarkers(teams, memberPositions) : teams),
@@ -1611,6 +1623,42 @@ function TeacherDashboard() {
     }
   }
 
+  async function updateTeamColor(teamId: string, color: string) {
+    setColorPickerTeamId(null);
+    const { error } = await supabase.from("teams").update({ color }).eq("id", teamId);
+    if (error) toast.error("Impossible de changer la couleur.");
+  }
+
+  async function sendQuiz() {
+    if (!gameId || !quizQuestionDraft.trim() || !quizAnswerDraft.trim()) return;
+    setSendingQuiz(true);
+    try {
+      await sendQuizQuestion(
+        gameId,
+        quizQuestionDraft.trim(),
+        quizAnswerDraft.trim(),
+        quizBonusDraft,
+      );
+      setQuizQuestionDraft("");
+      setQuizAnswerDraft("");
+      toast.success("Question envoyée à toutes les équipes.");
+    } catch {
+      toast.error("Impossible d'envoyer la question.");
+    } finally {
+      setSendingQuiz(false);
+    }
+  }
+
+  async function closeQuiz() {
+    if (!gameId) return;
+    try {
+      await closeQuizQuestion(gameId);
+      toast("Question close.");
+    } catch {
+      toast.error("Impossible de clore la question.");
+    }
+  }
+
   async function updateForbiddenRunningOnly(next: boolean) {
     setForbiddenRunningOnly(next);
     if (!gameId || !isOwner) return;
@@ -2231,6 +2279,75 @@ function TeacherDashboard() {
             {getGameModeDescriptions(t.circuitHostPhrase)[gameMode]}
           </p>
         </section>
+
+        {isOwner && (gameMode === "territoire" || gameMode === "grille") && (
+          <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("quiz")}>
+            <CollapseToggle id="quiz" collapsed={!!collapsed["quiz"]} onToggle={toggleSection} />
+            <div className="section-title">
+              <HelpCircle className="h-4 w-4" /> Question bonus
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Envoyez une question en direct à toutes les équipes : la première bonne réponse de
+              chaque équipe lui rapporte le bonus.
+            </p>
+            {game?.quiz_question ? (
+              <div className="flex flex-col gap-2 rounded-2xl bg-secondary/60 p-3">
+                <p className="text-sm font-semibold">{game.quiz_question}</p>
+                <p className="text-xs text-muted-foreground">
+                  Bonus : +{game.quiz_bonus} · {currentQuizAnswers.length}/{teams.length} équipe
+                  {teams.length > 1 ? "s" : ""} ont répondu (
+                  {currentQuizAnswers.filter((a) => a.correct).length} bonnes réponses)
+                </p>
+                <button type="button" className="btn-huge-dark" onClick={() => void closeQuiz()}>
+                  Clore la question
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <input
+                  className="field"
+                  placeholder="Question"
+                  value={quizQuestionDraft}
+                  onChange={(e) => setQuizQuestionDraft(e.target.value)}
+                />
+                <input
+                  className="field"
+                  placeholder="Bonne réponse"
+                  value={quizAnswerDraft}
+                  onChange={(e) => setQuizAnswerDraft(e.target.value)}
+                />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Bonus si correct</span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      aria-label="Réduire le bonus"
+                      className="icon-btn"
+                      onClick={() => setQuizBonusDraft((v) => Math.max(5, v - 5))}
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="display w-16 text-center text-lg">{quizBonusDraft}</span>
+                    <button
+                      aria-label="Augmenter le bonus"
+                      className="icon-btn"
+                      onClick={() => setQuizBonusDraft((v) => Math.min(500, v + 5))}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <button
+                  className="btn-huge btn-huge-accent"
+                  disabled={sendingQuiz || !quizQuestionDraft.trim() || !quizAnswerDraft.trim()}
+                  onClick={() => void sendQuiz()}
+                >
+                  <Send className="h-5 w-5" />
+                  {sendingQuiz ? "Envoi..." : "Envoyer à toutes les équipes"}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
 
         {isOwner && game?.status === "lobby" && (
           <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("eleves")}>
@@ -4616,21 +4733,62 @@ function TeacherDashboard() {
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {teams.map((tm) => (
-                <div
-                  key={tm.id}
-                  className="flex items-center gap-3 border-b border-border py-2 last:border-0"
-                >
-                  <span
-                    className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
-                    style={{ backgroundColor: tm.color }}
-                  />
-                  <span className="flex-1 truncate text-sm font-semibold">{tm.name}</span>
-                  <button className="mini-btn" onClick={() => setPreviewTeamId(tm.id)}>
-                    Aperçu
-                  </button>
-                </div>
-              ))}
+              {teams.map((tm) => {
+                const colorTaken = (hex: string) =>
+                  teams.some((other) => other.id !== tm.id && other.color === hex);
+                return (
+                  <div
+                    key={tm.id}
+                    className="flex flex-col gap-2 border-b border-border py-2 last:border-0"
+                  >
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        aria-label={`Changer la couleur de ${tm.name}`}
+                        aria-pressed={colorPickerTeamId === tm.id}
+                        disabled={!isOwner}
+                        onClick={() => setColorPickerTeamId((p) => (p === tm.id ? null : tm.id))}
+                        className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground disabled:cursor-default"
+                        style={{ backgroundColor: tm.color }}
+                      />
+                      <span className="flex-1 truncate text-sm font-semibold">{tm.name}</span>
+                      <button className="mini-btn" onClick={() => setPreviewTeamId(tm.id)}>
+                        Aperçu
+                      </button>
+                    </div>
+                    {colorPickerTeamId === tm.id && (
+                      <div className="grid grid-cols-8 gap-2 pl-8">
+                        {TEAM_COLORS.map((c) => {
+                          const taken = colorTaken(c.hex);
+                          return (
+                            <button
+                              key={c.hex}
+                              type="button"
+                              aria-label={taken ? `${c.name} (déjà prise)` : c.name}
+                              disabled={taken}
+                              onClick={() => void updateTeamColor(tm.id, c.hex)}
+                              className={`relative h-8 w-8 rounded-full border-2 transition-transform ${
+                                taken
+                                  ? "cursor-not-allowed opacity-30"
+                                  : tm.color === c.hex
+                                    ? "scale-110 border-foreground"
+                                    : "border-transparent opacity-80"
+                              }`}
+                              style={{ backgroundColor: c.hex }}
+                            >
+                              {taken && (
+                                <span className="absolute inset-0 flex items-center justify-center text-xs text-foreground">
+                                  ✕
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>

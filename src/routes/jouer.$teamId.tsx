@@ -31,7 +31,7 @@ import {
   withTimeout,
   studentThemeClass,
 } from "@/lib/conquete";
-import { captureTerritory, polygonFromTrack } from "@/lib/capture";
+import { captureTerritory, polygonFromTrack, recomputeScores } from "@/lib/capture";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
 import {
   armAlertSound,
@@ -41,6 +41,7 @@ import {
   setNotificationSounds,
 } from "@/lib/notify";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
+import { QuizCard } from "@/components/QuizCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
@@ -865,6 +866,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           photoDeadline={game?.photo_deadline}
           nowMs={now}
           terminology={game?.terminology}
+        />
+
+        <QuizCard
+          teamId={teamId}
+          question={game?.quiz_question}
+          bonus={game?.quiz_bonus}
+          sentAt={game?.quiz_sent_at}
+          onCorrect={() => void recomputeScores(gameId)}
         />
 
         {returnZone && (!finished || graceStatus?.remainingS != null) && (

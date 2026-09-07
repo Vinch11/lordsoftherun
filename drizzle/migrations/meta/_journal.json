@@ -470,6 +470,13 @@
       "when": 1788900000000,
       "tag": "0066_rejoin_team_members",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1789000000000,
+      "tag": "0067_quiz_bonus",
+      "breakpoints": true
     }
   ]
 }
