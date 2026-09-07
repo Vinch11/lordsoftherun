@@ -263,6 +263,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         ).then(
           async ({ error }) => {
             if (error) {
+              // Fallback: even if the per-participant write fails, the team's
+              // own position must still reach the map, or its coloured blip
+              // disappears for everyone.
+              await supabase
+                .from("teams")
+                .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+                .eq("id", teamId);
               if (!syncFailWarnedRef.current) {
                 syncFailWarnedRef.current = true;
                 console.error("Échec de synchronisation de la position :", error);
@@ -272,6 +279,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
               }
               return;
             }
+
             syncFailWarnedRef.current = false;
             if (delta > 0 || activeDelta > 0) {
               // The member's own row already has this delta; add it to the
