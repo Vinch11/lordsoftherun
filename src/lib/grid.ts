@@ -144,19 +144,60 @@ export function useGridCells(gameId: string | null) {
   useEffect(() => {
     if (!gameId) return;
     void refresh();
+
+    /**
+     * Realtime events carry the changed row, so we patch that single cell in
+     * place instead of re-reading (and re-rendering) the whole grid — with
+     * several teams that full reload happened once or twice per second and
+     * froze the phones. A slow periodic reload stays as the source of truth
+     * in case an event is ever dropped.
+     */
+    const applyChange = (
+      eventType: string,
+      row: GridCell | null,
+      oldRow: Partial<GridCell> | null,
+    ) => {
+      setCells((prev) => {
+        if (eventType === "DELETE") {
+          const id = oldRow?.id;
+          return id ? prev.filter((c) => c.id !== id) : prev;
+        }
+        if (!row) return prev;
+        const idx = prev.findIndex(
+          (c) => c.id === row.id || (c.row === row.row && c.col === row.col),
+        );
+        if (idx === -1) return [...prev, row];
+        const next = prev.slice();
+        next[idx] = row;
+        return next;
+      });
+    };
+
     const channel = supabase
       .channel(`grid-cells-${gameId}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "grid_cells", filter: `game_id=eq.${gameId}` },
-        () => void refresh(),
+        (payload) =>
+          applyChange(
+            payload.eventType,
+            (payload.new as GridCell | undefined) ?? null,
+            (payload.old as Partial<GridCell> | undefined) ?? null,
+          ),
       )
       .subscribe();
-    return () => void supabase.removeChannel(channel);
+
+    const poll = setInterval(() => void refresh(), 20000);
+
+    return () => {
+      clearInterval(poll);
+      void supabase.removeChannel(channel);
+    };
   }, [gameId, refresh]);
 
   return { cells, refresh };
 }
+
 
 /**
  * Enriches each team with the live positions of its individual members, for
