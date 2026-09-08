@@ -8,6 +8,7 @@ import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { QuizCard } from "@/components/QuizCard";
+import { GridBonusQuestionCard } from "@/components/GridBonusQuestionCard";
 import { useGameState } from "@/lib/useGameState";
 import {
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
@@ -41,7 +42,12 @@ import {
   useGridCells,
 } from "@/lib/grid";
 import { useTeamMemberPositions } from "@/lib/students";
-import { checkGridBonusClaims, isGridBonusActive, useGridBonuses } from "@/lib/gridBonus";
+import {
+  checkGridBonusClaims,
+  isGridBonusActive,
+  useGridBonuses,
+  type GridBonus,
+} from "@/lib/gridBonus";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
@@ -62,6 +68,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   const [unread, setUnread] = useState(false);
   const [followMe, setFollowMe] = useState(true);
   const [speedKmh, setSpeedKmh] = useState(0);
+  const [nearbyQuestionBonus, setNearbyQuestionBonus] = useState<GridBonus | null>(null);
 
   const lastSync = useRef(0);
   const syncFailWarnedRef = useRef(false);
@@ -368,6 +375,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         });
       }
 
+      // Question-gated bonuses never auto-explode on contact — surface the
+      // nearest one in range so the HUD can prompt for an answer instead.
+      const questionBonus = activeBonuses.find(
+        (b) => b.question != null && haversine(point, [b.lat, b.lng]) <= GRID_BONUS_CLAIM_RADIUS_M,
+      );
+      setNearbyQuestionBonus(questionBonus ?? null);
+
       if (
         !isWithinGridZone(
           gridShapeRef.current,
@@ -659,6 +673,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           question={game?.quiz_question}
           bonus={game?.quiz_bonus}
           sentAt={game?.quiz_sent_at}
+        />
+
+        <GridBonusQuestionCard
+          bonus={nearbyQuestionBonus}
+          teamId={teamId}
+          gridCenter={gridCenter}
+          cellSizeM={cellSizeRef.current}
+          onResolved={() => setNearbyQuestionBonus(null)}
         />
 
         {finished && returnZone && graceStatus?.remainingS != null && (

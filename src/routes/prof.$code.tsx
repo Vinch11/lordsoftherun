@@ -80,7 +80,13 @@ import {
   teamsWithMemberMarkers,
   useGridCells,
 } from "@/lib/grid";
-import { addGridBonus, isGridBonusActive, removeGridBonus, useGridBonuses } from "@/lib/gridBonus";
+import {
+  addGridBonus,
+  addGridBonusWithQuestion,
+  isGridBonusActive,
+  removeGridBonus,
+  useGridBonuses,
+} from "@/lib/gridBonus";
 import {
   addCircuitBox,
   appendCheckpoint,
@@ -521,6 +527,8 @@ function TeacherDashboard() {
   const [gridBonusLifetime, setGridBonusLifetime] = useState(DEFAULT_GRID_BONUS_LIFETIME_S);
   const [gridBonusInterval, setGridBonusInterval] = useState(DEFAULT_GRID_BONUS_INTERVAL_S);
   const [gridBonusMaxActive, setGridBonusMaxActive] = useState(DEFAULT_GRID_BONUS_MAX_ACTIVE);
+  const [gridBonusQuestion, setGridBonusQuestion] = useState("");
+  const [gridBonusAnswer, setGridBonusAnswer] = useState("");
   const [notificationSound, setNotificationSoundChoice] = useState<NotificationSoundId>(
     DEFAULT_NOTIFICATION_SOUND,
   );
@@ -1476,7 +1484,21 @@ function TeacherDashboard() {
 
   async function placeGridBonus(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
-    await addGridBonus(gameId, lat, lng, gridBonusRadius, gridBonusLifetime);
+    const question = gridBonusQuestion.trim();
+    const answer = gridBonusAnswer.trim();
+    if (question && answer) {
+      await addGridBonusWithQuestion(
+        gameId,
+        lat,
+        lng,
+        gridBonusRadius,
+        gridBonusLifetime,
+        question,
+        answer,
+      );
+    } else {
+      await addGridBonus(gameId, lat, lng, gridBonusRadius, gridBonusLifetime);
+    }
     setPlacingMode("none");
   }
 
@@ -3752,14 +3774,37 @@ function TeacherDashboard() {
                   </>
                 ) : (
                   gridZone && (
-                    <button
-                      className={`btn-huge ${placingMode === "grid_bonus" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                      onClick={() =>
-                        setPlacingMode((p) => (p === "grid_bonus" ? "none" : "grid_bonus"))
-                      }
-                    >
-                      {placingMode === "grid_bonus" ? "Touchez la carte..." : "Placer un bonus"}
-                    </button>
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <span className="label-xs">
+                          Question conditionnelle (optionnel) — bonne réponse = explosion, mauvaise
+                          réponse = disparition
+                        </span>
+                        <input
+                          className="field"
+                          placeholder="Question (laisser vide pour un bonus normal)"
+                          value={gridBonusQuestion}
+                          onChange={(e) => setGridBonusQuestion(e.target.value)}
+                        />
+                        {gridBonusQuestion.trim() && (
+                          <input
+                            className="field"
+                            placeholder="Réponse attendue"
+                            value={gridBonusAnswer}
+                            onChange={(e) => setGridBonusAnswer(e.target.value)}
+                          />
+                        )}
+                      </div>
+                      <button
+                        className={`btn-huge ${placingMode === "grid_bonus" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                        disabled={!!gridBonusQuestion.trim() && !gridBonusAnswer.trim()}
+                        onClick={() =>
+                          setPlacingMode((p) => (p === "grid_bonus" ? "none" : "grid_bonus"))
+                        }
+                      >
+                        {placingMode === "grid_bonus" ? "Touchez la carte..." : "Placer un bonus"}
+                      </button>
+                    </>
                   )
                 )}
 
@@ -3774,7 +3819,7 @@ function TeacherDashboard() {
                           className="flex items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2"
                         >
                           <span className="text-sm">
-                            💥 rayon {Math.round(b.radius_m)} m —{" "}
+                            {b.question ? "❓" : "💥"} rayon {Math.round(b.radius_m)} m —{" "}
                             {formatClock(
                               Math.max(0, (new Date(b.expires_at).getTime() - now) / 1000),
                             )}
