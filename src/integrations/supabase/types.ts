@@ -1159,6 +1159,10 @@ export type Database = {
         Args: { _student_id?: string; _student_name?: string; _team_id: string }
         Returns: string
       }
+      override_quiz_answer: {
+        Args: { _correct: boolean; _round_sent_at: string; _team_id: string }
+        Returns: undefined
+      }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
       send_quiz_question: {
         Args: {
