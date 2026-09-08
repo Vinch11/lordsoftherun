@@ -49,7 +49,11 @@ function Join() {
   const [checkingResume, setCheckingResume] = useState(true);
   const [resumeFailed, setResumeFailed] = useState(false);
   const [existingTeams, setExistingTeams] = useState<ExistingTeam[]>([]);
-  const [creatingNew, setCreatingNew] = useState(false);
+  // Defaults to the create-team form, not the existing-teams list: several
+  // students clicking an already-taken team name instead of making their
+  // own (thinking they were starting fresh) was a real, confusing mistake
+  // once a game had any teams in it at all.
+  const [creatingNew, setCreatingNew] = useState(true);
   const [resumeRetryTick, setResumeRetryTick] = useState(0);
   const [asyncMode, setAsyncMode] = useState(false);
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
@@ -510,7 +514,7 @@ function Join() {
                 </button>
               ))}
             </section>
-            <button type="button" className="btn-huge-dark" onClick={() => setCreatingNew(true)}>
+            <button type="button" className="btn-huge" onClick={() => setCreatingNew(true)}>
               <Plus className="h-5 w-5" /> Créer une nouvelle équipe
             </button>
           </>
