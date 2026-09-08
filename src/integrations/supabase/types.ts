@@ -447,6 +447,29 @@ export type Database = {
         }
         Relationships: []
       }
+      grid_bonus_answers: {
+        Row: {
+          answer: string
+          bonus_id: string
+        }
+        Insert: {
+          answer: string
+          bonus_id: string
+        }
+        Update: {
+          answer?: string
+          bonus_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grid_bonus_answers_bonus_id_fkey"
+            columns: ["bonus_id"]
+            isOneToOne: true
+            referencedRelation: "grid_bonuses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grid_bonuses: {
         Row: {
           claimed_at: string | null
@@ -500,29 +523,6 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      grid_bonus_answers: {
-        Row: {
-          answer: string
-          bonus_id: string
-        }
-        Insert: {
-          answer: string
-          bonus_id: string
-        }
-        Update: {
-          answer?: string
-          bonus_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "grid_bonus_answers_bonus_id_fkey"
-            columns: ["bonus_id"]
-            isOneToOne: true
-            referencedRelation: "grid_bonuses"
             referencedColumns: ["id"]
           },
         ]
