@@ -1134,26 +1134,37 @@
   text-transform: none;
 }
 
+/* Chrome flottant très translucide : le fond se voit à travers, pour que
+   la carte reste l'élément principal de l'écran plutôt qu'une pile de
+   cartes opaques. Les chips d'équipe ne sont volontairement pas ici : ils
+   restent nus, portés par le bandeau .score-strip (voir plus bas) — comme
+   le thème classique le fait déjà. */
 .bib.skin-apple .hud-badge,
 .bib.skin-apple .nav-back,
-.bib.skin-apple .panel,
-.bib.skin-apple .sheet,
-.bib.skin-apple .score-chip {
-  background-color: oklch(1 0 0 / 88%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid oklch(1 0 0 / 60%);
-  border-radius: 1.25rem;
-  box-shadow: 0 12px 30px -16px oklch(0.2 0.01 260 / 55%);
+.bib.skin-apple .panel {
+  background-color: oklch(1 0 0 / 62%);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 40%);
+  border-radius: 1.1rem;
+  box-shadow: 0 6px 18px -14px oklch(0.2 0.01 260 / 30%);
   color: var(--foreground);
 }
 
-.bib.skin-apple .score-chip-leader {
-  background-color: oklch(0.97 0.02 150 / 92%);
+.bib.skin-apple .sheet {
+  background-color: oklch(1 0 0 / 94%);
+  backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid oklch(1 0 0 / 60%);
+  color: var(--foreground);
 }
 
-.bib.skin-apple .score-chip-me {
-  outline: 2px solid var(--foreground);
-  outline-offset: 2px;
+.bib.skin-apple .score-strip {
+  border-radius: 1.1rem;
+}
+
+.bib.skin-apple .stat {
+  border: none;
+  background-color: transparent;
+  padding: 0.2rem 0.3rem;
 }
 
 .bib.skin-apple .field {
@@ -1242,26 +1253,35 @@
   text-transform: uppercase;
 }
 
+/* Même logique que le skin Apple Premium : chrome léger et translucide,
+   chips d'équipe nus dans le bandeau .score-strip plutôt que des cartes
+   individuelles. */
 .bib.skin-athletic .hud-badge,
 .bib.skin-athletic .nav-back,
-.bib.skin-athletic .panel,
-.bib.skin-athletic .sheet,
-.bib.skin-athletic .score-chip {
-  background-color: oklch(1 0 0 / 94%);
-  backdrop-filter: blur(14px);
-  border: 2px solid oklch(0.9 0.01 250);
-  border-radius: 1.25rem;
-  box-shadow: 0 14px 30px -18px oklch(0.3 0.05 260 / 60%);
+.bib.skin-athletic .panel {
+  background-color: oklch(1 0 0 / 68%);
+  backdrop-filter: blur(16px);
+  border: 1px solid oklch(0.9 0.01 250 / 70%);
+  border-radius: 1.1rem;
+  box-shadow: 0 8px 20px -16px oklch(0.3 0.05 260 / 40%);
   color: var(--foreground);
 }
 
-.bib.skin-athletic .score-chip-leader {
-  border-color: var(--primary);
+.bib.skin-athletic .sheet {
+  background-color: oklch(1 0 0 / 96%);
+  backdrop-filter: blur(14px);
+  border: 2px solid oklch(0.9 0.01 250);
+  color: var(--foreground);
 }
 
-.bib.skin-athletic .score-chip-me {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+.bib.skin-athletic .score-strip {
+  border-radius: 1.1rem;
+}
+
+.bib.skin-athletic .stat {
+  border: none;
+  background-color: transparent;
+  padding: 0.2rem 0.3rem;
 }
 
 .bib.skin-athletic .field {
