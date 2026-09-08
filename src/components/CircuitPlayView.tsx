@@ -525,7 +525,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       </div>
 
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
+        className="hud-instrument pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
         <div className="hud-badge min-w-0 px-3 py-2">
@@ -562,8 +562,8 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
 
       <button
         aria-label="Messages"
-        className="hud-badge pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(9.5rem, calc(env(safe-area-inset-top) + 7rem))" }}
+        className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+        style={{ top: "max(12rem, calc(env(safe-area-inset-top) + 9.5rem))" }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);

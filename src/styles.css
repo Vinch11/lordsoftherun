@@ -1100,27 +1100,30 @@
   color: var(--foreground);
 }
 
-/* --- Apple Premium : verre dépoli clair, bouton principal noir. --- */
+/* --- Apple Premium ("Instrument") : parchemin, encre, accent magenta
+   d'inspiration carte de course d'orientation. Peu de blocs, des chiffres
+   alignés, un seul aplat plein (le bouton d'action) — tout le reste
+   s'efface pour laisser la carte respirer. --- */
 .bib.skin-apple {
-  --background: oklch(0.96 0.003 250);
-  --foreground: oklch(0.2 0.01 260);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.01 260);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.01 260);
-  --primary: oklch(0.22 0.01 260);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.93 0.004 250);
-  --secondary-foreground: oklch(0.2 0.01 260);
-  --muted: oklch(0.93 0.004 250);
-  --muted-foreground: oklch(0.48 0.01 260);
-  --accent: oklch(0.22 0.01 260);
-  --accent-foreground: oklch(0.99 0 0);
-  --border: oklch(0.85 0.005 250 / 100%);
-  --input: oklch(0.85 0.005 250 / 100%);
-  --ring: oklch(0.22 0.01 260);
-  --font-display: "Inter", system-ui, sans-serif;
-  font-family: "Inter", system-ui, sans-serif;
+  --background: #f3f1ea;
+  --foreground: #17171b;
+  --card: #faf8f2;
+  --card-foreground: #17171b;
+  --popover: #faf8f2;
+  --popover-foreground: #17171b;
+  --primary: #17171b;
+  --primary-foreground: #f7f5ee;
+  --secondary: #e7e3d6;
+  --secondary-foreground: #17171b;
+  --muted: #e7e3d6;
+  --muted-foreground: #6b6a66;
+  --accent: #a6155f;
+  --accent-foreground: #fbeff4;
+  --border: #d8d4c6;
+  --input: #d8d4c6;
+  --ring: #a6155f;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
 .bib.skin-apple h1,
@@ -1129,36 +1132,160 @@
 .bib.skin-apple .display,
 .bib.skin-apple .page-title {
   font-family: var(--font-display);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-transform: none;
+}
+
+/* Les chiffres (score, chrono, distances) passent en monospace aligné —
+   registre "instrument de mesure" plutôt que titre. */
+.bib.skin-apple .hud-instrument .display,
+.bib.skin-apple .score-chip .display,
+.bib.skin-apple .stat-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 /* Chrome flottant très translucide : le fond se voit à travers, pour que
    la carte reste l'élément principal de l'écran plutôt qu'une pile de
-   cartes opaques. Les chips d'équipe ne sont volontairement pas ici : ils
-   restent nus, portés par le bandeau .score-strip (voir plus bas) — comme
-   le thème classique le fait déjà. */
+   cartes opaques. */
 .bib.skin-apple .hud-badge,
 .bib.skin-apple .nav-back,
 .bib.skin-apple .panel {
-  background-color: oklch(1 0 0 / 62%);
-  backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid oklch(1 0 0 / 40%);
-  border-radius: 1.1rem;
-  box-shadow: 0 6px 18px -14px oklch(0.2 0.01 260 / 30%);
+  background-color: color-mix(in oklab, var(--card) 68%, transparent);
+  backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid color-mix(in oklab, white 55%, transparent);
+  border-radius: 1rem;
+  box-shadow: 0 8px 20px -16px color-mix(in oklab, var(--foreground) 35%, transparent);
   color: var(--foreground);
+}
+
+/* Bandeau instrument : le score et le chrono deviennent UNE seule pièce
+   avec un liséré interne, au lieu de deux cartes séparées côte à côte. */
+.bib.skin-apple .hud-instrument {
+  background-color: color-mix(in oklab, var(--card) 74%, transparent);
+  backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid color-mix(in oklab, white 55%, transparent);
+  border-radius: 1.25rem;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 60%, transparent),
+    0 10px 24px -18px color-mix(in oklab, var(--foreground) 40%, transparent);
+  gap: 0;
+  overflow: hidden;
+}
+
+.bib.skin-apple .hud-instrument .hud-badge {
+  background: none;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  position: relative;
+  padding: 0.6rem 0.85rem;
+}
+
+.bib.skin-apple .hud-instrument .hud-badge + .hud-badge::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  width: 1px;
+  background: var(--border);
+}
+
+/* Boutons ronds discrets (messages, aide) — un trait, pas un galet. */
+.bib.skin-apple .hud-icon-btn {
+  height: 2.15rem;
+  width: 2.15rem;
+  min-height: 2.15rem;
+  min-width: 2.15rem;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
 .bib.skin-apple .sheet {
-  background-color: oklch(1 0 0 / 94%);
-  backdrop-filter: blur(20px) saturate(160%);
-  border: 1px solid oklch(1 0 0 / 60%);
+  background-color: color-mix(in oklab, var(--card) 95%, transparent);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid color-mix(in oklab, white 60%, transparent);
   color: var(--foreground);
 }
 
+/* Classement en jauges fines : un trait par équipe (nom · barre · score)
+   plutôt qu'un jeton encadré par équipe. */
 .bib.skin-apple .score-strip {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.7rem 0.9rem;
   border-radius: 1.1rem;
+}
+
+.bib.skin-apple .score-chip {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0;
+  padding: 0;
+  width: 100%;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+/* La carte "dossard" (.bib .score-chip-leader / .score-chip-me) remplit le
+   jeton d'un aplat/contour épais — pas de place pour ça dans une jauge
+   fine, donc on repart d'un simple lavis et d'un liséré discret. */
+.bib.skin-apple .score-chip-leader {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--accent) 10%, transparent),
+    transparent
+  );
+}
+
+.bib.skin-apple .score-chip-me {
+  outline: 1.5px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.bib.skin-apple .score-chip-crown {
+  position: static;
+  order: -1;
+  font-size: 0.7rem;
+}
+
+.bib.skin-apple .score-chip .label-xs {
+  order: 0;
+  width: 4.8rem;
+  flex-shrink: 0;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.bib.skin-apple .score-chip-track {
+  order: 1;
+  flex: 1;
+  width: auto;
+  height: 3px;
+  background: var(--border);
+}
+
+.bib.skin-apple .score-chip .display {
+  order: 2;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.bib.skin-apple .score-chip-deficit {
+  display: none;
 }
 
 .bib.skin-apple .stat {
@@ -1168,50 +1295,48 @@
 }
 
 .bib.skin-apple .field {
-  background-color: oklch(1 0 0);
+  background-color: var(--card);
   border: 1px solid var(--border);
-  border-radius: 1rem;
+  border-radius: 0.85rem;
 }
 
 .bib.skin-apple .btn-huge {
   border: none;
-  border-radius: 2rem;
-  padding: 0.85rem 1.1rem;
-  font-size: 1.05rem;
-  box-shadow: 0 18px 34px -18px oklch(0.2 0.01 260 / 70%);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  border-radius: 1.1rem;
+  padding: 0.95rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-transform: none;
+  box-shadow: 0 16px 30px -16px color-mix(in oklab, var(--foreground) 55%, transparent);
 }
 
 .bib.skin-apple .btn-huge:active {
   transform: scale(0.98);
-  box-shadow: 0 10px 22px -16px oklch(0.2 0.01 260 / 70%);
+  box-shadow: 0 8px 18px -14px color-mix(in oklab, var(--foreground) 55%, transparent);
 }
 
 .bib.skin-apple .btn-huge-accent,
 .bib.skin-apple .btn-huge-dark {
-  background-color: oklch(0.2 0.01 260);
-  background-image: linear-gradient(180deg, oklch(0.3 0.01 260), oklch(0.17 0.01 260));
-  color: oklch(0.99 0 0);
+  background-color: var(--foreground);
+  background-image: none;
+  color: var(--background);
 }
 
 .bib.skin-apple .pill {
-  background-color: oklch(0.93 0.004 250);
+  background-color: var(--secondary);
   border: 1px solid var(--border);
   color: var(--foreground);
 }
 
-/* Bouton et badges resserrés : le but est de dégager la carte, pas de la
-   couvrir de chrome. Les brackets/tick radar de GameMap sont un effet
-   arcade qui n'a pas sa place dans un habillage épuré. */
 .bib.skin-apple .nav-back,
 .bib.skin-apple .icon-btn {
-  height: 2.35rem;
-  width: 2.35rem;
-  min-height: 2.35rem;
-  min-width: 2.35rem;
+  height: 2.15rem;
+  width: 2.15rem;
+  min-height: 2.15rem;
+  min-width: 2.15rem;
   padding: 0.4rem;
+  border-radius: 999px;
 }
 
 .bib.skin-apple .hud-bracket,
@@ -1219,7 +1344,9 @@
   display: none;
 }
 
-/* --- Apple Pro Athletics : blanc net, bleu sportif, ombres douces. --- */
+/* --- Apple Pro Athletics ("Instrument", accent sportif) : même langage
+   compact que Apple Premium — bandeau fusionné, classement en jauges,
+   boutons ronds — mais gardant l'identité blanc net + bleu sportif. --- */
 .bib.skin-athletic {
   --background: oklch(0.98 0.002 250);
   --foreground: oklch(0.22 0.02 260);
@@ -1238,8 +1365,8 @@
   --border: oklch(0.87 0.01 250 / 100%);
   --input: oklch(0.87 0.01 250 / 100%);
   --ring: oklch(0.55 0.2 260);
-  --font-display: "Inter", system-ui, sans-serif;
-  font-family: "Inter", system-ui, sans-serif;
+  --font-display: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
 }
 
 .bib.skin-athletic h1,
@@ -1248,23 +1375,68 @@
 .bib.skin-athletic .display,
 .bib.skin-athletic .page-title {
   font-family: var(--font-display);
-  font-weight: 900;
-  letter-spacing: -0.03em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 
-/* Même logique que le skin Apple Premium : chrome léger et translucide,
-   chips d'équipe nus dans le bandeau .score-strip plutôt que des cartes
-   individuelles. */
+.bib.skin-athletic .hud-instrument .display,
+.bib.skin-athletic .score-chip .display,
+.bib.skin-athletic .stat-value {
+  font-family: "IBM Plex Mono", monospace;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
 .bib.skin-athletic .hud-badge,
 .bib.skin-athletic .nav-back,
 .bib.skin-athletic .panel {
   background-color: oklch(1 0 0 / 68%);
   backdrop-filter: blur(16px);
   border: 1px solid oklch(0.9 0.01 250 / 70%);
-  border-radius: 1.1rem;
+  border-radius: 1rem;
   box-shadow: 0 8px 20px -16px oklch(0.3 0.05 260 / 40%);
   color: var(--foreground);
+}
+
+.bib.skin-athletic .hud-instrument {
+  background-color: oklch(1 0 0 / 74%);
+  backdrop-filter: blur(18px);
+  border: 1px solid oklch(0.9 0.01 250 / 75%);
+  border-radius: 1.25rem;
+  box-shadow: 0 10px 24px -18px oklch(0.3 0.05 260 / 45%);
+  gap: 0;
+  overflow: hidden;
+}
+
+.bib.skin-athletic .hud-instrument .hud-badge {
+  background: none;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  position: relative;
+  padding: 0.6rem 0.85rem;
+}
+
+.bib.skin-athletic .hud-instrument .hud-badge + .hud-badge::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  width: 1px;
+  background: var(--border);
+}
+
+.bib.skin-athletic .hud-icon-btn {
+  height: 2.15rem;
+  width: 2.15rem;
+  min-height: 2.15rem;
+  min-width: 2.15rem;
+  border-radius: 999px;
+  box-shadow: none;
 }
 
 .bib.skin-athletic .sheet {
@@ -1275,7 +1447,73 @@
 }
 
 .bib.skin-athletic .score-strip {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.45rem;
+  padding: 0.7rem 0.9rem;
   border-radius: 1.1rem;
+}
+
+.bib.skin-athletic .score-chip {
+  flex: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: 0;
+  padding: 0;
+  width: 100%;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.bib.skin-athletic .score-chip-leader {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--accent) 12%, transparent),
+    transparent
+  );
+}
+
+.bib.skin-athletic .score-chip-me {
+  outline: 1.5px solid var(--primary);
+  outline-offset: 3px;
+}
+
+.bib.skin-athletic .score-chip-crown {
+  position: static;
+  order: -1;
+  font-size: 0.7rem;
+}
+
+.bib.skin-athletic .score-chip .label-xs {
+  order: 0;
+  width: 4.8rem;
+  flex-shrink: 0;
+  text-align: left;
+  letter-spacing: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.bib.skin-athletic .score-chip-track {
+  order: 1;
+  flex: 1;
+  width: auto;
+  height: 3px;
+  background: var(--border);
+}
+
+.bib.skin-athletic .score-chip .display {
+  order: 2;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.bib.skin-athletic .score-chip-deficit {
+  display: none;
 }
 
 .bib.skin-athletic .stat {
@@ -1292,22 +1530,22 @@
 
 .bib.skin-athletic .btn-huge {
   border: none;
-  border-radius: 2rem;
-  padding: 0.9rem 1.15rem;
-  font-size: 1.1rem;
-  box-shadow: 0 20px 40px -14px oklch(0.55 0.2 260 / 45%);
-  font-weight: 900;
+  border-radius: 1.1rem;
+  padding: 0.95rem 1.15rem;
+  font-size: 1rem;
+  box-shadow: 0 18px 34px -16px oklch(0.55 0.2 260 / 45%);
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-/* Chrome resserré : moins de HUD, plus de carte visible. */
 .bib.skin-athletic .nav-back,
 .bib.skin-athletic .icon-btn {
-  height: 2.35rem;
-  width: 2.35rem;
-  min-height: 2.35rem;
-  min-width: 2.35rem;
+  height: 2.15rem;
+  width: 2.15rem;
+  min-height: 2.15rem;
+  min-width: 2.15rem;
   padding: 0.4rem;
+  border-radius: 999px;
 }
 
 .bib.skin-athletic .hud-bracket,
@@ -1321,7 +1559,7 @@
 
 .bib.skin-athletic .btn-huge-accent {
   background-color: var(--primary);
-  background-image: linear-gradient(180deg, oklch(0.62 0.2 260), oklch(0.5 0.2 262));
+  background-image: none;
   color: oklch(0.99 0 0);
 }
 

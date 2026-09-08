@@ -48,7 +48,7 @@ export function ScoreStrip({ teams, myTeamId, formatScore }: Props) {
             <span className="label-xs w-full truncate text-center">{t.name}</span>
             <span className="display text-sm">{formatScore(t.score)}</span>
             {isMe && !isLeader && (
-              <span className="absolute -bottom-3.5 whitespace-nowrap text-[9px] font-extrabold text-destructive">
+              <span className="score-chip-deficit absolute -bottom-3.5 whitespace-nowrap text-[9px] font-extrabold text-destructive">
                 -{formatScore(Math.max(0, maxScore - t.score))}
               </span>
             )}
