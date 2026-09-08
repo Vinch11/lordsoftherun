@@ -48,10 +48,10 @@ export const STUDENT_THEMES: {
 }[] = [
   {
     id: "apple",
-    label: "Apple Premium (par défaut)",
+    label: "Carte d'orientation (par défaut)",
     description:
-      "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Chrome minimaliste — boutons resserrés, pas de cadre décoratif — pour une vue dégagée sur la carte.",
-    swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
+      "Parchemin, encre et un accent magenta — clin d'œil aux cartes de course d'orientation. Chiffres alignés en monospace, score et chrono fusionnés en un seul bandeau, classement en jauges fines : peu de blocs, une carte bien dégagée.",
+    swatches: ["#f3f1ea", "#17171b", "#a6155f"],
   },
   {
     id: "classic",
@@ -71,7 +71,7 @@ export const STUDENT_THEMES: {
     id: "athletic",
     label: "Apple Pro Athletics",
     description:
-      "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium, avec le même chrome resserré que le thème Apple Premium.",
+      "Blanc net, bleu sportif saturé, titres ultra-gras. Même langage compact que « Carte d'orientation » — bandeau fusionné, classement en jauges, chiffres alignés — avec l'identité bleu sport.",
     swatches: ["#fafafa", "#2563eb", "#111827"],
   },
 ];

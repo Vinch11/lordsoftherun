@@ -498,13 +498,6 @@
       "when": 1789300000000,
       "tag": "0070_grid_bonus_question",
       "breakpoints": true
-    },
-    {
-      "idx": 71,
-      "version": "7",
-      "when": 1788890964886,
-      "tag": "0071_grid_bonus_question",
-      "breakpoints": true
     }
   ]
 }
