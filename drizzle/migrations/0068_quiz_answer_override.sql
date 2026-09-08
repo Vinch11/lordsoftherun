@@ -25,7 +25,7 @@ BEGIN
   IF _was_correct IS NULL THEN
     RAISE EXCEPTION 'answer not found';
   END IF;
-  IF _was_correct = _correct THEN
+  IF _was_correct IS NOT DISTINCT FROM _correct THEN
     RETURN;
   END IF;
 
@@ -35,9 +35,11 @@ BEGIN
   UPDATE public.quiz_answers SET correct = _correct
     WHERE team_id = _team_id AND round_sent_at = _round_sent_at;
 
-  UPDATE public.teams
-     SET landmark_bonus_m2 = landmark_bonus_m2 + (CASE WHEN _correct THEN _bonus ELSE -_bonus END)
-   WHERE id = _team_id;
+  IF _correct THEN
+    UPDATE public.teams SET landmark_bonus_m2 = landmark_bonus_m2 + _bonus WHERE id = _team_id;
+  ELSE
+    UPDATE public.teams SET landmark_bonus_m2 = GREATEST(0, landmark_bonus_m2 - _bonus) WHERE id = _team_id;
+  END IF;
 END;
 $$;
 REVOKE ALL ON FUNCTION public.override_quiz_answer(uuid, timestamptz, boolean) FROM PUBLIC;
