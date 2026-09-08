@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS public.quiz_rounds (
   bonus_amount numeric NOT NULL,
   UNIQUE (game_id, sent_at)
 );
+GRANT SELECT ON public.quiz_rounds TO authenticated;
+GRANT ALL ON public.quiz_rounds TO service_role;
 ALTER TABLE public.quiz_rounds ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "quiz rounds readable by owner" ON public.quiz_rounds;
 CREATE POLICY "quiz rounds readable by owner" ON public.quiz_rounds FOR SELECT TO authenticated
@@ -35,6 +37,8 @@ CREATE TABLE IF NOT EXISTS public.quiz_answers (
   answered_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (team_id, round_sent_at)
 );
+GRANT SELECT ON public.quiz_answers TO authenticated;
+GRANT ALL ON public.quiz_answers TO service_role;
 ALTER TABLE public.quiz_answers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "quiz answers readable by owner" ON public.quiz_answers;
 CREATE POLICY "quiz answers readable by owner" ON public.quiz_answers FOR SELECT TO authenticated
