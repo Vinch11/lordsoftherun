@@ -451,34 +451,40 @@ export type Database = {
         Row: {
           claimed_at: string | null
           claimed_by_team_id: string | null
+          correct: boolean | null
           created_at: string
           expires_at: string
           game_id: string
           id: string
           lat: number
           lng: number
+          question: string | null
           radius_m: number
         }
         Insert: {
           claimed_at?: string | null
           claimed_by_team_id?: string | null
+          correct?: boolean | null
           created_at?: string
           expires_at: string
           game_id: string
           id?: string
           lat: number
           lng: number
+          question?: string | null
           radius_m: number
         }
         Update: {
           claimed_at?: string | null
           claimed_by_team_id?: string | null
+          correct?: boolean | null
           created_at?: string
           expires_at?: string
           game_id?: string
           id?: string
           lat?: number
           lng?: number
+          question?: string | null
           radius_m?: number
         }
         Relationships: [
@@ -494,6 +500,29 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      grid_bonus_answers: {
+        Row: {
+          answer: string
+          bonus_id: string
+        }
+        Insert: {
+          answer: string
+          bonus_id: string
+        }
+        Update: {
+          answer?: string
+          bonus_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grid_bonus_answers_bonus_id_fkey"
+            columns: ["bonus_id"]
+            isOneToOne: true
+            referencedRelation: "grid_bonuses"
             referencedColumns: ["id"]
           },
         ]
@@ -1149,6 +1178,22 @@ export type Database = {
           _team_id: string
         }
         Returns: undefined
+      }
+      add_grid_bonus_with_question: {
+        Args: {
+          _answer: string
+          _game_id: string
+          _lat: number
+          _lifetime_s: number
+          _lng: number
+          _question: string
+          _radius_m: number
+        }
+        Returns: string
+      }
+      answer_grid_bonus: {
+        Args: { _answer: string; _bonus_id: string; _team_id: string }
+        Returns: boolean
       }
       close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {

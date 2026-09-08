@@ -13,6 +13,8 @@ export type GridBonus = {
   claimed_by_team_id: string | null;
   claimed_at: string | null;
   created_at: string;
+  question: string | null;
+  correct: boolean | null;
 };
 
 /** A bonus is live once claimed by nobody and while its lifetime hasn't run out. */
@@ -39,6 +41,33 @@ export async function addGridBonus(
 
 export async function removeGridBonus(id: string): Promise<void> {
   const { error } = await supabase.from("grid_bonuses").delete().eq("id", id);
+  if (error) throw error;
+}
+
+/**
+ * A manually-placed bonus that requires answering a question before it
+ * explodes. The answer is stored server-side only (grid_bonus_answers,
+ * owner-only SELECT) — inserting bonus + answer through one RPC means a
+ * question bonus can never exist without its answer, or vice versa.
+ */
+export async function addGridBonusWithQuestion(
+  gameId: string,
+  lat: number,
+  lng: number,
+  radiusM: number,
+  lifetimeS: number,
+  question: string,
+  answer: string,
+): Promise<void> {
+  const { error } = await supabase.rpc("add_grid_bonus_with_question", {
+    _game_id: gameId,
+    _lat: lat,
+    _lng: lng,
+    _radius_m: radiusM,
+    _lifetime_s: lifetimeS,
+    _question: question,
+    _answer: answer,
+  });
   if (error) throw error;
 }
 
@@ -103,7 +132,12 @@ export async function tryClaimGridBonus(
   return cells.length;
 }
 
-/** Checks every currently-active bonus against a position and explodes the first in range. */
+/**
+ * Checks every currently-active, question-free bonus against a position and
+ * explodes the first in range. A bonus with a question is never auto-claimed
+ * on contact — the caller shows it as a question instead (see
+ * `answerGridBonus`), since exploding it requires answering correctly first.
+ */
 export async function checkGridBonusClaims(
   bonuses: GridBonus[],
   teamId: string,
@@ -113,6 +147,7 @@ export async function checkGridBonusClaims(
   cellSizeM: number,
 ): Promise<{ bonus: GridBonus; cellsClaimed: number } | null> {
   for (const b of bonuses) {
+    if (b.question != null) continue;
     if (!isGridBonusActive(b, Date.now())) continue;
     if (haversine(point, [b.lat, b.lng]) <= claimRadiusM) {
       const cellsClaimed = await tryClaimGridBonus(b, teamId, gridCenter, cellSizeM);
@@ -120,6 +155,46 @@ export async function checkGridBonusClaims(
     }
   }
   return null;
+}
+
+/**
+ * Submits an answer for a question-gated bonus. The correct answer is
+ * checked server-side and never sent to the client. A correct answer
+ * explodes the bonus exactly like a contact-triggered one (same
+ * cells-within-radius painting); a wrong answer consumes it with nothing
+ * painted — it simply disappears for every team. The first submitted
+ * answer wins the race, right or wrong; a later submission on an already-
+ * resolved bonus just comes back as `correct: false, cellsClaimed: 0`.
+ */
+export async function answerGridBonus(
+  bonus: GridBonus,
+  teamId: string,
+  answer: string,
+  gridCenter: [number, number],
+  cellSizeM: number,
+): Promise<{ correct: boolean; cellsClaimed: number }> {
+  const { data, error } = await supabase.rpc("answer_grid_bonus", {
+    _bonus_id: bonus.id,
+    _team_id: teamId,
+    _answer: answer,
+  });
+  if (error) throw error;
+  if (!data) return { correct: false, cellsClaimed: 0 };
+
+  const cells = cellsWithinRadius(gridCenter, cellSizeM, [bonus.lat, bonus.lng], bonus.radius_m);
+  if (cells.length === 0) return { correct: true, cellsClaimed: 0 };
+  const { error: upsertError } = await supabase.from("grid_cells").upsert(
+    cells.map((c) => ({
+      game_id: bonus.game_id,
+      row: c.row,
+      col: c.col,
+      owner_team_id: teamId,
+      updated_at: new Date().toISOString(),
+    })),
+    { onConflict: "game_id,row,col" },
+  );
+  if (upsertError) throw upsertError;
+  return { correct: true, cellsClaimed: cells.length };
 }
 
 export function useGridBonuses(gameId: string | null) {
