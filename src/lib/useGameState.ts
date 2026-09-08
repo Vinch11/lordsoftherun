@@ -138,6 +138,37 @@ export function useGameState(gameId: string | null) {
   useEffect(() => {
     if (!gameId) return;
     void refresh();
+
+    /**
+     * Realtime carries the changed row: patch just that row instead of
+     * re-fetching games+teams+territories on every single event. With
+     * several teams syncing position every few seconds this was the actual
+     * bottleneck behind the app "freezing" under real classroom load — one
+     * team's position update triggered a full refetch on every connected
+     * device (every student's phone and the teacher dashboard), for every
+     * game running on the same database. Same fix already applied to
+     * grid_cells; a slow periodic poll stays as a fallback for a dropped event.
+     */
+    function applyRowChange<T extends { id: string }>(
+      setState: (updater: (prev: T[]) => T[]) => void,
+      eventType: string,
+      row: T | null,
+      oldRow: Partial<T> | null,
+    ) {
+      setState((prev) => {
+        if (eventType === "DELETE") {
+          const id = oldRow?.id;
+          return id ? prev.filter((r) => r.id !== id) : prev;
+        }
+        if (!row) return prev;
+        const idx = prev.findIndex((r) => r.id === row.id);
+        if (idx === -1) return [...prev, row];
+        const next = prev.slice();
+        next[idx] = row;
+        return next;
+      });
+    }
+
     // Unique per mount: reusing a topic name returns the *existing* channel,
     // and adding listeners to an already-subscribed channel throws.
     const channel = supabase
@@ -145,7 +176,13 @@ export function useGameState(gameId: string | null) {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "teams", filter: `game_id=eq.${gameId}` },
-        () => void refresh(),
+        (payload) =>
+          applyRowChange(
+            setTeams,
+            payload.eventType,
+            (payload.new as Team | undefined) ?? null,
+            (payload.old as Partial<Team> | undefined) ?? null,
+          ),
       )
       .on(
         "postgres_changes",
@@ -155,16 +192,26 @@ export function useGameState(gameId: string | null) {
           table: "territories",
           filter: `game_id=eq.${gameId}`,
         },
-        () => void refresh(),
+        (payload) =>
+          applyRowChange(
+            setTerritories,
+            payload.eventType,
+            (payload.new as Territory | undefined) ?? null,
+            (payload.old as Partial<Territory> | undefined) ?? null,
+          ),
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "games", filter: `id=eq.${gameId}` },
-        () => void refresh(),
+        (payload) => {
+          if (payload.eventType !== "DELETE" && payload.new) {
+            setGame(payload.new as unknown as Game);
+          }
+        },
       )
       .subscribe();
 
-    const poll = setInterval(() => void refresh(), 8000);
+    const poll = setInterval(() => void refresh(), 30000);
 
     return () => {
       clearInterval(poll);
