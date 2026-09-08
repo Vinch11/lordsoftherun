@@ -33,6 +33,24 @@ export async function closeQuizQuestion(gameId: string): Promise<void> {
 }
 
 /**
+ * Manually flips one team's answer to correct or incorrect — a typo, an
+ * unexpected but valid phrasing, anything the exact-match check couldn't
+ * judge fairly. Crediting/revoking the bonus happens exactly once per flip.
+ */
+export async function overrideQuizAnswer(
+  teamId: string,
+  roundSentAt: string,
+  correct: boolean,
+): Promise<void> {
+  const { error } = await supabase.rpc("override_quiz_answer", {
+    _team_id: teamId,
+    _round_sent_at: roundSentAt,
+    _correct: correct,
+  });
+  if (error) throw error;
+}
+
+/**
  * Submits this team's answer. The correct answer is checked server-side and
  * never sent to the client — this only ever learns whether it was right.
  */

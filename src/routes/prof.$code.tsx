@@ -117,7 +117,13 @@ import {
   useTeamMemberPositions,
   type ParsedStudent,
 } from "@/lib/students";
-import { closeQuizQuestion, sendQuizQuestion, useQuizAnswers } from "@/lib/quiz";
+import {
+  closeQuizQuestion,
+  overrideQuizAnswer,
+  sendQuizQuestion,
+  useQuizAnswers,
+} from "@/lib/quiz";
+import { recomputeScores } from "@/lib/capture";
 import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
 import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
 
@@ -1660,6 +1666,16 @@ function TeacherDashboard() {
     }
   }
 
+  async function toggleQuizAnswer(teamId: string, roundSentAt: string, correct: boolean) {
+    try {
+      await overrideQuizAnswer(teamId, roundSentAt, correct);
+      if (gameMode === "territoire" && gameId) await recomputeScores(gameId);
+      toast.success(correct ? "Réponse validée." : "Réponse invalidée.");
+    } catch {
+      toast.error("Impossible de modifier la réponse.");
+    }
+  }
+
   async function updateForbiddenRunningOnly(next: boolean) {
     setForbiddenRunningOnly(next);
     if (!gameId || !isOwner) return;
@@ -2324,6 +2340,15 @@ function TeacherDashboard() {
                             <span className="flex-1 truncate text-sm text-muted-foreground">
                               {a.answer}
                             </span>
+                            <button
+                              type="button"
+                              className="mini-btn shrink-0"
+                              onClick={() =>
+                                void toggleQuizAnswer(tm.id, a.round_sent_at, !a.correct)
+                              }
+                            >
+                              {a.correct ? "Invalider" : "Valider quand même"}
+                            </button>
                           </>
                         ) : (
                           <span className="flex-1 text-sm text-muted-foreground">En attente…</span>
