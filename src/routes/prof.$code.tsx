@@ -7,6 +7,7 @@ import {
   Bike,
   Bookmark,
   Camera,
+  Check,
   ChevronDown,
   Download,
   Eye,
@@ -2298,6 +2299,39 @@ function TeacherDashboard() {
                   {teams.length > 1 ? "s" : ""} ont répondu (
                   {currentQuizAnswers.filter((a) => a.correct).length} bonnes réponses)
                 </p>
+                <div className="flex flex-col gap-1">
+                  {teams.map((tm) => {
+                    const a = currentQuizAnswers.find((x) => x.team_id === tm.id);
+                    return (
+                      <div
+                        key={tm.id}
+                        className="flex items-center gap-2 border-b border-border py-1.5 last:border-0"
+                      >
+                        <span
+                          className="h-3 w-3 shrink-0 rounded-full border-2 border-foreground"
+                          style={{ backgroundColor: tm.color }}
+                        />
+                        <span className="w-28 shrink-0 truncate text-sm font-semibold">
+                          {tm.name}
+                        </span>
+                        {a ? (
+                          <>
+                            {a.correct ? (
+                              <Check className="h-4 w-4 shrink-0 text-accent" />
+                            ) : (
+                              <X className="h-4 w-4 shrink-0 text-destructive" />
+                            )}
+                            <span className="flex-1 truncate text-sm text-muted-foreground">
+                              {a.answer}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="flex-1 text-sm text-muted-foreground">En attente…</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
                 <button type="button" className="btn-huge-dark" onClick={() => void closeQuiz()}>
                   Clore la question
                 </button>
