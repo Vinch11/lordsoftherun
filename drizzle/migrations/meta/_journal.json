@@ -477,13 +477,6 @@
       "when": 1789000000000,
       "tag": "0067_quiz_bonus",
       "breakpoints": true
-    },
-    {
-      "idx": 68,
-      "version": "7",
-      "when": 1788797488245,
-      "tag": "0068_quiz_bonus",
-      "breakpoints": true
     }
   ]
 }
