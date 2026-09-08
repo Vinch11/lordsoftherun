@@ -38,7 +38,7 @@ export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
 /** Visual skin of the student screens, picked by the teacher per game. */
 export type StudentTheme = "classic" | "dossard" | "apple" | "athletic";
-export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
+export const DEFAULT_STUDENT_THEME: StudentTheme = "apple";
 
 export const STUDENT_THEMES: {
   id: StudentTheme;
@@ -47,8 +47,15 @@ export const STUDENT_THEMES: {
   swatches: [string, string, string];
 }[] = [
   {
+    id: "apple",
+    label: "Apple Premium (par défaut)",
+    description:
+      "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Chrome minimaliste — boutons resserrés, pas de cadre décoratif — pour une vue dégagée sur la carte.",
+    swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
+  },
+  {
     id: "classic",
-    label: "Classique (par défaut)",
+    label: "Classique",
     description:
       "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
     swatches: ["#ffffff", "#0f3460", "#39ff88"],
@@ -61,17 +68,10 @@ export const STUDENT_THEMES: {
     swatches: ["#f5f7f5", "#1f2933", "#39ff88"],
   },
   {
-    id: "apple",
-    label: "Apple Premium",
-    description:
-      "Verre dépoli clair, coins très arrondis, bouton principal noir laqué. Sobre et haut de gamme.",
-    swatches: ["#f2f2f5", "#ffffff", "#1c1c1e"],
-  },
-  {
     id: "athletic",
     label: "Apple Pro Athletics",
     description:
-      "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium.",
+      "Blanc net, bleu sportif saturé, ombres douces et titres ultra-gras. Style app de running premium, avec le même chrome resserré que le thème Apple Premium.",
     swatches: ["#fafafa", "#2563eb", "#111827"],
   },
 ];
