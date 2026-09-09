@@ -913,6 +913,30 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_questions: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          owner_id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          question?: string
+        }
+        Relationships: []
+      }
       students: {
         Row: {
           created_at: string
@@ -1167,30 +1191,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      saved_questions: {
-        Row: {
-          answer: string
-          created_at: string
-          id: string
-          owner_id: string
-          question: string
-        }
-        Insert: {
-          answer: string
-          created_at?: string
-          id?: string
-          owner_id: string
-          question: string
-        }
-        Update: {
-          answer?: string
-          created_at?: string
-          id?: string
-          owner_id?: string
-          question?: string
-        }
-        Relationships: []
       }
     }
     Views: {
