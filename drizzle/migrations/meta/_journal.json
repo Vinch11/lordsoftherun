@@ -533,13 +533,6 @@
       "when": 1789600000000,
       "tag": "0075_team_trails",
       "breakpoints": true
-    },
-    {
-      "idx": 76,
-      "version": "7",
-      "when": 1788981327555,
-      "tag": "0076_team_trails",
-      "breakpoints": true
     }
   ]
 }

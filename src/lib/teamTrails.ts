@@ -29,12 +29,14 @@ export function useTeamTrails(gameId: string | null) {
   const [trails, setTrails] = useState<TeamTrail[]>([]);
 
   const refresh = useCallback(async () => {
-    if (!gameId) return;
+    if (!gameId) return [];
     const { data } = await supabase
       .from("team_trails")
       .select("team_id, points")
       .eq("game_id", gameId);
-    setTrails((data ?? []) as unknown as TeamTrail[]);
+    const fresh = (data ?? []) as unknown as TeamTrail[];
+    setTrails(fresh);
+    return fresh;
   }, [gameId]);
 
   useEffect(() => {
