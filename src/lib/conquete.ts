@@ -38,7 +38,7 @@ export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
 /** Visual skin of the student screens, picked by the teacher per game. */
 export type StudentTheme = "classic" | "dossard" | "apple" | "athletic";
-export const DEFAULT_STUDENT_THEME: StudentTheme = "apple";
+export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
 
 export const STUDENT_THEMES: {
   id: StudentTheme;
@@ -47,18 +47,18 @@ export const STUDENT_THEMES: {
   swatches: [string, string, string];
 }[] = [
   {
-    id: "apple",
-    label: "Carte d'orientation (par défaut)",
-    description:
-      "Parchemin, encre et un accent magenta — clin d'œil aux cartes de course d'orientation. Chiffres alignés en monospace, score et chrono fusionnés en un seul bandeau, classement en jauges fines : peu de blocs, une carte bien dégagée.",
-    swatches: ["#f3f1ea", "#17171b", "#a6155f"],
-  },
-  {
     id: "classic",
-    label: "Classique",
+    label: "Classique (par défaut)",
     description:
       "Le design d'origine de Conquête : carte lumineuse, panneaux clairs et boutons pleine largeur.",
     swatches: ["#ffffff", "#0f3460", "#39ff88"],
+  },
+  {
+    id: "apple",
+    label: "Carte d'orientation",
+    description:
+      "Parchemin, encre et un accent magenta — clin d'œil aux cartes de course d'orientation. Chiffres alignés en monospace, score et chrono fusionnés en un seul bandeau, classement en jauges fines : peu de blocs, une carte bien dégagée.",
+    swatches: ["#f3f1ea", "#17171b", "#a6155f"],
   },
   {
     id: "dossard",

@@ -3773,28 +3773,28 @@ function TeacherDashboard() {
                     </p>
                   </>
                 ) : (
-                  gridZone && (
-                    <>
-                      <div className="flex flex-col gap-2">
-                        <span className="label-xs">
-                          Question conditionnelle (optionnel) — bonne réponse = explosion, mauvaise
-                          réponse = disparition
-                        </span>
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <span className="label-xs">
+                        Question conditionnelle (optionnel) — bonne réponse = explosion, mauvaise
+                        réponse = disparition
+                      </span>
+                      <input
+                        className="field"
+                        placeholder="Question (laisser vide pour un bonus normal)"
+                        value={gridBonusQuestion}
+                        onChange={(e) => setGridBonusQuestion(e.target.value)}
+                      />
+                      {gridBonusQuestion.trim() && (
                         <input
                           className="field"
-                          placeholder="Question (laisser vide pour un bonus normal)"
-                          value={gridBonusQuestion}
-                          onChange={(e) => setGridBonusQuestion(e.target.value)}
+                          placeholder="Réponse attendue"
+                          value={gridBonusAnswer}
+                          onChange={(e) => setGridBonusAnswer(e.target.value)}
                         />
-                        {gridBonusQuestion.trim() && (
-                          <input
-                            className="field"
-                            placeholder="Réponse attendue"
-                            value={gridBonusAnswer}
-                            onChange={(e) => setGridBonusAnswer(e.target.value)}
-                          />
-                        )}
-                      </div>
+                      )}
+                    </div>
+                    {gridZone && (
                       <button
                         className={`btn-huge ${placingMode === "grid_bonus" ? "btn-huge-accent" : "btn-huge-dark"}`}
                         disabled={!!gridBonusQuestion.trim() && !gridBonusAnswer.trim()}
@@ -3804,8 +3804,8 @@ function TeacherDashboard() {
                       >
                         {placingMode === "grid_bonus" ? "Touchez la carte..." : "Placer un bonus"}
                       </button>
-                    </>
-                  )
+                    )}
+                  </>
                 )}
 
                 {gridBonuses.filter((b) => isGridBonusActive(b, now)).length > 0 && (
