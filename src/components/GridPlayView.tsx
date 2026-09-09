@@ -50,6 +50,7 @@ import {
 } from "@/lib/gridBonus";
 import { applyPenalty } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { appendTeamTrailPoint } from "@/lib/teamTrails";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
 import { getTerminology } from "@/lib/terminology";
@@ -151,6 +152,23 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
     }));
   }, [cells, teams]);
   const formatCellScore = (n: number) => `${Math.round(n)} case${Math.round(n) > 1 ? "s" : ""}`;
+
+  // A team that misses the return deadline in "cancel" grace mode never
+  // makes the podium — same rule the teacher's own dashboard already applies.
+  const finalResultsTeams = useMemo(
+    () =>
+      scoreStripTeams.map((tm) => {
+        const team = teams.find((t) => t.id === tm.id);
+        return {
+          ...tm,
+          validated:
+            game?.grace_ends_at && team
+              ? resolveGraceStatus(game, team, now).validated
+              : (team?.validated ?? true),
+        };
+      }),
+    [scoreStripTeams, teams, game, now],
+  );
 
   const myMessages = useMemo(
     () =>
@@ -257,6 +275,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
+        if (gameRef.current?.status === "running") {
+          void appendTeamTrailPoint(teamId, point[0], point[1]);
+        }
         const delta = totalDistanceRef.current;
         const activeDelta = totalActiveRef.current;
         void withTimeout(
@@ -711,7 +732,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
 
       {resultsOpen && (
         <FinalResults
-          teams={scoreStripTeams}
+          teams={finalResultsTeams}
           myTeamId={teamId}
           formatScore={formatCellScore}
           statusLabel={endgameLabel}
