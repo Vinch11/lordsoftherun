@@ -132,6 +132,7 @@ import {
 import { recomputeScores } from "@/lib/capture";
 import { RosterWizard, type ComposedTeam } from "@/components/RosterWizard";
 import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
+import { SavedQuestionPicker } from "@/components/SavedQuestionPicker";
 
 import {
   applySavedPoint,
@@ -2385,6 +2386,14 @@ function TeacherDashboard() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
+                <SavedQuestionPicker
+                  question={quizQuestionDraft}
+                  answer={quizAnswerDraft}
+                  onPick={(q, a) => {
+                    setQuizQuestionDraft(q);
+                    setQuizAnswerDraft(a);
+                  }}
+                />
                 <input
                   className="field"
                   placeholder="Question"
@@ -3779,6 +3788,14 @@ function TeacherDashboard() {
                         Question conditionnelle (optionnel) — bonne réponse = explosion, mauvaise
                         réponse = disparition
                       </span>
+                      <SavedQuestionPicker
+                        question={gridBonusQuestion}
+                        answer={gridBonusAnswer}
+                        onPick={(q, a) => {
+                          setGridBonusQuestion(q);
+                          setGridBonusAnswer(a);
+                        }}
+                      />
                       <input
                         className="field"
                         placeholder="Question (laisser vide pour un bonus normal)"

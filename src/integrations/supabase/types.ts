@@ -1129,6 +1129,7 @@ export type Database = {
           id: string
           scored_m2: number
           team_id: string
+          version: number
         }
         Insert: {
           area_m2?: number
@@ -1138,6 +1139,7 @@ export type Database = {
           id?: string
           scored_m2?: number
           team_id: string
+          version?: number
         }
         Update: {
           area_m2?: number
@@ -1147,6 +1149,7 @@ export type Database = {
           id?: string
           scored_m2?: number
           team_id?: string
+          version?: number
         }
         Relationships: [
           {
@@ -1164,6 +1167,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      saved_questions: {
+        Row: {
+          answer: string
+          created_at: string
+          id: string
+          owner_id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          id?: string
+          owner_id: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          id?: string
+          owner_id?: string
+          question?: string
+        }
+        Relationships: []
       }
     }
     Views: {

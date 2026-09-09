@@ -21,19 +21,27 @@ export function polygonFromTrack(track: [number, number][]): Feature<Polygon> | 
   }
 }
 
-/**
- * Registers a new territory for a team: the captured surface is subtracted from
- * every existing territory (last one to enclose it wins), then scores are recomputed.
- * `avgSpeedMs` is the average speed (m/s) at which the loop was run; closing it at
- * running pace earns a score bonus on top of the real captured area.
- */
-export async function captureTerritory(
+// When several teams close overlapping loops within the same few seconds
+// (very common right when a timer runs out), two closures can both read the
+// same "existing territories" snapshot and each compute a subtraction
+// against it — whichever write lands last would otherwise clobber the
+// other's reduction. Each row update/delete below is conditioned on the
+// `version` it was read with; a mismatch means someone else changed that
+// row since, so the whole capture is retried against a fresh read instead
+// of silently overwriting.
+const MAX_CAPTURE_ATTEMPTS = 6;
+
+type CaptureAttempt =
+  | { conflict: true }
+  | { conflict: false; stolen: Map<string, number>; capturedArea: number; ran: boolean };
+
+async function attemptCapture(
   gameId: string,
   teamId: string,
   captured: Feature<Polygon>,
-  avgSpeedMs = 0,
-  runningBonus: RunningBonusConfig = { enabled: true, speedMs: RUNNING_SPEED_MS },
-) {
+  avgSpeedMs: number,
+  runningBonus: RunningBonusConfig,
+): Promise<CaptureAttempt> {
   const { data: existing } = await supabase.from("territories").select("*").eq("game_id", gameId);
 
   // Area stolen from each other team during this capture (victim team id -> m²).
@@ -58,19 +66,32 @@ export async function captureTerritory(
         stolen.set(row.team_id, (stolen.get(row.team_id) ?? 0) + lostArea);
       }
       if (!rest || area(rest) < 20) {
-        await supabase.from("territories").delete().eq("id", row.id);
+        const { error, count } = await supabase
+          .from("territories")
+          .delete({ count: "exact" })
+          .eq("id", row.id)
+          .eq("version", row.version);
+        if (error) throw error;
+        if (!count) return { conflict: true };
       } else {
         const restArea = area(rest);
         // Keep this row's existing score-per-area ratio (its own running bonus, if any).
         const ratio = row.area_m2 > 0 ? row.scored_m2 / row.area_m2 : 1;
-        await supabase
+        const { error, count } = await supabase
           .from("territories")
-          .update({
-            geometry: rest.geometry as unknown as never,
-            area_m2: restArea,
-            scored_m2: restArea * ratio,
-          })
-          .eq("id", row.id);
+          .update(
+            {
+              geometry: rest.geometry as unknown as never,
+              area_m2: restArea,
+              scored_m2: restArea * ratio,
+              version: row.version + 1,
+            },
+            { count: "exact" },
+          )
+          .eq("id", row.id)
+          .eq("version", row.version);
+        if (error) throw error;
+        if (!count) return { conflict: true };
       }
     } catch {
       /* geometries that can't be differenced are left untouched */
@@ -80,17 +101,39 @@ export async function captureTerritory(
   const capturedArea = area(captured);
   const multiplier =
     runningBonus.enabled && avgSpeedMs >= runningBonus.speedMs ? RUNNING_BONUS_MULTIPLIER : 1;
-  await supabase.from("territories").insert({
+  const { error: insertError } = await supabase.from("territories").insert({
     game_id: gameId,
     team_id: teamId,
     geometry: captured.geometry as unknown as never,
     area_m2: capturedArea,
     scored_m2: capturedArea * multiplier,
   });
+  if (insertError) throw insertError;
 
-  await recomputeScores(gameId);
-  const victims = await notifyStolen(gameId, teamId, stolen);
-  return { area: capturedArea, ran: multiplier > 1, victims };
+  return { conflict: false, stolen, capturedArea, ran: multiplier > 1 };
+}
+
+/**
+ * Registers a new territory for a team: the captured surface is subtracted from
+ * every existing territory (last one to enclose it wins), then scores are recomputed.
+ * `avgSpeedMs` is the average speed (m/s) at which the loop was run; closing it at
+ * running pace earns a score bonus on top of the real captured area.
+ */
+export async function captureTerritory(
+  gameId: string,
+  teamId: string,
+  captured: Feature<Polygon>,
+  avgSpeedMs = 0,
+  runningBonus: RunningBonusConfig = { enabled: true, speedMs: RUNNING_SPEED_MS },
+) {
+  for (let attempt = 0; attempt < MAX_CAPTURE_ATTEMPTS; attempt++) {
+    const outcome = await attemptCapture(gameId, teamId, captured, avgSpeedMs, runningBonus);
+    if (outcome.conflict) continue;
+    await recomputeScores(gameId);
+    const victims = await notifyStolen(gameId, teamId, outcome.stolen);
+    return { area: outcome.capturedArea, ran: outcome.ran, victims };
+  }
+  throw new Error("capture failed: too many concurrent closures on the same territory");
 }
 
 export type StolenFrom = { teamId: string; name: string; areaM2: number };

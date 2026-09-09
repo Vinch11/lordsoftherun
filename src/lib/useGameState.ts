@@ -114,6 +114,7 @@ export type Territory = {
   geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
   area_m2: number;
   scored_m2: number;
+  version: number;
 };
 
 export function useGameState(gameId: string | null) {
