@@ -26,6 +26,7 @@ import {
   Pencil,
   Plus,
   QrCode,
+  Route as RouteIcon,
   Send,
   Shield,
   ShieldAlert,
@@ -108,6 +109,7 @@ import {
   useSavedCircuits,
 } from "@/lib/savedCircuits";
 import { resolveGraceStatus } from "@/lib/grace";
+import { useTeamTrails } from "@/lib/teamTrails";
 import {
   addStudent,
   applyRosterComposition,
@@ -974,6 +976,18 @@ function TeacherDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [ranked, game, now],
   );
+
+  // Full-session trail review: pick a team, see exactly where they walked —
+  // regardless of territory/cells/flags — independent of the game's own
+  // scoring, which can trim or overwrite what a team actually captured.
+  const { trails: teamTrails } = useTeamTrails(gameId);
+  const [selectedTrailTeamId, setSelectedTrailTeamId] = useState<string | null>(null);
+  const selectedTrailPoints = useMemo(
+    () => teamTrails.find((tr) => tr.team_id === selectedTrailTeamId)?.points ?? [],
+    [teamTrails, selectedTrailTeamId],
+  );
+  const selectedTrailColor = teams.find((t) => t.id === selectedTrailTeamId)?.color ?? "#e63946";
+
   const totalCapturedRanked = useMemo(
     () => [...teams].sort((a, b) => b.total_captured_m2 - a.total_captured_m2),
     [teams],
@@ -1999,6 +2013,8 @@ function TeacherDashboard() {
             bananas={mapBananas}
             gridBonuses={mapGridBonuses}
             mapStyle={game?.map_style}
+            trail={selectedTrailPoints}
+            trailColor={selectedTrailColor}
           />
         </div>
 
@@ -2110,6 +2126,8 @@ function TeacherDashboard() {
           bananas={mapBananas}
           gridBonuses={mapGridBonuses}
           mapStyle={game?.map_style}
+          trail={selectedTrailPoints}
+          trailColor={selectedTrailColor}
           drawingEnabled={circuitDrawing}
           onFreehandDraw={(path) => {
             setCircuitDrawing(false);
@@ -4971,6 +4989,17 @@ function TeacherDashboard() {
                   {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h
                 </span>
               </span>
+              <button
+                type="button"
+                aria-label={
+                  selectedTrailTeamId === t.id ? "Masquer le trajet" : `Voir le trajet de ${t.name}`
+                }
+                aria-pressed={selectedTrailTeamId === t.id}
+                className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
+                onClick={() => setSelectedTrailTeamId((cur) => (cur === t.id ? null : t.id))}
+              >
+                <RouteIcon className="h-4 w-4" />
+              </button>
             </div>
           ))}
           {finished && unvalidated.length > 0 && (
@@ -4990,6 +5019,19 @@ function TeacherDashboard() {
                         ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
                         : formatArea(teamScore(t))}
                   </span>
+                  <button
+                    type="button"
+                    aria-label={
+                      selectedTrailTeamId === t.id
+                        ? "Masquer le trajet"
+                        : `Voir le trajet de ${t.name}`
+                    }
+                    aria-pressed={selectedTrailTeamId === t.id}
+                    className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
+                    onClick={() => setSelectedTrailTeamId((cur) => (cur === t.id ? null : t.id))}
+                  >
+                    <RouteIcon className="h-4 w-4" />
+                  </button>
                 </div>
               ))}
             </div>

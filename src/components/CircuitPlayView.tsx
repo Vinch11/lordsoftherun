@@ -53,6 +53,7 @@ import {
   useCircuitBoxes,
 } from "@/lib/circuit";
 import { applyPenalty } from "@/lib/forbiddenZones";
+import { appendTeamTrailPoint } from "@/lib/teamTrails";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
 import { getTerminology } from "@/lib/terminology";
@@ -304,6 +305,9 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
+        if (gameRef.current?.status === "running") {
+          void appendTeamTrailPoint(teamId, point[0], point[1]);
+        }
         void withTimeout(
           supabase
             .from("teams")
@@ -481,6 +485,8 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
         name: t.name,
         color: t.color,
         score: circuitRankMetric(t, game?.started_at ?? null),
+        // Circuit has no return-zone/grace concept — every finisher counts.
+        validated: true,
       })),
     [teams, game?.started_at],
   );

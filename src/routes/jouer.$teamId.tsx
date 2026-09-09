@@ -45,6 +45,7 @@ import { QuizCard } from "@/components/QuizCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
+import { appendTeamTrailPoint } from "@/lib/teamTrails";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
 import { CtfPlayView } from "@/components/CtfPlayView";
@@ -394,6 +395,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
       if (Date.now() - lastSync.current > 3000) {
         lastSync.current = Date.now();
+        if (gameRef.current?.status === "running") {
+          void appendTeamTrailPoint(teamId, point[0], point[1]);
+        }
         void withTimeout(
           supabase
             .from("teams")
@@ -589,6 +593,20 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const scoreStripTeams = useMemo(
     () => teams.map((tm) => ({ id: tm.id, name: tm.name, color: tm.color, score: tm.score_m2 })),
     [teams],
+  );
+
+  // A team that misses the return deadline in "cancel" grace mode never
+  // makes the podium — same rule the teacher's own dashboard already applies.
+  const finalResultsTeams = useMemo(
+    () =>
+      teams.map((tm) => ({
+        id: tm.id,
+        name: tm.name,
+        color: tm.color,
+        score: tm.score_m2,
+        validated: game?.grace_ends_at ? resolveGraceStatus(game, tm, now).validated : tm.validated,
+      })),
+    [teams, game, now],
   );
 
   const returnZone = useMemo(
@@ -929,7 +947,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
       {resultsOpen && (
         <FinalResults
-          teams={scoreStripTeams}
+          teams={finalResultsTeams}
           myTeamId={teamId}
           formatScore={formatArea}
           statusLabel={endgameLabel}
