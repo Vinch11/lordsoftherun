@@ -1043,6 +1043,45 @@ export type Database = {
           },
         ]
       }
+      team_trails: {
+        Row: {
+          game_id: string
+          id: string
+          points: Json
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          points?: Json
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          points?: Json
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_trails_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_trails_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           circuit_finished_at: string | null
@@ -1221,6 +1260,10 @@ export type Database = {
       answer_grid_bonus: {
         Args: { _answer: string; _bonus_id: string; _team_id: string }
         Returns: boolean
+      }
+      append_team_trail_point: {
+        Args: { _lat: number; _lng: number; _team_id: string }
+        Returns: undefined
       }
       close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {
