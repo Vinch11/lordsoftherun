@@ -980,13 +980,35 @@ function TeacherDashboard() {
   // Full-session trail review: pick a team, see exactly where they walked —
   // regardless of territory/cells/flags — independent of the game's own
   // scoring, which can trim or overwrite what a team actually captured.
-  const { trails: teamTrails } = useTeamTrails(gameId);
+  const { trails: teamTrails, refresh: refreshTeamTrails } = useTeamTrails(gameId);
   const [selectedTrailTeamId, setSelectedTrailTeamId] = useState<string | null>(null);
   const selectedTrailPoints = useMemo(
     () => teamTrails.find((tr) => tr.team_id === selectedTrailTeamId)?.points ?? [],
     [teamTrails, selectedTrailTeamId],
   );
   const selectedTrailColor = teams.find((t) => t.id === selectedTrailTeamId)?.color ?? "#e63946";
+
+  // useTeamTrails only fetches once on mount — if the dashboard tab has been
+  // open since before the game started, that first fetch came back empty and
+  // never gets updated (no realtime channel on this table, by design: this
+  // is a post-game review feature, not a live one). Re-fetch every time the
+  // teacher actually asks to see a trail, so the button doesn't silently
+  // show stale (often empty) data — and say so explicitly if it's genuinely
+  // empty, since an unlabeled empty map update looks exactly like a dead button.
+  async function toggleTrailTeam(teamId: string, teamName: string) {
+    if (selectedTrailTeamId === teamId) {
+      setSelectedTrailTeamId(null);
+      return;
+    }
+    setSelectedTrailTeamId(teamId);
+    const fresh = await refreshTeamTrails();
+    const points = fresh.find((tr) => tr.team_id === teamId)?.points ?? [];
+    if (points.length < 2) {
+      toast(
+        `Aucun trajet enregistré pour ${teamName} (partie jouée avant cette fonctionnalité ?).`,
+      );
+    }
+  }
 
   const totalCapturedRanked = useMemo(
     () => [...teams].sort((a, b) => b.total_captured_m2 - a.total_captured_m2),
@@ -4996,7 +5018,7 @@ function TeacherDashboard() {
                 }
                 aria-pressed={selectedTrailTeamId === t.id}
                 className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
-                onClick={() => setSelectedTrailTeamId((cur) => (cur === t.id ? null : t.id))}
+                onClick={() => void toggleTrailTeam(t.id, t.name)}
               >
                 <RouteIcon className="h-4 w-4" />
               </button>
@@ -5028,7 +5050,7 @@ function TeacherDashboard() {
                     }
                     aria-pressed={selectedTrailTeamId === t.id}
                     className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
-                    onClick={() => setSelectedTrailTeamId((cur) => (cur === t.id ? null : t.id))}
+                    onClick={() => void toggleTrailTeam(t.id, t.name)}
                   >
                     <RouteIcon className="h-4 w-4" />
                   </button>
