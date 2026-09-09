@@ -498,6 +498,13 @@
       "when": 1789300000000,
       "tag": "0070_grid_bonus_question",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1789400000000,
+      "tag": "0071_default_student_theme_classic",
+      "breakpoints": true
     }
   ]
 }
