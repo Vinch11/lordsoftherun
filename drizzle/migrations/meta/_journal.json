@@ -505,6 +505,13 @@
       "when": 1789400000000,
       "tag": "0071_default_student_theme_classic",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1788929458742,
+      "tag": "0072_student_theme_default_classic",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,1 @@
+ALTER TABLE public.games ALTER COLUMN student_theme SET DEFAULT 'classic';
