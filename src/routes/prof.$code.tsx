@@ -2130,9 +2130,7 @@ function TeacherDashboard() {
 
   return (
     <main className="flex min-h-screen flex-col lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
-      <div
-        className={`relative h-[45vh] min-h-[280px] w-full lg:h-full lg:shrink-0 lg:transition-[width] lg:duration-300 ${panelOpen ? "lg:w-2/5" : "lg:w-full"}`}
-      >
+      <div className="relative h-[45vh] min-h-[280px] w-full lg:h-full lg:min-w-0 lg:flex-1">
         <MapCanvas
           center={center}
           teams={mapTeams}
@@ -2255,7 +2253,7 @@ function TeacherDashboard() {
       </div>
 
       <div
-        className={`mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:max-w-4xl lg:overflow-y-auto [&>*]:shrink-0 ${panelOpen ? "" : "lg:hidden"}`}
+        className={`mx-auto flex w-full max-w-md flex-1 flex-col gap-5 p-4 lg:mx-0 lg:w-[440px] lg:max-w-[440px] lg:flex-none lg:overflow-y-auto [&>*]:shrink-0 ${panelOpen ? "" : "lg:hidden"}`}
       >
         <header className="panel flex flex-col gap-4 p-4">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
