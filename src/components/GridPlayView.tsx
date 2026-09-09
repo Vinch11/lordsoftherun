@@ -113,7 +113,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
     ],
   );
   const { messages } = useMessages(gameId);
-  const { cells } = useGridCells(gameId);
+  const { cells, refresh: refreshGridCells } = useGridCells(gameId);
   const cellsRef = useRef(cells);
   cellsRef.current = cells;
   const { bonuses: gridBonuses } = useGridBonuses(gameId);
@@ -366,6 +366,9 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           cellSizeRef.current,
         ).then((result) => {
           if (!result) return;
+          // Don't wait for the realtime round-trip to see our own cells
+          // change color — the DB write already happened, so refresh now.
+          void refreshGridCells();
           const n = result.cellsClaimed;
           toast.success(`💥 Bonus activé ! +${n} case${n > 1 ? "s" : ""}`);
           notifyMessage(
@@ -680,7 +683,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           teamId={teamId}
           gridCenter={gridCenter}
           cellSizeM={cellSizeRef.current}
-          onResolved={() => setNearbyQuestionBonus(null)}
+          onResolved={() => {
+            setNearbyQuestionBonus(null);
+            void refreshGridCells();
+          }}
         />
 
         {finished && returnZone && graceStatus?.remainingS != null && (
