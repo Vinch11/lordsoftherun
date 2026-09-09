@@ -1043,6 +1043,45 @@ export type Database = {
           },
         ]
       }
+      team_trails: {
+        Row: {
+          game_id: string
+          id: string
+          points: Json
+          team_id: string
+          updated_at: string
+        }
+        Insert: {
+          game_id: string
+          id?: string
+          points?: Json
+          team_id: string
+          updated_at?: string
+        }
+        Update: {
+          game_id?: string
+          id?: string
+          points?: Json
+          team_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_trails_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_trails_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: true
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           circuit_finished_at: string | null
@@ -1140,45 +1179,6 @@ export type Database = {
             columns: ["game_id"]
             isOneToOne: false
             referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      team_trails: {
-        Row: {
-          game_id: string
-          id: string
-          points: Json
-          team_id: string
-          updated_at: string
-        }
-        Insert: {
-          game_id: string
-          id?: string
-          points?: Json
-          team_id: string
-          updated_at?: string
-        }
-        Update: {
-          game_id?: string
-          id?: string
-          points?: Json
-          team_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "team_trails_game_id_fkey"
-            columns: ["game_id"]
-            isOneToOne: false
-            referencedRelation: "games"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_trails_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: true
-            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
