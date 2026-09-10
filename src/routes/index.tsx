@@ -1,7 +1,7 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Pencil, Play, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
+import { MapPin, Pencil, Play, Plus, QrCode, ShieldCheck, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
@@ -266,6 +266,44 @@ function Home() {
           </p>
         </header>
 
+        {account && (
+          <div className="flex flex-col gap-3">
+            {profile?.role === "admin" && (
+              <Link to="/admin" className="btn-huge btn-huge-dark">
+                <ShieldCheck className="h-5 w-5" /> Administration
+              </Link>
+            )}
+            {profile && profile.rejected_at && profile.role !== "admin" ? (
+              <p className="text-center text-sm text-muted-foreground">{t.accessRejected}</p>
+            ) : profile && !profile.approved && profile.role !== "admin" ? (
+              <p className="text-center text-sm text-muted-foreground">{t.pendingApproval}</p>
+            ) : (
+              <button
+                className="btn-huge btn-huge-accent"
+                disabled={creating || loading}
+                onClick={openCreateGame}
+              >
+                <Plus className="h-5 w-5" />
+                {creating ? "Création..." : t.createGameButton.replace(/^\+\s*/, "")}
+              </button>
+            )}
+            <div className="panel flex items-center justify-between gap-3 px-4 py-3">
+              <span className="truncate text-sm font-semibold text-muted-foreground">
+                {account.email}
+              </span>
+              <button
+                className="shrink-0 rounded-xl border border-border px-3 py-2 text-sm font-semibold text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  toast("Déconnecté.");
+                }}
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        )}
+
         {resumeTeams.length > 0 && (
           <div className="flex flex-col gap-2">
             {resumeTeams.length > 1 && <span className="section-title">Mes parties en cours</span>}
@@ -399,48 +437,16 @@ function Home() {
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
           {account ? (
-            <>
-              {profile?.role === "admin" && (
-                <Link
-                  to="/admin"
-                  className="flex items-center gap-1 text-sm font-semibold text-muted-foreground underline"
-                >
-                  <ShieldCheck className="h-4 w-4" /> Administration
-                </Link>
-              )}
-              {profile && profile.rejected_at && profile.role !== "admin" ? (
-                <p className="text-sm text-muted-foreground">{t.accessRejected}</p>
-              ) : profile && !profile.approved && profile.role !== "admin" ? (
-                <p className="text-sm text-muted-foreground">{t.pendingApproval}</p>
-              ) : (
-                <button
-                  className="text-sm font-semibold text-muted-foreground underline disabled:opacity-50"
-                  disabled={creating || loading}
-                  onClick={openCreateGame}
-                >
-                  {creating ? "Création..." : t.createGameButton}
-                </button>
-              )}
-              {profile && (
-                <button
-                  className="text-sm text-muted-foreground underline"
-                  onClick={() => void toggleTerminology()}
-                >
-                  Utiliser le terme «{" "}
-                  {profile.terminology === "organisateur" ? "enseignant" : "organisateur"} » plutôt
-                  que « {t.roleNoun} »
-                </button>
-              )}
+            profile && (
               <button
                 className="text-sm text-muted-foreground underline"
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  toast("Déconnecté.");
-                }}
+                onClick={() => void toggleTerminology()}
               >
-                Se déconnecter ({account.email})
+                Utiliser le terme «{" "}
+                {profile.terminology === "organisateur" ? "enseignant" : "organisateur"} » plutôt
+                que « {t.roleNoun} »
               </button>
-            </>
+            )
           ) : (
             <Link to="/auth" className="text-sm text-muted-foreground underline">
               Espace enseignant
