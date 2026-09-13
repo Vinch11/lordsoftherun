@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Crosshair, Flag, HelpCircle, MessageCircle } from "lucide-react";
+import { HelpCircle, MessageCircle, Square } from "lucide-react";
 import { MapCanvas } from "@/components/MapCanvas";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { formatArea, formatCountdown, studentThemeClass } from "@/lib/conquete";
@@ -114,32 +114,37 @@ function ThemePreviewScreen() {
 
       <div
         className="pointer-events-none absolute inset-x-3 z-[999]"
-        style={{ top: "max(9rem, calc(env(safe-area-inset-top) + 6.75rem))" }}
+        style={{ top: "var(--hud-rank-top, max(9rem, calc(env(safe-area-inset-top) + 6.75rem)))" }}
       >
         <ScoreStrip teams={DEMO_TEAMS} myTeamId={me.id} formatScore={formatArea} />
       </div>
 
       <div
         className="hud-badge hud-icon-btn absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(14.5rem, calc(env(safe-area-inset-top) + 12rem))" }}
+        style={{
+          top: "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))",
+        }}
       >
         <MessageCircle className="h-6 w-6" />
       </div>
       <div
         className="hud-badge hud-icon-btn absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(18.5rem, calc(env(safe-area-inset-top) + 16rem))" }}
+        style={{
+          top: "var(--hud-icon-2-top, max(18.5rem, calc(env(safe-area-inset-top) + 16rem)))",
+        }}
       >
         <HelpCircle className="h-6 w-6" />
       </div>
 
+      {/* Un instantané de l'état "en cours" — pas un empilement de tous les
+          états possibles : en vrai, le message du prof est un toast éphémère
+          et la barre GPS ne s'affiche qu'avant le départ, jamais en même
+          temps que les stats de course ci-dessous. */}
       <div
-        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        className="hud-bottom-stack absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        <div className="panel px-4 py-2 text-sm font-semibold">
-          {t.hostChatLabel} : regroupement à la zone Nord dans 5 minutes !
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="hud-stats-row grid grid-cols-2 gap-2">
           <div className="stat">
             <span className="label-xs">Distance</span>
             <span className="stat-value text-2xl">248 m</span>
@@ -149,12 +154,8 @@ function ThemePreviewScreen() {
             <span className="stat-value text-2xl">62 m</span>
           </div>
         </div>
-        <div className="panel flex items-center gap-2 px-4 py-2">
-          <Crosshair className="h-4 w-4 shrink-0 text-accent" />
-          <span className="label-xs">Signal GPS OK · ±6 m</span>
-        </div>
-        <div className="btn-huge btn-huge-accent justify-center">
-          <Flag className="h-6 w-6" /> Commencer ma boucle
+        <div className="btn-huge justify-center">
+          <Square className="h-6 w-6" /> Annuler ma boucle
         </div>
       </div>
     </main>

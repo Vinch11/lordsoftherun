@@ -569,7 +569,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
 
       <div
         className="pointer-events-none absolute inset-x-3 z-[999]"
-        style={{ top: "max(9rem, calc(env(safe-area-inset-top) + 6.75rem))" }}
+        style={{ top: "var(--hud-rank-top, max(9rem, calc(env(safe-area-inset-top) + 6.75rem)))" }}
       >
         <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatArea} />
       </div>
@@ -577,7 +577,9 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       <button
         aria-label="Messages"
         className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(14.5rem, calc(env(safe-area-inset-top) + 12rem))" }}
+        style={{
+          top: "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))",
+        }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -640,7 +642,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       )}
 
       <div
-        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        className="hud-bottom-stack absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {geoError && !geoDenied && (

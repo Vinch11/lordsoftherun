@@ -754,7 +754,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
       <div
         className="pointer-events-none absolute inset-x-3 z-[999]"
-        style={{ top: "max(9rem, calc(env(safe-area-inset-top) + 6.75rem))" }}
+        style={{ top: "var(--hud-rank-top, max(9rem, calc(env(safe-area-inset-top) + 6.75rem)))" }}
       >
         <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatArea} />
       </div>
@@ -762,7 +762,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       <button
         aria-label="Messages"
         className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(14.5rem, calc(env(safe-area-inset-top) + 12rem))" }}
+        style={{
+          top: "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))",
+        }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -777,7 +779,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       <button
         aria-label="Règles et consignes"
         className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(18.5rem, calc(env(safe-area-inset-top) + 16rem))" }}
+        style={{
+          top: "var(--hud-icon-2-top, max(18.5rem, calc(env(safe-area-inset-top) + 16rem)))",
+        }}
         onClick={() => setRulesOpen(true)}
       >
         <HelpCircle className="h-6 w-6" />
@@ -834,7 +838,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       )}
 
       <div
-        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        className="hud-bottom-stack absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {game?.async_mode && !running && <InstallPwaBanner />}
@@ -853,7 +857,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         )}
 
         {running && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="hud-stats-row grid grid-cols-2 gap-2">
             <div className="stat">
               <span className="label-xs">Distance</span>
               <span className="stat-value text-2xl">{Math.round(distance)} m</span>
@@ -868,7 +872,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         )}
 
         {!running && (
-          <div className="panel flex items-center gap-2 px-4 py-2">
+          <div className="gps-status panel flex items-center gap-2 px-4 py-2">
             <Crosshair className="h-4 w-4 shrink-0 text-accent" />
             <span className="label-xs">
               {pos
