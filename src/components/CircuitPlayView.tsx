@@ -523,6 +523,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
           circuitBoxes={mapBoxes}
           bananas={mapBananas}
           mapStyle={game?.map_style}
+          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}
           onRecenter={() => setFollowMe(true)}
