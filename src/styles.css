@@ -1718,6 +1718,92 @@
   color: var(--muted-foreground);
 }
 
+/* Disposition élève : les autres thèmes gardent la même arborescence
+   (deux badges flottants + tuiles fines), mais Mystère la réarrange en
+   un vrai tableau de bord d'aventure — un seul bandeau fusionné en haut
+   (comme la barre de niveau d'un jeu), des chiffres nettement agrandis,
+   et des tuiles de stats transformées en badges épais plutôt qu'en
+   simples encarts. */
+.bib.skin-mystery .hud-instrument {
+  background-color: var(--card);
+  border: 3px solid #1f1300;
+  border-radius: 1.3rem;
+  box-shadow: 0 4px 0 0 #1f1300;
+  gap: 0;
+  overflow: hidden;
+}
+
+.bib.skin-mystery .hud-instrument .hud-badge {
+  background: none;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0.9rem 1.1rem;
+}
+
+.bib.skin-mystery .hud-instrument .hud-badge + .hud-badge {
+  border-left: 3px solid #1f1300;
+}
+
+.bib.skin-mystery .hud-instrument .display {
+  font-size: 1.75rem;
+  line-height: 1.05;
+}
+
+.bib.skin-mystery .hud-instrument .label-xs {
+  font-size: 0.68rem;
+}
+
+.bib.skin-mystery .hud-icon-btn {
+  height: 3.5rem;
+  width: 3.5rem;
+  min-height: 3.5rem;
+  min-width: 3.5rem;
+}
+
+.bib.skin-mystery .stat {
+  background-color: var(--card);
+  border: 3px solid #1f1300;
+  border-radius: 1.1rem;
+  box-shadow: 0 3px 0 0 #1f1300;
+  padding: 0.8rem 1rem;
+  color: var(--card-foreground);
+}
+
+.bib.skin-mystery .stat .label-xs {
+  color: var(--muted-foreground);
+}
+
+.bib.skin-mystery .stat-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.6rem;
+}
+
+.bib.skin-mystery .score-strip {
+  gap: 0.5rem;
+  padding: 0.4rem;
+}
+
+.bib.skin-mystery .score-chip {
+  padding: 0.65rem 0.4rem;
+  border-radius: 0.9rem;
+}
+
+.bib.skin-mystery .score-chip .display {
+  font-size: 1.05rem;
+}
+
+.bib.skin-mystery .score-chip-crown {
+  top: -1rem;
+  font-size: 1.05rem;
+}
+
+.bib.skin-mystery .score-chip-track {
+  height: 5px;
+  background: color-mix(in oklab, var(--card-foreground) 25%, transparent);
+}
+
 .collapse-toggle {
   position: absolute;
   top: 0.6rem;
