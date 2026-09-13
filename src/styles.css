@@ -1620,14 +1620,24 @@
 .bib.skin-mystery .nav-back,
 .bib.skin-mystery .panel,
 .bib.skin-mystery .sheet,
-.bib.skin-mystery .score-chip,
 .bib.skin-mystery .field {
   background-color: var(--card);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  border: 3px solid #1f1300;
-  border-radius: 1.1rem;
-  box-shadow: 0 4px 0 0 #1f1300;
+  border: 2px solid #1f1300;
+  border-radius: 1rem;
+  box-shadow: 0 2px 0 0 #1f1300;
+  color: var(--card-foreground);
+}
+
+/* Les jetons de classement se répètent une fois par équipe : contour
+   fin, sans ombre portée — sinon une rangée de 6-8 équipes devient un
+   mur de cases épaisses et illisible. */
+.bib.skin-mystery .score-chip {
+  background-color: var(--card);
+  border: 1.5px solid #1f1300;
+  border-radius: 0.6rem;
+  box-shadow: none;
   color: var(--card-foreground);
 }
 
@@ -1642,31 +1652,30 @@
 }
 
 .bib.skin-mystery .score-chip-me {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .bib.skin-mystery .icon-btn {
   background-color: var(--card);
-  border: 3px solid #1f1300;
-  box-shadow: 0 3px 0 0 #1f1300;
+  border: 2px solid #1f1300;
+  box-shadow: 0 2px 0 0 #1f1300;
   color: var(--card-foreground);
 }
 
 .bib.skin-mystery .btn-huge {
   background-image: none;
-  border: 3px solid #1f1300;
-  border-radius: 1.1rem;
-  box-shadow: 0 4px 0 0 #1f1300;
+  border: 2px solid #1f1300;
+  border-radius: 1rem;
+  box-shadow: 0 3px 0 0 #1f1300;
   font-family: var(--font-display);
-  font-size: 1.3rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   text-transform: none;
 }
 
 .bib.skin-mystery .btn-huge:active {
-  transform: translateY(3px);
+  transform: translateY(2px);
   box-shadow: 0 1px 0 0 #1f1300;
 }
 
@@ -1679,7 +1688,7 @@
   );
   color: var(--accent-foreground);
   animation: none;
-  box-shadow: 0 4px 0 0 #1f1300;
+  box-shadow: 0 3px 0 0 #1f1300;
 }
 
 .bib.skin-mystery .btn-huge-dark {
@@ -1694,7 +1703,7 @@
 
 .bib.skin-mystery .pill {
   background-color: var(--accent);
-  border: 3px solid #1f1300;
+  border: 2px solid #1f1300;
   color: var(--accent-foreground);
 }
 
@@ -1718,17 +1727,15 @@
   color: var(--muted-foreground);
 }
 
-/* Disposition élève : les autres thèmes gardent la même arborescence
-   (deux badges flottants + tuiles fines), mais Mystère la réarrange en
-   un vrai tableau de bord d'aventure — un seul bandeau fusionné en haut
-   (comme la barre de niveau d'un jeu), des chiffres nettement agrandis,
-   et des tuiles de stats transformées en badges épais plutôt qu'en
-   simples encarts. */
+/* Disposition élève : un seul bandeau fusionné en haut plutôt que deux
+   badges flottants séparés — moins de blocs à l'écran, sans agrandir
+   les chiffres ni les boutons. Les tuiles de stats et les jetons du
+   classement restent fins puisqu'ils se répètent à l'écran. */
 .bib.skin-mystery .hud-instrument {
   background-color: var(--card);
-  border: 3px solid #1f1300;
-  border-radius: 1.3rem;
-  box-shadow: 0 4px 0 0 #1f1300;
+  border: 2px solid #1f1300;
+  border-radius: 1.1rem;
+  box-shadow: 0 2px 0 0 #1f1300;
   gap: 0;
   overflow: hidden;
 }
@@ -1738,35 +1745,17 @@
   border: none;
   box-shadow: none;
   border-radius: 0;
-  padding: 0.9rem 1.1rem;
 }
 
 .bib.skin-mystery .hud-instrument .hud-badge + .hud-badge {
-  border-left: 3px solid #1f1300;
-}
-
-.bib.skin-mystery .hud-instrument .display {
-  font-size: 1.75rem;
-  line-height: 1.05;
-}
-
-.bib.skin-mystery .hud-instrument .label-xs {
-  font-size: 0.68rem;
-}
-
-.bib.skin-mystery .hud-icon-btn {
-  height: 3.5rem;
-  width: 3.5rem;
-  min-height: 3.5rem;
-  min-width: 3.5rem;
+  border-left: 2px solid #1f1300;
 }
 
 .bib.skin-mystery .stat {
   background-color: var(--card);
-  border: 3px solid #1f1300;
-  border-radius: 1.1rem;
-  box-shadow: 0 3px 0 0 #1f1300;
-  padding: 0.8rem 1rem;
+  border: 1.5px solid #1f1300;
+  border-radius: 0.85rem;
+  box-shadow: none;
   color: var(--card-foreground);
 }
 
@@ -1774,33 +1763,7 @@
   color: var(--muted-foreground);
 }
 
-.bib.skin-mystery .stat-value {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.6rem;
-}
-
-.bib.skin-mystery .score-strip {
-  gap: 0.5rem;
-  padding: 0.4rem;
-}
-
-.bib.skin-mystery .score-chip {
-  padding: 0.65rem 0.4rem;
-  border-radius: 0.9rem;
-}
-
-.bib.skin-mystery .score-chip .display {
-  font-size: 1.05rem;
-}
-
-.bib.skin-mystery .score-chip-crown {
-  top: -1rem;
-  font-size: 1.05rem;
-}
-
 .bib.skin-mystery .score-chip-track {
-  height: 5px;
   background: color-mix(in oklab, var(--card-foreground) 25%, transparent);
 }
 
