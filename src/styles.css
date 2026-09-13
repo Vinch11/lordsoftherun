@@ -1603,6 +1603,15 @@
   --ring: #f6c445;
   --font-display: "Baloo 2", "Fredoka", system-ui, sans-serif;
   font-family: "Nunito", system-ui, sans-serif;
+
+  /* The play-screen HUD positions the ranking strip and the floating
+     icon buttons at fixed offsets from the top, calibrated to the
+     other themes' taller cards. Shrinking Mystery's top bar without
+     also pulling these up would leave dead empty space above them. */
+  --hud-rank-top: max(6.5rem, calc(env(safe-area-inset-top) + 4.25rem));
+  --hud-icon-1-top: max(12rem, calc(env(safe-area-inset-top) + 9.5rem));
+  --hud-icon-2-top: max(16rem, calc(env(safe-area-inset-top) + 13.5rem));
+  --circuit-icon-top: max(9.5rem, calc(env(safe-area-inset-top) + 7rem));
 }
 
 .bib.skin-mystery h1,
@@ -1825,6 +1834,23 @@
 
 .bib.skin-mystery .score-chip-track {
   background: color-mix(in oklab, var(--card-foreground) 25%, transparent);
+}
+
+/* Being see-through doesn't free up space by itself — it just makes the
+   same stack less opaque. What actually frees space: a tighter gap
+   between the stacked bottom cards, and dropping the "signal GPS OK"
+   reassurance bar entirely (an actual GPS problem still surfaces via
+   the separate error panel, which stays visible). */
+.bib.skin-mystery .hud-bottom-stack {
+  gap: 0.4rem;
+}
+
+.bib.skin-mystery .hud-stats-row {
+  gap: 0.4rem;
+}
+
+.bib.skin-mystery .gps-status {
+  display: none;
 }
 
 .collapse-toggle {

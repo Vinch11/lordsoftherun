@@ -570,7 +570,9 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       <button
         aria-label="Messages"
         className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{ top: "max(12rem, calc(env(safe-area-inset-top) + 9.5rem))" }}
+        style={{
+          top: "var(--circuit-icon-top, max(12rem, calc(env(safe-area-inset-top) + 9.5rem)))",
+        }}
         onClick={() => {
           setChatOpen(true);
           setUnread(false);
@@ -633,7 +635,7 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       )}
 
       <div
-        className="absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
+        className="hud-bottom-stack absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2.5 p-3"
         style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
         {geoError && !geoDenied && (
