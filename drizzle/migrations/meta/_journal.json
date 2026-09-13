@@ -540,6 +540,13 @@
       "when": 1789700000000,
       "tag": "0076_student_theme_mystery",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1789326456743,
+      "tag": "0077_student_theme_check_constraint",
+      "breakpoints": true
     }
   ]
 }
