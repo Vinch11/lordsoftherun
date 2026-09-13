@@ -82,6 +82,8 @@ type Props = {
   gridBonuses?: MapGridBonus[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
+  /** "sticker" swaps every emoji marker for the Mystery theme's paper-badge look (thick outline, hard shadow, no glow). */
+  markerSkin?: "default" | "sticker";
   hudFrame?: boolean;
   /** Fires the moment the player drags the map by hand (not on programmatic pans). */
   onUserPan?: () => void;
@@ -118,8 +120,38 @@ const LANDMARK_KIND_COLOR: Record<MapLandmark["kind"], string> = {
   shield: "#33d0e8",
 };
 
-const landmarkIcon = (icon: string, kind: MapLandmark["kind"]) => {
+/**
+ * "Sticker" marker language for the Mystery student theme: opaque paper-like
+ * badge, thick black outline, hard offset shadow — no neon/glow, matching
+ * the theme's illustrated-adventure-map look instead of the default HUD's
+ * glowing hex/gradient markers.
+ */
+const STICKER_INK = "#1f1300";
+
+function stickerCard(inner: string, opts: { bg: string; size: number; radius?: number }) {
+  const { bg, size, radius = Math.round(size * 0.3) } = opts;
+  return `<div style="
+    display:flex;align-items:center;justify-content:center;
+    width:${size}px;height:${size}px;border-radius:${radius}px;
+    background:${bg};
+    border:3px solid ${STICKER_INK};
+    box-shadow:0 3px 0 0 ${STICKER_INK};
+  ">${inner}</div>`;
+}
+
+const landmarkIcon = (icon: string, kind: MapLandmark["kind"], sticker: boolean) => {
   const color = LANDMARK_KIND_COLOR[kind];
+  if (sticker) {
+    return L.divIcon({
+      html: stickerCard(`<span style="font-size:17px;line-height:1;">${icon}</span>`, {
+        bg: color,
+        size: 34,
+      }),
+      className: "",
+      iconSize: [34, 34],
+      iconAnchor: [17, 17],
+    });
+  }
   return L.divIcon({
     html: `<div style="position:relative; width:34px; height:34px;">
       <div class="hex-ring" style="border-color:${color}"></div>
@@ -136,9 +168,15 @@ const landmarkIcon = (icon: string, kind: MapLandmark["kind"]) => {
   });
 };
 
-const flagIcon = (color: string) =>
+const flagIcon = (color: string, sticker: boolean) =>
   L.divIcon({
-    html: `<div style="
+    html: sticker
+      ? stickerCard(`<span style="font-size:16px;line-height:1;">🚩</span>`, {
+          bg: color,
+          size: 34,
+          radius: 999,
+        })
+      : `<div style="
       display:flex; align-items:center; justify-content:center;
       width:34px;height:34px;border-radius:50%;
       background:${color};
@@ -159,9 +197,14 @@ const blipIcon = (color: string, spec: MapStyleSpec) =>
     iconAnchor: [22, 22],
   });
 
-const checkpointIcon = (seq: number) =>
+const checkpointIcon = (seq: number, sticker: boolean) =>
   L.divIcon({
-    html: `<div style="
+    html: sticker
+      ? stickerCard(
+          `<span style="font-size:13px;font-weight:800;color:${STICKER_INK};line-height:1;">${seq === 0 ? "🏁" : seq}</span>`,
+          { bg: seq === 0 ? "#f6c445" : "#7bb9ff", size: 28, radius: 999 },
+        )
+      : `<div style="
       display:flex; align-items:center; justify-content:center;
       width:28px;height:28px;border-radius:50%;
       background:${seq === 0 ? "#e9c500" : "#1d6fe0"};
@@ -174,9 +217,14 @@ const checkpointIcon = (seq: number) =>
     iconAnchor: [14, 14],
   });
 
-const boxIcon = () =>
+const boxIcon = (sticker: boolean) =>
   L.divIcon({
-    html: `<div style="
+    html: sticker
+      ? stickerCard(`<span style="font-size:17px;line-height:1;">❓</span>`, {
+          bg: "#fffaf0",
+          size: 32,
+        })
+      : `<div style="
       display:flex; align-items:center; justify-content:center;
       width:32px;height:32px;border-radius:8px;
       background:linear-gradient(160deg, #7c3aed, #4c1d95);
@@ -189,9 +237,15 @@ const boxIcon = () =>
     iconAnchor: [16, 16],
   });
 
-const bananaIcon = () =>
+const bananaIcon = (sticker: boolean) =>
   L.divIcon({
-    html: `<div style="
+    html: sticker
+      ? stickerCard(`<span style="font-size:14px;line-height:1;">🍌</span>`, {
+          bg: "#ffd85e",
+          size: 26,
+          radius: 999,
+        })
+      : `<div style="
       display:flex; align-items:center; justify-content:center;
       width:26px;height:26px;border-radius:50%;
       background:#1a1c05;
@@ -204,9 +258,17 @@ const bananaIcon = () =>
     iconAnchor: [13, 13],
   });
 
-const gridBonusIcon = (remainingS: number) =>
+const gridBonusIcon = (remainingS: number, sticker: boolean) =>
   L.divIcon({
-    html: `<div style="
+    html: sticker
+      ? stickerCard(
+          `<span style="display:flex;flex-direction:column;align-items:center;line-height:1;color:${STICKER_INK};">
+             <span style="font-size:15px;">💥</span>
+             <span style="font-size:8px;font-weight:800;">${Math.max(0, Math.ceil(remainingS))}s</span>
+           </span>`,
+          { bg: "#ff9d3d", size: 36, radius: 999 },
+        )
+      : `<div style="
       display:flex; flex-direction:column; align-items:center; justify-content:center;
       width:36px;height:36px;border-radius:50%;
       background:radial-gradient(circle at 35% 30%, #ff9d3d, #d6360f 70%);
@@ -240,12 +302,14 @@ export default function GameMap({
   gridBonuses = [],
   onMapClick,
   mapStyle = "classic",
+  markerSkin = "default",
   hudFrame = false,
   onUserPan,
   onRecenter,
   drawingEnabled = false,
   onFreehandDraw,
 }: Props) {
+  const sticker = markerSkin === "sticker";
   const spec = resolveMapStyle(mapStyle);
   const specRef = useRef(spec);
   specRef.current = spec;
@@ -484,22 +548,22 @@ export default function GameMap({
     if (!layer) return;
     layer.clearLayers();
     for (const lm of landmarks) {
-      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.icon, lm.kind) })
+      L.marker([lm.lat, lm.lng], { icon: landmarkIcon(lm.icon, lm.kind, sticker) })
         .bindTooltip(lm.kind === "shield" ? "Bouclier" : "Repère bonus")
         .addTo(layer);
     }
-  }, [landmarks]);
+  }, [landmarks, sticker]);
 
   useEffect(() => {
     const layer = flagLayer.current;
     if (!layer) return;
     layer.clearLayers();
     for (const f of flags) {
-      L.marker([f.lat, f.lng], { icon: flagIcon(f.color) })
+      L.marker([f.lat, f.lng], { icon: flagIcon(f.color, sticker) })
         .bindTooltip(f.label)
         .addTo(layer);
     }
-  }, [flags]);
+  }, [flags, sticker]);
 
   useEffect(() => {
     const layer = gridCellLayer.current;
@@ -558,20 +622,22 @@ export default function GameMap({
       ).addTo(layer);
     }
     for (const c of ordered) {
-      L.marker([c.lat, c.lng], { icon: checkpointIcon(c.seq) })
+      L.marker([c.lat, c.lng], { icon: checkpointIcon(c.seq, sticker) })
         .bindTooltip(c.seq === 0 ? "Ligne de départ/arrivée" : `Checkpoint ${c.seq}`)
         .addTo(layer);
     }
-  }, [checkpoints]);
+  }, [checkpoints, sticker]);
 
   useEffect(() => {
     const layer = boxLayer.current;
     if (!layer) return;
     layer.clearLayers();
     for (const b of circuitBoxes) {
-      L.marker([b.lat, b.lng], { icon: boxIcon() }).bindTooltip("Boîte mystère").addTo(layer);
+      L.marker([b.lat, b.lng], { icon: boxIcon(sticker) })
+        .bindTooltip("Boîte mystère")
+        .addTo(layer);
     }
-  }, [circuitBoxes]);
+  }, [circuitBoxes, sticker]);
 
   useEffect(() => {
     const layer = bananaLayer.current;
@@ -586,9 +652,11 @@ export default function GameMap({
         fillColor: "#e9c500",
         fillOpacity: 0.15,
       }).addTo(layer);
-      L.marker([b.lat, b.lng], { icon: bananaIcon() }).bindTooltip("Banane").addTo(layer);
+      L.marker([b.lat, b.lng], { icon: bananaIcon(sticker) })
+        .bindTooltip("Banane")
+        .addTo(layer);
     }
-  }, [bananas]);
+  }, [bananas, sticker]);
 
   useEffect(() => {
     const layer = gridBonusLayer.current;
@@ -603,11 +671,11 @@ export default function GameMap({
         fillColor: "#ff9d3d",
         fillOpacity: 0.12,
       }).addTo(layer);
-      L.marker([b.lat, b.lng], { icon: gridBonusIcon(b.remainingS) })
+      L.marker([b.lat, b.lng], { icon: gridBonusIcon(b.remainingS, sticker) })
         .bindTooltip(`💥 Bonus — ${Math.max(0, Math.ceil(b.remainingS))}s`)
         .addTo(layer);
     }
-  }, [gridBonuses]);
+  }, [gridBonuses, sticker]);
 
   useEffect(() => {
     const layer = teamTrailLayer.current;

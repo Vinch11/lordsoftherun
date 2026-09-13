@@ -37,7 +37,7 @@ export type StudentIdMode = "roster" | "freetext" | "none";
 export const DEFAULT_STUDENT_ID_MODE: StudentIdMode = "roster";
 
 /** Visual skin of the student screens, picked by the teacher per game. */
-export type StudentTheme = "classic" | "dossard" | "apple" | "athletic";
+export type StudentTheme = "classic" | "dossard" | "apple" | "athletic" | "mystery";
 export const DEFAULT_STUDENT_THEME: StudentTheme = "classic";
 
 export const STUDENT_THEMES: {
@@ -74,6 +74,13 @@ export const STUDENT_THEMES: {
       "Blanc net, bleu sportif saturé, titres ultra-gras. Même langage compact que « Carte d'orientation » — bandeau fusionné, classement en jauges, chiffres alignés — avec l'identité bleu sport.",
     swatches: ["#fafafa", "#2563eb", "#111827"],
   },
+  {
+    id: "mystery",
+    label: "Expédition mystère",
+    description:
+      "Carte d'aventure illustrée : violet et or, badges épais à contour noir et ombre portée nette, marqueurs façon écusson/carte au trésor. Look jeu vidéo assumé.",
+    swatches: ["#2a1a4a", "#f6c445", "#39b56f"],
+  },
 ];
 
 /** CSS classes to put on the student screen root for a given theme. */
@@ -83,6 +90,8 @@ export function studentThemeClass(theme: string | null | undefined): string {
       return "bib skin-apple";
     case "athletic":
       return "bib skin-athletic";
+    case "mystery":
+      return "bib skin-mystery";
     case "dossard":
       return "bib";
     default:

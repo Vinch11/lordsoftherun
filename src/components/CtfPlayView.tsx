@@ -532,6 +532,7 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
           forbiddenZones={mapForbiddenZones}
           flags={mapFlags}
           mapStyle={game?.map_style}
+          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}
           onRecenter={() => setFollowMe(true)}

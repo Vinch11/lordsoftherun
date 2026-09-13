@@ -716,6 +716,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
           mapStyle={game?.map_style}
+          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}
           onRecenter={() => setFollowMe(true)}

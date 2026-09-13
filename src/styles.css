@@ -1574,6 +1574,150 @@
   color: oklch(0.4 0.16 262);
 }
 
+/* --- Expédition mystère : carte d'aventure illustrée — violet et or,
+   contours encre épais (#1f1300, la même teinte que les marqueurs
+   "sticker" de GameMap) et ombre portée nette façon autocollant BD.
+   Pas de dégradé ni de lueur néon : des aplats francs, comme un jeu
+   de plateau illustré. --- */
+.bib.skin-mystery {
+  --background: #1c3b2c;
+  --foreground: #fff6e6;
+  --card: #3c2266;
+  --card-foreground: #fff6e6;
+  --popover: #3c2266;
+  --popover-foreground: #fff6e6;
+  --primary: #4c2a85;
+  --primary-foreground: #fff6e6;
+  --secondary: #2e1b52;
+  --secondary-foreground: #fff6e6;
+  --muted: #2e1b52;
+  --muted-foreground: #cdbdf0;
+  --accent: #f6c445;
+  --accent-foreground: #2a1a02;
+  --destructive: oklch(0.55 0.24 27);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: #39b56f;
+  --success-foreground: #072311;
+  --border: #f6c445;
+  --input: #f6c445;
+  --ring: #f6c445;
+  --font-display: "Baloo 2", "Fredoka", system-ui, sans-serif;
+  font-family: "Nunito", system-ui, sans-serif;
+}
+
+.bib.skin-mystery h1,
+.bib.skin-mystery h2,
+.bib.skin-mystery h3,
+.bib.skin-mystery .display,
+.bib.skin-mystery .page-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.bib.skin-mystery .hud-badge,
+.bib.skin-mystery .nav-back,
+.bib.skin-mystery .panel,
+.bib.skin-mystery .sheet,
+.bib.skin-mystery .score-chip,
+.bib.skin-mystery .field {
+  background-color: var(--card);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 3px solid #1f1300;
+  border-radius: 1.1rem;
+  box-shadow: 0 4px 0 0 #1f1300;
+  color: var(--card-foreground);
+}
+
+.bib.skin-mystery .score-chip-leader {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.bib.skin-mystery .score-chip-leader .label-xs,
+.bib.skin-mystery .score-chip-leader .display {
+  color: var(--accent-foreground);
+}
+
+.bib.skin-mystery .score-chip-me {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.bib.skin-mystery .icon-btn {
+  background-color: var(--card);
+  border: 3px solid #1f1300;
+  box-shadow: 0 3px 0 0 #1f1300;
+  color: var(--card-foreground);
+}
+
+.bib.skin-mystery .btn-huge {
+  background-image: none;
+  border: 3px solid #1f1300;
+  border-radius: 1.1rem;
+  box-shadow: 0 4px 0 0 #1f1300;
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.bib.skin-mystery .btn-huge:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 0 #1f1300;
+}
+
+.bib.skin-mystery .btn-huge-accent {
+  background-color: var(--accent);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 85%, white),
+    var(--accent)
+  );
+  color: var(--accent-foreground);
+  animation: none;
+  box-shadow: 0 4px 0 0 #1f1300;
+}
+
+.bib.skin-mystery .btn-huge-dark {
+  background-color: #1f1300;
+  color: #fff6e6;
+}
+
+.bib.skin-mystery .field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.bib.skin-mystery .pill {
+  background-color: var(--accent);
+  border: 3px solid #1f1300;
+  color: var(--accent-foreground);
+}
+
+.bib.skin-mystery .pill,
+.bib.skin-mystery .section-title,
+.bib.skin-mystery .label-xs {
+  color: var(--foreground);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bib.skin-mystery .pill {
+  color: var(--accent-foreground);
+}
+
+.bib.skin-mystery .section-title svg {
+  color: var(--accent);
+}
+
+.bib.skin-mystery .text-muted-foreground {
+  color: var(--muted-foreground);
+}
+
 .collapse-toggle {
   position: absolute;
   top: 0.6rem;

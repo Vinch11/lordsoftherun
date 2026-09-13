@@ -544,6 +544,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
           gridBonuses={mapGridBonuses}
           mapStyle={game?.map_style}
+          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}
           onRecenter={() => setFollowMe(true)}
