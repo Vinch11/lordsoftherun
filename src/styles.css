@@ -1015,6 +1015,22 @@
   outline-offset: 2px;
 }
 
+/* Rangée d'option cliquable (choix d'équipe, choix de prénom sur l'écran
+   "Rejoindre") : même famille visuelle que .field — un cadre plutôt qu'une
+   ligne plate — pour ne pas casser le langage "dossard" des autres écrans. */
+.bib .option-row {
+  background-color: oklch(1 0 0);
+  border: 3px solid var(--foreground);
+  border-radius: 1rem;
+  box-shadow: 0 3px 0 0 var(--foreground);
+  color: var(--foreground);
+}
+
+.bib .option-row:active {
+  transform: translateY(3px) scale(0.98);
+  box-shadow: 0 1px 0 0 var(--foreground);
+}
+
 /* ============================================================
    Skins alternatifs de l'écran élève (choisis par le prof).
    Ils se posent par-dessus la base .bib.
@@ -1300,6 +1316,14 @@
   border-radius: 0.85rem;
 }
 
+.bib.skin-apple .option-row {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 0.85rem;
+  box-shadow: none;
+  color: var(--foreground);
+}
+
 .bib.skin-apple .btn-huge {
   border: none;
   border-radius: 1.1rem;
@@ -1528,6 +1552,14 @@
   border-radius: 1rem;
 }
 
+.bib.skin-athletic .option-row {
+  background-color: oklch(1 0 0);
+  border: 2px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: none;
+  color: var(--foreground);
+}
+
 .bib.skin-athletic .btn-huge {
   border: none;
   border-radius: 1.1rem;
@@ -1748,6 +1780,19 @@
 .bib.skin-mystery .field:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.bib.skin-mystery .option-row {
+  background-color: color-mix(in oklab, var(--card) 85%, transparent);
+  border: 2px solid #1f1300;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 0 0 #1f1300;
+  color: var(--card-foreground);
+}
+
+.bib.skin-mystery .option-row:active {
+  transform: translateY(2px) scale(0.98);
+  box-shadow: none;
 }
 
 .bib.skin-mystery .pill {
