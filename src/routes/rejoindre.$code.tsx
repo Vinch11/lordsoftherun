@@ -357,7 +357,7 @@ function Join() {
                       type="button"
                       disabled={busy}
                       onClick={() => void joinAsync(s.id)}
-                      className="rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+                      className="option-row rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
                     >
                       {s.name}
                     </button>
@@ -447,7 +447,7 @@ function Join() {
                   type="button"
                   disabled={busy}
                   onClick={() => selectTeam(t)}
-                  className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+                  className="option-row flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
                 >
                   <span
                     className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
@@ -504,7 +504,7 @@ function Join() {
                   type="button"
                   disabled={busy}
                   onClick={() => (multiParticipant ? selectTeam(t) : void rejoin(t.id))}
-                  className="flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
+                  className="option-row flex items-center gap-3 rounded-2xl bg-secondary/60 px-4 py-3 text-left font-semibold transition-transform active:scale-[0.98] disabled:opacity-60"
                 >
                   <span
                     className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
