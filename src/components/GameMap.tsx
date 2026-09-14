@@ -34,7 +34,7 @@ export type MapLandmark = {
   lat: number;
   lng: number;
   icon: string;
-  kind: "points" | "shield";
+  kind: "points" | "shield" | "trap";
 };
 
 export type MapForbiddenZone = { id: string; lat: number; lng: number; radiusM: number };
@@ -62,6 +62,8 @@ export type MapGridBonus = {
   radiusM: number;
   remainingS: number;
 };
+/** A team's own hidden trap — only ever passed in for the team that placed it (or the prof). */
+export type MapTrap = { id: string; lat: number; lng: number };
 
 type Props = {
   center: [number, number] | null;
@@ -80,6 +82,7 @@ type Props = {
   circuitBoxes?: MapCircuitBox[];
   bananas?: MapBanana[];
   gridBonuses?: MapGridBonus[];
+  traps?: MapTrap[];
   onMapClick?: ((lat: number, lng: number) => void | Promise<void>) | undefined;
   mapStyle?: MapStyleId | string | null | undefined;
   /** "sticker" swaps every emoji marker for the Mystery theme's paper-badge look (thick outline, hard shadow, no glow). */
@@ -115,9 +118,15 @@ function cellRectBounds(lat: number, lng: number, sizeM: number): L.LatLngBounds
   return rectBoundsMeters(lat, lng, sizeM, sizeM);
 }
 
+// "trap" intentionally matches "points" here — the whole mechanic is that
+// a team can't tell a genuine bonus from a "fake" one until they walk up
+// and claim it. The two only look different once revealed elsewhere: the
+// trap it lets the claiming team hide (trapIcon, below) is a distinct look
+// since only that team ever sees it.
 const LANDMARK_KIND_COLOR: Record<MapLandmark["kind"], string> = {
   points: "#e9c500",
   shield: "#33d0e8",
+  trap: "#e9c500",
 };
 
 /**
@@ -258,6 +267,28 @@ const bananaIcon = (sticker: boolean) =>
     iconAnchor: [13, 13],
   });
 
+/** Only ever rendered for the team that placed it (or the prof) — everyone
+ * else never receives this trap's coordinates in the first place. */
+const trapIcon = (sticker: boolean) =>
+  L.divIcon({
+    html: sticker
+      ? stickerCard(`<span style="font-size:15px;line-height:1;">🪤</span>`, {
+          bg: "#c98a4a",
+          size: 30,
+        })
+      : `<div style="
+      display:flex; align-items:center; justify-content:center;
+      width:30px;height:30px;border-radius:50%;
+      background:#3a2410;
+      border:2px dashed #c98a4a;
+      box-shadow:0 0 5px 2px rgba(201,138,74,.5);
+      font-size:16px; line-height:1;
+    ">🪤</div>`,
+    className: "",
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+
 const gridBonusIcon = (remainingS: number, sticker: boolean) =>
   L.divIcon({
     html: sticker
@@ -300,6 +331,7 @@ export default function GameMap({
   circuitBoxes = [],
   bananas = [],
   gridBonuses = [],
+  traps = [],
   onMapClick,
   mapStyle = "classic",
   markerSkin = "default",
@@ -328,6 +360,7 @@ export default function GameMap({
   const boxLayer = useRef<L.LayerGroup | null>(null);
   const bananaLayer = useRef<L.LayerGroup | null>(null);
   const gridBonusLayer = useRef<L.LayerGroup | null>(null);
+  const trapLayer = useRef<L.LayerGroup | null>(null);
   const drawLine = useRef<L.Polyline | null>(null);
   const trailLine = useRef<L.Polyline | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -369,6 +402,7 @@ export default function GameMap({
     boxLayer.current = L.layerGroup().addTo(map);
     bananaLayer.current = L.layerGroup().addTo(map);
     gridBonusLayer.current = L.layerGroup().addTo(map);
+    trapLayer.current = L.layerGroup().addTo(map);
     teamTrailLayer.current = L.layerGroup().addTo(map);
     teamLayer.current = L.layerGroup().addTo(map);
     trailLine.current = L.polyline([], { color: trailColor, weight: 6, opacity: 0.95 }).addTo(map);
@@ -657,6 +691,17 @@ export default function GameMap({
         .addTo(layer);
     }
   }, [bananas, sticker]);
+
+  useEffect(() => {
+    const layer = trapLayer.current;
+    if (!layer) return;
+    layer.clearLayers();
+    for (const t of traps) {
+      L.marker([t.lat, t.lng], { icon: trapIcon(sticker) })
+        .bindTooltip("Votre piège")
+        .addTo(layer);
+    }
+  }, [traps, sticker]);
 
   useEffect(() => {
     const layer = gridBonusLayer.current;

@@ -20,6 +20,7 @@ import {
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
+  TRAP_PLACEMENT_WINDOW_S,
   VEHICLE_SUSTAINED_MS,
   fetchWithRetry,
   formatArea,
@@ -43,6 +44,7 @@ import {
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
 import { QuizCard } from "@/components/QuizCard";
 import { checkLandmarkClaims, isLandmarkActive, useLandmarks } from "@/lib/landmarks";
+import { checkTrapTrigger, placeTrap, useTraps } from "@/lib/traps";
 import { applyPenalty, useForbiddenZones } from "@/lib/forbiddenZones";
 import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { appendTeamTrailPoint } from "@/lib/teamTrails";
@@ -177,6 +179,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
   const [followMe, setFollowMe] = useState(true);
   const [resultsOpen, setResultsOpen] = useState(false);
+  const [trapArmed, setTrapArmed] = useState<{
+    landmarkId: string;
+    icon: string;
+    penaltyM2: number;
+    expiresAt: number;
+  } | null>(null);
+  const trapArmedRef = useRef(trapArmed);
+  trapArmedRef.current = trapArmed;
 
   const rulesKey = `conquete:rules-seen:${teamId}`;
   useEffect(() => {
@@ -214,6 +224,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const forbiddenZonesRef = useRef(forbiddenZones);
   forbiddenZonesRef.current = forbiddenZones;
+  const { traps: myTraps } = useTraps(gameId);
   const lastPenalizedRef = useRef<Map<string, number>>(new Map());
   const me = teams.find((t) => t.id === teamId) ?? null;
   const myColor = me?.color ?? "#e63946";
@@ -283,6 +294,16 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
+
+  // The 30s window to place a trap is purely client-enforced — once it's
+  // up, the opportunity to place one is simply lost (the landmark stays
+  // claimed either way, so nothing to undo server-side).
+  useEffect(() => {
+    if (trapArmed && now >= trapArmed.expiresAt) {
+      setTrapArmed(null);
+      toast("Trop tard pour poser le piège.");
+    }
+  }, [now, trapArmed]);
 
   const closeLoop = useCallback(async () => {
     if (closing.current || !gameId) return;
@@ -398,6 +419,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         lastSync.current = Date.now();
         if (gameRef.current?.status === "running") {
           void appendTeamTrailPoint(teamId, point[0], point[1]);
+          void checkTrapTrigger(teamId, point[0], point[1]).then(({ triggered, penaltyM2 }) => {
+            if (!triggered) return;
+            toast.error(`🪤 Piège ! -${formatArea(penaltyM2)}`);
+            notifyMessage("🪤 Piège !", `-${formatArea(penaltyM2)}`);
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId);
+          });
         }
         void withTimeout(
           supabase
@@ -480,6 +507,20 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           if (won.kind === "shield") {
             toast.success(`${won.icon} Bouclier activé ! Immunité ${won.shield_duration_s}s.`);
             notifyMessage(`${won.icon} Bouclier !`, `Immunité ${won.shield_duration_s}s`);
+          } else if (won.kind === "trap") {
+            setTrapArmed({
+              landmarkId: won.id,
+              icon: won.icon,
+              penaltyM2: won.bonus_m2,
+              expiresAt: Date.now() + TRAP_PLACEMENT_WINDOW_S * 1000,
+            });
+            toast.success(
+              `${won.icon} Piège récupéré ! Touchez la carte dans les ${TRAP_PLACEMENT_WINDOW_S}s pour le poser.`,
+            );
+            notifyMessage(
+              `${won.icon} Piège !`,
+              `Touchez la carte dans les ${TRAP_PLACEMENT_WINDOW_S}s`,
+            );
           } else {
             toast.success(`${won.icon} Repère bonus capturé : +${formatArea(won.bonus_m2)} !`);
             notifyMessage(`${won.icon} Repère bonus !`, `+${formatArea(won.bonus_m2)}`);
@@ -702,6 +743,18 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     void closeLoop();
   }
 
+  async function handlePlaceTrap(lat: number, lng: number) {
+    const armed = trapArmedRef.current;
+    if (!armed) return;
+    setTrapArmed(null);
+    try {
+      await placeTrap(armed.landmarkId, lat, lng);
+      toast.success(`${armed.icon} Piège posé !`);
+    } catch {
+      toast.error("Impossible de poser le piège.");
+    }
+  }
+
   return (
     <main
       className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
@@ -716,14 +769,26 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           returnZone={returnZone}
           landmarks={mapLandmarks}
           forbiddenZones={mapForbiddenZones}
+          traps={myTraps}
           mapStyle={game?.map_style}
           markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
           follow={followMe}
           onUserPan={() => setFollowMe(false)}
           onRecenter={() => setFollowMe(true)}
+          onMapClick={trapArmed ? (lat, lng) => void handlePlaceTrap(lat, lng) : undefined}
           hudFrame
         />
       </div>
+
+      {trapArmed && (
+        <div
+          className="panel pointer-events-none absolute inset-x-3 z-[1000] px-4 py-3 text-center text-sm font-semibold"
+          style={{ bottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        >
+          {trapArmed.icon} Touchez la carte pour poser votre piège (
+          {Math.max(0, Math.ceil((trapArmed.expiresAt - now) / 1000))}s)
+        </div>
+      )}
 
       <div
         className="hud-instrument pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
