@@ -94,7 +94,7 @@ export type Team = {
   flags_captured: number;
   shield_until: string | null;
   returned_at: string | null;
-  current_trail: [number, number][];
+  current_trail: [number, number][] | null;
   total_distance_m: number;
   circuit_lap: number;
   circuit_next_checkpoint: number;

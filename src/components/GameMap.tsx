@@ -11,7 +11,7 @@ export type MapTeam = {
   color: string;
   lat: number | null;
   lng: number | null;
-  current_trail?: [number, number][];
+  current_trail?: [number, number][] | null;
   /**
    * Per-participant positions (Grille's multi-device mode). When present
    * and non-empty, one marker is drawn per member instead of the single

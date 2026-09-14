@@ -224,12 +224,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   useEffect(() => {
     if (loopResumedRef.current || !me) return;
     loopResumedRef.current = true;
-    if (me.loop_active && me.current_trail.length > 0) {
+    const resumedTrail = me.current_trail ?? [];
+    if (me.loop_active && resumedTrail.length > 0) {
       let d = 0;
-      for (let i = 1; i < me.current_trail.length; i++) {
-        d += haversine(me.current_trail[i - 1]!, me.current_trail[i]!);
+      for (let i = 1; i < resumedTrail.length; i++) {
+        d += haversine(resumedTrail[i - 1]!, resumedTrail[i]!);
       }
-      trackRef.current = me.current_trail;
+      trackRef.current = resumedTrail;
       distRef.current = d;
       loopStartRef.current = me.loop_started_at
         ? new Date(me.loop_started_at).getTime()
