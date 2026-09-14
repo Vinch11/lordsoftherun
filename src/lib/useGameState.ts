@@ -6,6 +6,7 @@ import type {
   GracePenaltyMode,
   GridBonusSpawnMode,
   GridShape,
+  LandmarkSpawnMode,
   LoopCloseMode,
   StudentIdMode,
 } from "@/lib/conquete";
@@ -53,6 +54,10 @@ export type Game = {
   grid_bonus_lifetime_s: number;
   grid_bonus_interval_s: number;
   grid_bonus_max_active: number;
+  landmark_spawn_mode: LandmarkSpawnMode;
+  landmark_spawn_radius_m: number;
+  landmark_spawn_interval_s: number;
+  landmark_max_active: number;
   notification_sound: NotificationSoundId;
   notification_sound_message: NotificationSoundId | null;
   notification_sound_photo: NotificationSoundId | null;

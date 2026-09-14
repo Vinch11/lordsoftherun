@@ -170,6 +170,10 @@ import {
   DEFAULT_GRID_WIDTH_M,
   DEFAULT_LANDMARK_BONUS_M2,
   DEFAULT_LANDMARK_ICON,
+  DEFAULT_LANDMARK_MAX_ACTIVE,
+  DEFAULT_LANDMARK_SPAWN_INTERVAL_S,
+  DEFAULT_LANDMARK_SPAWN_MODE,
+  DEFAULT_LANDMARK_SPAWN_RADIUS_M,
   DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_STUDENT_ID_MODE,
@@ -191,6 +195,9 @@ import {
   MAX_GRID_MIN_SPEED_KMH,
   MAX_GRID_RADIUS_M,
   MAX_GRID_SIDE_M,
+  MAX_LANDMARK_MAX_ACTIVE,
+  MAX_LANDMARK_SPAWN_INTERVAL_S,
+  MAX_LANDMARK_SPAWN_RADIUS_M,
   MIN_CIRCUIT_CHECKPOINT_COUNT,
   MIN_GRID_BONUS_INTERVAL_S,
   MIN_GRID_BONUS_LIFETIME_S,
@@ -199,6 +206,9 @@ import {
   MIN_GRID_CELL_SIZE_M,
   MIN_GRID_RADIUS_M,
   MIN_GRID_SIDE_M,
+  MIN_LANDMARK_MAX_ACTIVE,
+  MIN_LANDMARK_SPAWN_INTERVAL_S,
+  MIN_LANDMARK_SPAWN_RADIUS_M,
   TEAM_COLORS,
   formatArea,
   formatClock,
@@ -210,6 +220,7 @@ import {
   type GridBonusSpawnMode,
   type GridShape,
   type GracePenaltyMode,
+  type LandmarkSpawnMode,
   type LoopCloseMode,
   type StudentIdMode,
 } from "@/lib/conquete";
@@ -511,6 +522,14 @@ function TeacherDashboard() {
   const [landmarkAppearAfter, setLandmarkAppearAfter] = useState(0);
   const [landmarkExpires, setLandmarkExpires] = useState(false);
   const [landmarkDisappearAfter, setLandmarkDisappearAfter] = useState(30);
+  const [landmarkSpawnMode, setLandmarkSpawnModeState] = useState<LandmarkSpawnMode>(
+    DEFAULT_LANDMARK_SPAWN_MODE,
+  );
+  const [landmarkSpawnRadius, setLandmarkSpawnRadius] = useState(DEFAULT_LANDMARK_SPAWN_RADIUS_M);
+  const [landmarkSpawnInterval, setLandmarkSpawnInterval] = useState(
+    DEFAULT_LANDMARK_SPAWN_INTERVAL_S,
+  );
+  const [landmarkMaxActive, setLandmarkMaxActive] = useState(DEFAULT_LANDMARK_MAX_ACTIVE);
   const [gameMode, setGameModeState] = useState<GameMode>("territoire");
   const [ctfConsequence, setCtfConsequence] = useState<CaptureConsequence>("return_to_base");
   const [ctfTimePenalty, setCtfTimePenalty] = useState(DEFAULT_CTF_TIME_PENALTY_M2);
@@ -752,6 +771,10 @@ function TeacherDashboard() {
       setGridBonusLifetime(game.grid_bonus_lifetime_s);
       setGridBonusInterval(game.grid_bonus_interval_s);
       setGridBonusMaxActive(game.grid_bonus_max_active);
+      setLandmarkSpawnModeState(game.landmark_spawn_mode);
+      setLandmarkSpawnRadius(game.landmark_spawn_radius_m);
+      setLandmarkSpawnInterval(game.landmark_spawn_interval_s);
+      setLandmarkMaxActive(game.landmark_max_active);
       setNotificationSoundChoice(game.notification_sound);
       setNotificationSoundMessageChoice(
         (game.notification_sound_message as NotificationSoundId | null) ?? null,
@@ -1519,6 +1542,30 @@ function TeacherDashboard() {
     await supabase.from("games").update({ grid_bonus_max_active: next }).eq("id", gameId);
   }
 
+  async function updateLandmarkSpawnMode(next: LandmarkSpawnMode) {
+    setLandmarkSpawnModeState(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ landmark_spawn_mode: next }).eq("id", gameId);
+  }
+
+  async function updateLandmarkSpawnRadius(next: number) {
+    setLandmarkSpawnRadius(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ landmark_spawn_radius_m: next }).eq("id", gameId);
+  }
+
+  async function updateLandmarkSpawnInterval(next: number) {
+    setLandmarkSpawnInterval(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ landmark_spawn_interval_s: next }).eq("id", gameId);
+  }
+
+  async function updateLandmarkMaxActive(next: number) {
+    setLandmarkMaxActive(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ landmark_max_active: next }).eq("id", gameId);
+  }
+
   async function placeGridBonus(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
     const question = gridBonusQuestion.trim();
@@ -1565,6 +1612,63 @@ function TeacherDashboard() {
     gridBonuses,
     gridZone,
     gameId,
+  ]);
+
+  // Same trust model as the grid bonus loop above (teacher's own open tab).
+  // Territoire/Capture-le-drapeau have no defined play area like Grille's
+  // grid zone, so spawns scatter around the return zone's center instead —
+  // the closest thing those modes have to "where the game happens".
+  useEffect(() => {
+    if (!isOwner || !running || (gameMode !== "territoire" && gameMode !== "capture_drapeau")) {
+      return;
+    }
+    if (landmarkSpawnMode !== "random" || !returnZone || !gameId) return;
+    const id = setInterval(() => {
+      const activeCount = landmarks.filter((l) =>
+        isLandmarkActive(l, game?.started_at ?? null, Date.now()),
+      ).length;
+      if (activeCount >= landmarkMaxActive) return;
+      const [lat, lng] = randomPointInGridZone({
+        lat: returnZone.lat,
+        lng: returnZone.lng,
+        shape: "circle",
+        radiusM: landmarkSpawnRadius,
+        widthM: 0,
+        heightM: 0,
+      });
+      const kind: LandmarkKind = gameMode === "capture_drapeau" ? landmarkKind : "points";
+      void addLandmark(
+        gameId,
+        lat,
+        lng,
+        landmarkBonus,
+        landmarkIconChoice,
+        landmarkAppearAfter,
+        landmarkExpires ? landmarkDisappearAfter : null,
+        kind,
+        landmarkShieldDuration,
+      );
+    }, landmarkSpawnInterval * 1000);
+    return () => clearInterval(id);
+  }, [
+    isOwner,
+    running,
+    gameMode,
+    landmarkSpawnMode,
+    returnZone,
+    gameId,
+    landmarks,
+    landmarkMaxActive,
+    landmarkSpawnRadius,
+    landmarkSpawnInterval,
+    landmarkBonus,
+    landmarkIconChoice,
+    landmarkAppearAfter,
+    landmarkExpires,
+    landmarkDisappearAfter,
+    landmarkKind,
+    landmarkShieldDuration,
+    game?.started_at,
   ]);
 
   async function updateNotificationSound(next: NotificationSoundId) {
@@ -4494,6 +4598,25 @@ function TeacherDashboard() {
             </p>
             {isOwner && (
               <>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    className="seg-btn"
+                    data-active={landmarkSpawnMode === "manual"}
+                    onClick={() => void updateLandmarkSpawnMode("manual")}
+                  >
+                    Placement manuel
+                  </button>
+                  <button
+                    type="button"
+                    className="seg-btn"
+                    data-active={landmarkSpawnMode === "random"}
+                    onClick={() => void updateLandmarkSpawnMode("random")}
+                  >
+                    Apparition aléatoire
+                  </button>
+                </div>
+
                 <LandmarkFields
                   icon={landmarkIconChoice}
                   onIcon={setLandmarkIconChoice}
@@ -4512,13 +4635,119 @@ function TeacherDashboard() {
                   onDisappearAfter={setLandmarkDisappearAfter}
                 />
 
-                <button
-                  className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
-                  onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
-                >
-                  <Star className="h-5 w-5" />{" "}
-                  {placingMode === "landmark" ? "Touchez la carte..." : "Ajouter un repère"}
-                </button>
+                {landmarkSpawnMode === "random" ? (
+                  returnZone ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Rayon d'apparition</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le rayon"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkSpawnRadius(
+                                Math.max(MIN_LANDMARK_SPAWN_RADIUS_M, landmarkSpawnRadius - 50),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-20 text-center text-lg">
+                            {landmarkSpawnRadius} m
+                          </span>
+                          <button
+                            aria-label="Augmenter le rayon"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkSpawnRadius(
+                                Math.min(MAX_LANDMARK_SPAWN_RADIUS_M, landmarkSpawnRadius + 50),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Fréquence d'apparition</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire la fréquence"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkSpawnInterval(
+                                Math.max(MIN_LANDMARK_SPAWN_INTERVAL_S, landmarkSpawnInterval - 15),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-20 text-center text-lg">
+                            {formatClock(landmarkSpawnInterval)}
+                          </span>
+                          <button
+                            aria-label="Augmenter la fréquence"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkSpawnInterval(
+                                Math.min(MAX_LANDMARK_SPAWN_INTERVAL_S, landmarkSpawnInterval + 15),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Nombre max. simultané</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le nombre max."
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkMaxActive(
+                                Math.max(MIN_LANDMARK_MAX_ACTIVE, landmarkMaxActive - 1),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-12 text-center text-lg">
+                            {landmarkMaxActive}
+                          </span>
+                          <button
+                            aria-label="Augmenter le nombre max."
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateLandmarkMaxActive(
+                                Math.min(MAX_LANDMARK_MAX_ACTIVE, landmarkMaxActive + 1),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Un nouveau repère apparaît à un endroit aléatoire autour de la zone de
+                        retour tant que la partie tourne et que ce tableau de bord reste ouvert.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Configurez d'abord une zone de retour (ci-dessous) : les repères apparaîtront
+                      aléatoirement autour de son centre.
+                    </p>
+                  )
+                ) : (
+                  <button
+                    className={`btn-huge ${placingMode === "landmark" ? "btn-huge-accent" : "btn-huge-dark"}`}
+                    onClick={() => setPlacingMode((p) => (p === "landmark" ? "none" : "landmark"))}
+                  >
+                    <Star className="h-5 w-5" />{" "}
+                    {placingMode === "landmark" ? "Touchez la carte..." : "Ajouter un repère"}
+                  </button>
+                )}
               </>
             )}
             {landmarks.length > 0 && (
