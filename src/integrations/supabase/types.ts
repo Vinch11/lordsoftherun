@@ -1346,8 +1346,16 @@ export type Database = {
         Returns: undefined
       }
       check_trap_trigger: {
-        Args: { _lat: number; _lng: number; _radius_m?: number; _team_id: string }
-        Returns: { penalty_m2: number; triggered: boolean }[]
+        Args: {
+          _lat: number
+          _lng: number
+          _radius_m?: number
+          _team_id: string
+        }
+        Returns: {
+          penalty_m2: number
+          triggered: boolean
+        }[]
       }
       close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {
