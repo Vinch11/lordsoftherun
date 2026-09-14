@@ -115,6 +115,12 @@ export const DEFAULT_LANDMARK_BONUS_M2 = 30;
 export const LANDMARK_ICONS = ["⭐", "🏆", "💎", "🔥", "🎯", "🚩", "🎁", "👑"] as const;
 export const DEFAULT_LANDMARK_ICON: string = LANDMARK_ICONS[0];
 
+/** How long a team has, after claiming a "trap" landmark, to tap the map
+ * and place their hidden trap before the opportunity is lost. */
+export const TRAP_PLACEMENT_WINDOW_S = 30;
+/** How close another team must walk to an unclaimed trap to trigger it. */
+export const TRAP_TRIGGER_RADIUS_M = 15;
+
 export const DEFAULT_FORBIDDEN_RADIUS_M = 15;
 export const DEFAULT_FORBIDDEN_PENALTY_M2 = 30;
 /** Re-entering an already-penalized forbidden zone only counts again after this long. */

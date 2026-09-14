@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -73,6 +73,7 @@ import {
   useLandmarks,
   type LandmarkKind,
 } from "@/lib/landmarks";
+import { useTraps } from "@/lib/traps";
 import { addForbiddenZone, removeForbiddenZone, useForbiddenZones } from "@/lib/forbiddenZones";
 import { placeFlag, useFlags } from "@/lib/flags";
 import {
@@ -175,6 +176,7 @@ import {
   DEFAULT_LANDMARK_SPAWN_MODE,
   DEFAULT_LANDMARK_SPAWN_RADIUS_M,
   DEFAULT_LOOP_CLOSE_MODE,
+  TRAP_PLACEMENT_WINDOW_S,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_STUDENT_ID_MODE,
   DEFAULT_STUDENT_THEME,
@@ -259,6 +261,7 @@ type LandmarkFieldsProps = {
   kind: LandmarkKind;
   onKind: (kind: LandmarkKind) => void;
   showShieldOption: boolean;
+  showTrapOption: boolean;
   bonus: number;
   onBonus: (updater: (b: number) => number) => void;
   shieldDuration: number;
@@ -277,6 +280,7 @@ function LandmarkFields({
   kind,
   onKind,
   showShieldOption,
+  showTrapOption,
   bonus,
   onBonus,
   shieldDuration,
@@ -304,7 +308,7 @@ function LandmarkFields({
           </button>
         ))}
       </div>
-      {showShieldOption && (
+      {(showShieldOption || showTrapOption) && (
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -314,40 +318,28 @@ function LandmarkFields({
           >
             Points bonus
           </button>
-          <button
-            type="button"
-            className="seg-btn"
-            data-active={kind === "shield"}
-            onClick={() => onKind("shield")}
-          >
-            Bouclier
-          </button>
+          {showShieldOption ? (
+            <button
+              type="button"
+              className="seg-btn"
+              data-active={kind === "shield"}
+              onClick={() => onKind("shield")}
+            >
+              Bouclier
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="seg-btn"
+              data-active={kind === "trap"}
+              onClick={() => onKind("trap")}
+            >
+              Piège
+            </button>
+          )}
         </div>
       )}
-      {!showShieldOption || kind === "points" ? (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-semibold">Bonus</span>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              aria-label="Réduire le bonus"
-              className="icon-btn"
-              onClick={() => onBonus((b) => Math.max(10, b - 10))}
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-            <span className="display w-24 text-center text-lg">{formatArea(bonus)}</span>
-            <button
-              type="button"
-              aria-label="Augmenter le bonus"
-              className="icon-btn"
-              onClick={() => onBonus((b) => Math.min(500, b + 10))}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      ) : (
+      {kind === "shield" ? (
         <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-semibold">Durée d'immunité</span>
           <div className="flex items-center gap-3">
@@ -370,6 +362,38 @@ function LandmarkFields({
             </button>
           </div>
         </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">
+            {kind === "trap" ? "Pénalité du piège" : "Bonus"}
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Réduire le montant"
+              className="icon-btn"
+              onClick={() => onBonus((b) => Math.max(10, b - 10))}
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="display w-24 text-center text-lg">{formatArea(bonus)}</span>
+            <button
+              type="button"
+              aria-label="Augmenter le montant"
+              className="icon-btn"
+              onClick={() => onBonus((b) => Math.min(500, b + 10))}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+      {kind === "trap" && (
+        <p className="text-xs text-muted-foreground">
+          L'équipe qui récupère ce repère a {TRAP_PLACEMENT_WINDOW_S}s pour toucher la carte et
+          poser un piège ailleurs. Il est invisible pour les autres équipes ; la première qui marche
+          dessus perd les m² indiqués.
+        </p>
       )}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold">Apparaît après</span>
@@ -713,6 +737,7 @@ function TeacherDashboard() {
   const { messages } = useMessages(gameId);
   const { submissions } = usePhotoSubmissions(gameId);
   const { landmarks } = useLandmarks(gameId);
+  const { traps } = useTraps(gameId);
   const { zones: forbiddenZones } = useForbiddenZones(gameId);
   const { flags } = useFlags(gameId);
   const { cells: gridCells } = useGridCells(gameId);
@@ -1073,6 +1098,10 @@ function TeacherDashboard() {
     [landmarks, game?.started_at, now],
   );
 
+  // Shown only on the prof's own map — students never see anyone's traps
+  // but their own (enforced server-side via RLS, not by this filtering).
+  const mapTraps = useMemo(() => traps.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng })), [traps]);
+
   const mapForbiddenZones = useMemo(
     () => forbiddenZones.map((z) => ({ id: z.id, lat: z.lat, lng: z.lng, radiusM: z.radius_m })),
     [forbiddenZones],
@@ -1303,9 +1332,19 @@ function TeacherDashboard() {
     toast.success("Zone de retour placée.");
   }
 
+  // "shield" only makes sense in CTF (tag immunity) and "trap" only in
+  // Territoire (nothing to walk into a trap for in the other modes) —
+  // clamp to "points" outside of each kind's own mode instead of trusting
+  // the picker state, which can go stale across a mode switch.
+  const resolvedLandmarkKind = useCallback((): LandmarkKind => {
+    if (gameMode === "capture_drapeau") return landmarkKind === "shield" ? "shield" : "points";
+    if (gameMode === "territoire") return landmarkKind === "trap" ? "trap" : "points";
+    return "points";
+  }, [gameMode, landmarkKind]);
+
   async function placeLandmark(lat: number, lng: number) {
     if (!gameId || !isOwner) return;
-    const kind: LandmarkKind = gameMode === "capture_drapeau" ? landmarkKind : "points";
+    const kind = resolvedLandmarkKind();
     try {
       await addLandmark(
         gameId,
@@ -1319,7 +1358,13 @@ function TeacherDashboard() {
         landmarkShieldDuration,
       );
       setPlacingMode("none");
-      toast.success(kind === "shield" ? "Bouclier placé !" : "Repère bonus placé !");
+      toast.success(
+        kind === "shield"
+          ? "Bouclier placé !"
+          : kind === "trap"
+            ? "Piège placé !"
+            : "Repère bonus placé !",
+      );
     } catch {
       toast.error("Impossible de placer le repère.");
     }
@@ -1350,7 +1395,7 @@ function TeacherDashboard() {
     try {
       await updateLandmark(editingLandmarkId, {
         icon: landmarkIconChoice,
-        kind: gameMode === "capture_drapeau" ? landmarkKind : "points",
+        kind: resolvedLandmarkKind(),
         bonus_m2: landmarkBonus,
         shield_duration_s: landmarkShieldDuration,
         active_after_minutes: landmarkAppearAfter,
@@ -1636,7 +1681,7 @@ function TeacherDashboard() {
         widthM: 0,
         heightM: 0,
       });
-      const kind: LandmarkKind = gameMode === "capture_drapeau" ? landmarkKind : "points";
+      const kind = resolvedLandmarkKind();
       void addLandmark(
         gameId,
         lat,
@@ -1669,6 +1714,7 @@ function TeacherDashboard() {
     landmarkKind,
     landmarkShieldDuration,
     game?.started_at,
+    resolvedLandmarkKind,
   ]);
 
   async function updateNotificationSound(next: NotificationSoundId) {
@@ -2138,6 +2184,7 @@ function TeacherDashboard() {
             circuitBoxes={mapCircuitBoxes}
             bananas={mapBananas}
             gridBonuses={mapGridBonuses}
+            traps={mapTraps}
             mapStyle={game?.map_style}
             trail={selectedTrailPoints}
             trailColor={selectedTrailColor}
@@ -2249,6 +2296,7 @@ function TeacherDashboard() {
           circuitBoxes={mapCircuitBoxes}
           bananas={mapBananas}
           gridBonuses={mapGridBonuses}
+          traps={mapTraps}
           mapStyle={game?.map_style}
           trail={selectedTrailPoints}
           trailColor={selectedTrailColor}
@@ -4623,6 +4671,7 @@ function TeacherDashboard() {
                   kind={landmarkKind}
                   onKind={setLandmarkKind}
                   showShieldOption={gameMode === "capture_drapeau"}
+                  showTrapOption={gameMode === "territoire"}
                   bonus={landmarkBonus}
                   onBonus={setLandmarkBonus}
                   shieldDuration={landmarkShieldDuration}
@@ -4773,6 +4822,8 @@ function TeacherDashboard() {
                             <>
                               <Shield className="h-3.5 w-3.5" /> {l.shield_duration_s}s
                             </>
+                          ) : l.kind === "trap" ? (
+                            <>🪤 -{formatArea(l.bonus_m2)}</>
                           ) : (
                             formatArea(l.bonus_m2)
                           )}
@@ -4823,6 +4874,7 @@ function TeacherDashboard() {
                             kind={landmarkKind}
                             onKind={setLandmarkKind}
                             showShieldOption={gameMode === "capture_drapeau"}
+                            showTrapOption={gameMode === "territoire"}
                             bonus={landmarkBonus}
                             onBonus={setLandmarkBonus}
                             shieldDuration={landmarkShieldDuration}

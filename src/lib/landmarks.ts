@@ -8,7 +8,7 @@ import {
   haversine,
 } from "@/lib/conquete";
 
-export type LandmarkKind = "points" | "shield";
+export type LandmarkKind = "points" | "shield" | "trap";
 
 export type Landmark = {
   id: string;
@@ -98,6 +98,9 @@ export function isLandmarkActive(
  * out a capture-the-flag team's score, since it has no territories) and
  * instead applies the "points" bonus straight to score_m2. A "shield"
  * landmark never touches score_m2 either way — it just grants tag immunity.
+ * A "trap" landmark doesn't grant anything on claim either — it just opens
+ * the claiming team's 30-second window to place a hidden trap elsewhere
+ * (see traps.ts); the caller is responsible for showing that flow.
  */
 export async function tryClaimLandmark(
   landmark: Landmark,
@@ -116,6 +119,10 @@ export async function tryClaimLandmark(
   if (landmark.kind === "shield") {
     const shieldUntil = new Date(Date.now() + landmark.shield_duration_s * 1000).toISOString();
     await supabase.from("teams").update({ shield_until: shieldUntil }).eq("id", teamId);
+    return true;
+  }
+
+  if (landmark.kind === "trap") {
     return true;
   }
 
