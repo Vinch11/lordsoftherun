@@ -285,6 +285,10 @@ export type Database = {
           grid_show_overlay: boolean
           grid_width_m: number
           id: string
+          landmark_max_active: number
+          landmark_spawn_interval_s: number
+          landmark_spawn_mode: string
+          landmark_spawn_radius_m: number
           loop_close_mode: string
           map_style: string
           mode: string
@@ -351,6 +355,10 @@ export type Database = {
           grid_show_overlay?: boolean
           grid_width_m?: number
           id?: string
+          landmark_max_active?: number
+          landmark_spawn_interval_s?: number
+          landmark_spawn_mode?: string
+          landmark_spawn_radius_m?: number
           loop_close_mode?: string
           map_style?: string
           mode?: string
@@ -417,6 +425,10 @@ export type Database = {
           grid_show_overlay?: boolean
           grid_width_m?: number
           id?: string
+          landmark_max_active?: number
+          landmark_spawn_interval_s?: number
+          landmark_spawn_mode?: string
+          landmark_spawn_radius_m?: number
           loop_close_mode?: string
           map_style?: string
           mode?: string

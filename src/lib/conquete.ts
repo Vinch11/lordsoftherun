@@ -235,6 +235,21 @@ export const MAX_GRID_BONUS_MAX_ACTIVE = 8;
 /** How close a team must get to an active bonus to trigger its explosion. */
 export const GRID_BONUS_CLAIM_RADIUS_M = 8;
 
+/** Territoire/Capture-the-flag landmarks: spawned by hand or on a timer,
+ * scattered around the return zone's center (the closest thing those modes
+ * have to a defined play area). */
+export type LandmarkSpawnMode = "manual" | "random";
+export const DEFAULT_LANDMARK_SPAWN_MODE: LandmarkSpawnMode = "manual";
+export const DEFAULT_LANDMARK_SPAWN_RADIUS_M = 300;
+export const MIN_LANDMARK_SPAWN_RADIUS_M = 50;
+export const MAX_LANDMARK_SPAWN_RADIUS_M = 2000;
+export const DEFAULT_LANDMARK_SPAWN_INTERVAL_S = 90;
+export const MIN_LANDMARK_SPAWN_INTERVAL_S = 30;
+export const MAX_LANDMARK_SPAWN_INTERVAL_S = 600;
+export const DEFAULT_LANDMARK_MAX_ACTIVE = 3;
+export const MIN_LANDMARK_MAX_ACTIVE = 1;
+export const MAX_LANDMARK_MAX_ACTIVE = 10;
+
 export type GracePenaltyMode = "cancel" | "per_second";
 export const DEFAULT_GRACE_MINUTES = 5;
 export const DEFAULT_GRACE_PENALTY_PER_SECOND_M2 = 2;
