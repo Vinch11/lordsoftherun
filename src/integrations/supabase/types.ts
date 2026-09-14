@@ -1243,6 +1243,74 @@ export type Database = {
           },
         ]
       }
+      traps: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          lat: number
+          lng: number
+          penalty_m2: number
+          placed_by_team_id: string
+          source_landmark_id: string
+          triggered_at: string | null
+          triggered_by_team_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          lat: number
+          lng: number
+          penalty_m2: number
+          placed_by_team_id: string
+          source_landmark_id: string
+          triggered_at?: string | null
+          triggered_by_team_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          penalty_m2?: number
+          placed_by_team_id?: string
+          source_landmark_id?: string
+          triggered_at?: string | null
+          triggered_by_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traps_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traps_placed_by_team_id_fkey"
+            columns: ["placed_by_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traps_source_landmark_id_fkey"
+            columns: ["source_landmark_id"]
+            isOneToOne: true
+            referencedRelation: "landmarks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "traps_triggered_by_team_id_fkey"
+            columns: ["triggered_by_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1277,6 +1345,18 @@ export type Database = {
         Args: { _lat: number; _lng: number; _team_id: string }
         Returns: undefined
       }
+      check_trap_trigger: {
+        Args: {
+          _lat: number
+          _lng: number
+          _radius_m?: number
+          _team_id: string
+        }
+        Returns: {
+          penalty_m2: number
+          triggered: boolean
+        }[]
+      }
       close_quiz_question: { Args: { _game_id: string }; Returns: undefined }
       increment_team_bonus_cells: {
         Args: { _amount?: number; _team_id: string }
@@ -1288,6 +1368,10 @@ export type Database = {
       }
       override_quiz_answer: {
         Args: { _correct: boolean; _round_sent_at: string; _team_id: string }
+        Returns: undefined
+      }
+      place_trap: {
+        Args: { _landmark_id: string; _lat: number; _lng: number }
         Returns: undefined
       }
       rejoin_team: { Args: { _team_id: string }; Returns: undefined }
