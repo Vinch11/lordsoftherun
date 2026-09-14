@@ -547,6 +547,13 @@
       "when": 1789800000000,
       "tag": "0077_landmark_random_spawn",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1789384855516,
+      "tag": "0078_games_landmark_spawn",
+      "breakpoints": true
     }
   ]
 }
