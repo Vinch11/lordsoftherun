@@ -14,6 +14,7 @@ import {
   EyeOff,
   Flag,
   Flame,
+  Footprints,
   Gamepad2,
   Grid3x3,
   HelpCircle,
@@ -184,6 +185,12 @@ import {
   type StudentTheme,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
+  DEFAULT_ENDURANCE_STOP_SPEED_KMH,
+  DEFAULT_ENDURANCE_STOP_GRACE_S,
+  DEFAULT_ENDURANCE_STOP_PENALTY_M2,
+  DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
+  DEFAULT_ENDURANCE_SLOW_GRACE_S,
+  DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
   getGameModeDescriptions,
   GAME_MODE_LABELS,
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
@@ -610,6 +617,17 @@ function TeacherDashboard() {
     DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
   );
   const [vehiclePenalty, setVehiclePenalty] = useState(DEFAULT_VEHICLE_PENALTY_M2);
+  const [enduranceCheckEnabled, setEnduranceCheckEnabled] = useState(false);
+  const [enduranceStopSpeed, setEnduranceStopSpeed] = useState(DEFAULT_ENDURANCE_STOP_SPEED_KMH);
+  const [enduranceStopGrace, setEnduranceStopGrace] = useState(DEFAULT_ENDURANCE_STOP_GRACE_S);
+  const [enduranceStopPenalty, setEnduranceStopPenalty] = useState(
+    DEFAULT_ENDURANCE_STOP_PENALTY_M2,
+  );
+  const [enduranceSlowSpeed, setEnduranceSlowSpeed] = useState(DEFAULT_ENDURANCE_SLOW_SPEED_KMH);
+  const [enduranceSlowGrace, setEnduranceSlowGrace] = useState(DEFAULT_ENDURANCE_SLOW_GRACE_S);
+  const [enduranceSlowPenalty, setEnduranceSlowPenalty] = useState(
+    DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
+  );
   const [placingFlagForTeam, setPlacingFlagForTeam] = useState<string | null>(null);
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
@@ -817,6 +835,13 @@ function TeacherDashboard() {
       setVehicleAllowed(game.vehicle_allowed);
       setVehicleSpeedThreshold(game.vehicle_speed_threshold_kmh);
       setVehiclePenalty(game.vehicle_penalty_m2);
+      setEnduranceCheckEnabled(game.endurance_check_enabled);
+      setEnduranceStopSpeed(game.endurance_stop_speed_kmh);
+      setEnduranceStopGrace(game.endurance_stop_grace_s);
+      setEnduranceStopPenalty(game.endurance_stop_penalty_m2);
+      setEnduranceSlowSpeed(game.endurance_slow_speed_kmh);
+      setEnduranceSlowGrace(game.endurance_slow_grace_s);
+      setEnduranceSlowPenalty(game.endurance_slow_penalty_m2);
       setCircuitCheckpointCount(game.circuit_checkpoint_count);
       setCircuitLapCount(game.circuit_lap_count);
       setCircuitCaptureRadius(game.circuit_capture_radius_m);
@@ -1789,6 +1814,48 @@ function TeacherDashboard() {
     setVehiclePenalty(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ vehicle_penalty_m2: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceCheckEnabled(next: boolean) {
+    setEnduranceCheckEnabled(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_check_enabled: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceStopSpeed(next: number) {
+    setEnduranceStopSpeed(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_stop_speed_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceStopGrace(next: number) {
+    setEnduranceStopGrace(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_stop_grace_s: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceStopPenalty(next: number) {
+    setEnduranceStopPenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_stop_penalty_m2: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceSlowSpeed(next: number) {
+    setEnduranceSlowSpeed(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_slow_speed_kmh: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceSlowGrace(next: number) {
+    setEnduranceSlowGrace(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_slow_grace_s: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceSlowPenalty(next: number) {
+    setEnduranceSlowPenalty(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_slow_penalty_m2: next }).eq("id", gameId);
   }
 
   async function updateRunningBonusEnabled(next: boolean) {
@@ -3505,6 +3572,229 @@ function TeacherDashboard() {
             </>
           )}
         </section>
+
+        {gameMode === "territoire" && (
+          <section
+            className="panel relative flex flex-col gap-3 p-4"
+            {...sectionProps("endurance")}
+          >
+            <CollapseToggle
+              id="endurance"
+              collapsed={!!collapsed["endurance"]}
+              onToggle={toggleSection}
+            />
+            <div className="section-title">
+              <Footprints className="h-4 w-4" /> Endurance
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {enduranceCheckEnabled
+                ? "Une équipe qui s'arrête ou traîne trop longtemps perd des m², répétés tant qu'elle ne repart pas — sans jamais exiger d'aller vite."
+                : "Désactivé : les équipes peuvent s'arrêter aussi longtemps qu'elles veulent."}
+            </p>
+            {isOwner && (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Activer</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 shrink-0"
+                    checked={enduranceCheckEnabled}
+                    onChange={(e) => void updateEnduranceCheckEnabled(e.target.checked)}
+                  />
+                </label>
+                {enduranceCheckEnabled && (
+                  <>
+                    <div className="flex flex-col gap-2 border-t border-border pt-3">
+                      <span className="section-title">Arrêt complet</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Seuil de vitesse</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le seuil"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopSpeed(
+                                Math.max(0, Math.round((enduranceStopSpeed - 0.5) * 10) / 10),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-20 text-center text-lg">
+                            {enduranceStopSpeed.toFixed(1)} km/h
+                          </span>
+                          <button
+                            aria-label="Augmenter le seuil"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopSpeed(
+                                Math.min(5, Math.round((enduranceStopSpeed + 0.5) * 10) / 10),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Délai avant pénalité</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le délai"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopGrace(Math.max(5, enduranceStopGrace - 5))
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-16 text-center text-lg">
+                            {enduranceStopGrace}s
+                          </span>
+                          <button
+                            aria-label="Augmenter le délai"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopGrace(Math.min(60, enduranceStopGrace + 5))
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Pénalité (répétée)</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopPenalty(Math.max(5, enduranceStopPenalty - 5))
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-24 text-center text-lg">
+                            -{formatArea(enduranceStopPenalty)}
+                          </span>
+                          <button
+                            aria-label="Augmenter la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceStopPenalty(
+                                Math.min(500, enduranceStopPenalty + 5),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        En dessous de {enduranceStopSpeed.toFixed(1)} km/h (quasi à l'arrêt) pendant{" "}
+                        {enduranceStopGrace}s : -{formatArea(enduranceStopPenalty)}, répété toutes
+                        les {enduranceStopGrace}s tant que l'équipe ne repart pas.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t border-border pt-3">
+                      <span className="section-title">Rythme trop lent</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Seuil de vitesse</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le seuil"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowSpeed(
+                                Math.max(1, Math.round((enduranceSlowSpeed - 0.5) * 10) / 10),
+                              )
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-20 text-center text-lg">
+                            {enduranceSlowSpeed.toFixed(1)} km/h
+                          </span>
+                          <button
+                            aria-label="Augmenter le seuil"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowSpeed(
+                                Math.min(8, Math.round((enduranceSlowSpeed + 0.5) * 10) / 10),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Délai avant pénalité</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire le délai"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowGrace(Math.max(5, enduranceSlowGrace - 5))
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-16 text-center text-lg">
+                            {enduranceSlowGrace}s
+                          </span>
+                          <button
+                            aria-label="Augmenter le délai"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowGrace(Math.min(120, enduranceSlowGrace + 5))
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold">Pénalité (répétée)</span>
+                        <div className="flex items-center gap-3">
+                          <button
+                            aria-label="Réduire la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowPenalty(Math.max(5, enduranceSlowPenalty - 5))
+                            }
+                          >
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="display w-24 text-center text-lg">
+                            -{formatArea(enduranceSlowPenalty)}
+                          </span>
+                          <button
+                            aria-label="Augmenter la pénalité"
+                            className="icon-btn"
+                            onClick={() =>
+                              void updateEnduranceSlowPenalty(
+                                Math.min(500, enduranceSlowPenalty + 5),
+                              )
+                            }
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        En dessous de {enduranceSlowSpeed.toFixed(1)} km/h pendant{" "}
+                        {enduranceSlowGrace}s : -{formatArea(enduranceSlowPenalty)}, répété toutes
+                        les {enduranceSlowGrace}s. Une équipe à l'arrêt reçoit les deux pénalités.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("son")}>
           <CollapseToggle id="son" collapsed={!!collapsed["son"]} onToggle={toggleSection} />

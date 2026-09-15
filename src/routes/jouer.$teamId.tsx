@@ -14,6 +14,12 @@ import { MapCanvas } from "@/components/MapCanvas";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
+  DEFAULT_ENDURANCE_SLOW_GRACE_S,
+  DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
+  DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
+  DEFAULT_ENDURANCE_STOP_GRACE_S,
+  DEFAULT_ENDURANCE_STOP_PENALTY_M2,
+  DEFAULT_ENDURANCE_STOP_SPEED_KMH,
   DEFAULT_LOOP_CLOSE_MODE,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
@@ -169,6 +175,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   // period players are still moving, but nothing they do may change the board.
   const finishedRef = useRef(false);
   const vehicleAboveSinceRef = useRef<number | null>(null);
+  const enduranceStopSinceRef = useRef<number | null>(null);
+  const enduranceSlowSinceRef = useRef<number | null>(null);
   const geoFilterRef = useRef(new GeoKalmanFilter());
   const { movingRef, needsPermission, requestPermission } = useMotionHint();
   const [chatOpen, setChatOpen] = useState(false);
@@ -564,6 +572,66 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           }
         } else {
           vehicleAboveSinceRef.current = null;
+        }
+      }
+
+      // Endurance check: the opposite of running_bonus — instead of
+      // rewarding a burst of speed, it penalizes staying below a speed, so
+      // a team is forced to keep moving without needing to sprint. Each
+      // tier repeats its penalty every grace period for as long as the
+      // condition holds (reusing the grace itself as the repeat interval),
+      // so a team can't just eat one hit and then rest.
+      if (gameRef.current?.endurance_check_enabled) {
+        const stopThresholdMs = kmhToMs(
+          gameRef.current.endurance_stop_speed_kmh ?? DEFAULT_ENDURANCE_STOP_SPEED_KMH,
+        );
+        const stopGraceMs =
+          (gameRef.current.endurance_stop_grace_s ?? DEFAULT_ENDURANCE_STOP_GRACE_S) * 1000;
+        if (instSpeedRef.current < stopThresholdMs) {
+          enduranceStopSinceRef.current ??= Date.now();
+          const last =
+            lastPenalizedRef.current.get("__endurance_stop__") ?? enduranceStopSinceRef.current;
+          if (
+            Date.now() - enduranceStopSinceRef.current >= stopGraceMs &&
+            Date.now() - last >= stopGraceMs
+          ) {
+            lastPenalizedRef.current.set("__endurance_stop__", Date.now());
+            const penaltyM2 =
+              gameRef.current.endurance_stop_penalty_m2 ?? DEFAULT_ENDURANCE_STOP_PENALTY_M2;
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId).then(() => {
+              toast.error(`🛑 Arrêt trop long ! -${formatArea(penaltyM2)}`);
+              notifyMessage("🛑 Arrêt trop long !", `-${formatArea(penaltyM2)}`);
+            });
+          }
+        } else {
+          enduranceStopSinceRef.current = null;
+          lastPenalizedRef.current.delete("__endurance_stop__");
+        }
+
+        const slowThresholdMs = kmhToMs(
+          gameRef.current.endurance_slow_speed_kmh ?? DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
+        );
+        const slowGraceMs =
+          (gameRef.current.endurance_slow_grace_s ?? DEFAULT_ENDURANCE_SLOW_GRACE_S) * 1000;
+        if (instSpeedRef.current < slowThresholdMs) {
+          enduranceSlowSinceRef.current ??= Date.now();
+          const last =
+            lastPenalizedRef.current.get("__endurance_slow__") ?? enduranceSlowSinceRef.current;
+          if (
+            Date.now() - enduranceSlowSinceRef.current >= slowGraceMs &&
+            Date.now() - last >= slowGraceMs
+          ) {
+            lastPenalizedRef.current.set("__endurance_slow__", Date.now());
+            const penaltyM2 =
+              gameRef.current.endurance_slow_penalty_m2 ?? DEFAULT_ENDURANCE_SLOW_PENALTY_M2;
+            void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId).then(() => {
+              toast.error(`🐌 Rythme trop lent ! -${formatArea(penaltyM2)}`);
+              notifyMessage("🐌 Rythme trop lent !", `-${formatArea(penaltyM2)}`);
+            });
+          }
+        } else {
+          enduranceSlowSinceRef.current = null;
+          lastPenalizedRef.current.delete("__endurance_slow__");
         }
       }
 

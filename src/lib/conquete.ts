@@ -266,6 +266,20 @@ export const DEFAULT_VEHICLE_PENALTY_M2 = 200;
 /** How long a team must sustain the speed before it counts (filters GPS spikes). */
 export const VEHICLE_SUSTAINED_MS = 5_000;
 
+/**
+ * Territoire "endurance" check (opposite of running_bonus): penalizes
+ * staying below a speed instead of rewarding going above one, so a team is
+ * forced to keep moving without needing to sprint. Two independent tiers —
+ * "stopped" (near-zero speed) and "too slow" (below a light-jog pace) —
+ * each repeats its penalty every grace period while the condition holds.
+ */
+export const DEFAULT_ENDURANCE_STOP_SPEED_KMH = 1;
+export const DEFAULT_ENDURANCE_STOP_GRACE_S = 10;
+export const DEFAULT_ENDURANCE_STOP_PENALTY_M2 = 10;
+export const DEFAULT_ENDURANCE_SLOW_SPEED_KMH = 3;
+export const DEFAULT_ENDURANCE_SLOW_GRACE_S = 20;
+export const DEFAULT_ENDURANCE_SLOW_PENALTY_M2 = 5;
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }

@@ -572,8 +572,8 @@
     {
       "idx": 81,
       "version": "7",
-      "when": 1789475000396,
-      "tag": "0081_team_photos_upload_policy",
+      "when": 1790100000000,
+      "tag": "0081_endurance_penalty",
       "breakpoints": true
     }
   ]

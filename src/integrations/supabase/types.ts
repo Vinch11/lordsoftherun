@@ -262,6 +262,13 @@ export type Database = {
           ctf_capture_radius_m: number
           ctf_time_penalty_m2: number
           duration_minutes: number
+          endurance_check_enabled: boolean
+          endurance_slow_grace_s: number
+          endurance_slow_penalty_m2: number
+          endurance_slow_speed_kmh: number
+          endurance_stop_grace_s: number
+          endurance_stop_penalty_m2: number
+          endurance_stop_speed_kmh: number
           ends_at: string | null
           forbidden_zone_running_only: boolean
           grace_enabled: boolean
@@ -332,6 +339,13 @@ export type Database = {
           ctf_capture_radius_m?: number
           ctf_time_penalty_m2?: number
           duration_minutes?: number
+          endurance_check_enabled?: boolean
+          endurance_slow_grace_s?: number
+          endurance_slow_penalty_m2?: number
+          endurance_slow_speed_kmh?: number
+          endurance_stop_grace_s?: number
+          endurance_stop_penalty_m2?: number
+          endurance_stop_speed_kmh?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
           grace_enabled?: boolean
@@ -402,6 +416,13 @@ export type Database = {
           ctf_capture_radius_m?: number
           ctf_time_penalty_m2?: number
           duration_minutes?: number
+          endurance_check_enabled?: boolean
+          endurance_slow_grace_s?: number
+          endurance_slow_penalty_m2?: number
+          endurance_slow_speed_kmh?: number
+          endurance_stop_grace_s?: number
+          endurance_stop_penalty_m2?: number
+          endurance_stop_speed_kmh?: number
           ends_at?: string | null
           forbidden_zone_running_only?: boolean
           grace_enabled?: boolean
