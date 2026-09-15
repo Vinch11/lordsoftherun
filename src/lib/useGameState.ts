@@ -70,6 +70,13 @@ export type Game = {
   vehicle_allowed: boolean;
   vehicle_speed_threshold_kmh: number;
   vehicle_penalty_m2: number;
+  endurance_check_enabled: boolean;
+  endurance_stop_speed_kmh: number;
+  endurance_stop_grace_s: number;
+  endurance_stop_penalty_m2: number;
+  endurance_slow_speed_kmh: number;
+  endurance_slow_grace_s: number;
+  endurance_slow_penalty_m2: number;
   circuit_checkpoint_count: number;
   circuit_lap_count: number;
   circuit_capture_radius_m: number;
