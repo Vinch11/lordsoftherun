@@ -568,6 +568,13 @@
       "when": 1790000000000,
       "tag": "0080_photo_upload_storage_relaxed",
       "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1789475000396,
+      "tag": "0081_team_photos_upload_policy",
+      "breakpoints": true
     }
   ]
 }
