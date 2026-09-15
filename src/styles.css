@@ -140,6 +140,20 @@
   html,
   body {
     overscroll-behavior: none;
+    /* A phone bouncing in an armband or pocket while running triggers
+       accidental long-presses; without this, iOS pops up its native text
+       selection (magnifying glass + "Copier / Rechercher…" menu) on every
+       jolt. There's nothing on these screens worth selecting anyway. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
   }
 
   body {
