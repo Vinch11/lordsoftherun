@@ -582,6 +582,13 @@
       "when": 1789489036579,
       "tag": "0082_endurance_check",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1789542761152,
+      "tag": "0083_fix_team_photos_upload_policy",
+      "breakpoints": true
     }
   ]
 }
