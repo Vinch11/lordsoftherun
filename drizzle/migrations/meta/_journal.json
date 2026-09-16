@@ -589,6 +589,13 @@
       "when": 1789542761152,
       "tag": "0083_fix_team_photos_upload_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1789542786437,
+      "tag": "0084_fix_team_photos_upload_policy_qualified",
+      "breakpoints": true
     }
   ]
 }
