@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import { formatClock } from "@/lib/conquete";
 import { uploadTeamPhoto } from "@/lib/photoCheck";
 import { notifyUrgent } from "@/lib/notify";
@@ -33,6 +33,7 @@ export function PhotoRequestCard({
   const [sending, setSending] = useState(false);
   const [sentAt, setSentAt] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const alertedRef = useRef<string | null>(null);
   const lastFileRef = useRef<File | null>(null);
@@ -41,6 +42,7 @@ export function PhotoRequestCard({
 
   useEffect(() => {
     setFailed(false);
+    setDismissed(false);
     lastFileRef.current = null;
     if (!storageKey) {
       setSentAt(null);
@@ -91,9 +93,35 @@ export function PhotoRequestCard({
     );
   }
 
+  // Dismissed but not sent: shrink to a small reminder instead of vanishing
+  // entirely (the teacher is still waiting for a photo) — tapping it brings
+  // the full card, with the "prendre la photo" button, back.
+  if (dismissed) {
+    return (
+      <button
+        type="button"
+        className="panel flex w-full items-center gap-2 px-4 py-3 text-left ring-2 ring-accent"
+        onClick={() => setDismissed(false)}
+      >
+        <Camera className="h-4 w-4 shrink-0 text-accent" />
+        <span className="flex-1 text-sm font-semibold">
+          Photo demandée
+          {remaining !== null && remaining > 0 ? ` — il reste ${formatClock(remaining)}` : ""}
+        </span>
+      </button>
+    );
+  }
+
   return (
-    <div className="panel flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
-      <div className="section-title">
+    <div className="panel relative flex flex-col gap-3 px-4 py-3 ring-2 ring-accent">
+      <button
+        aria-label="Masquer (la demande reste active)"
+        className="icon-btn absolute right-3 top-3"
+        onClick={() => setDismissed(true)}
+      >
+        <X className="h-4 w-4" />
+      </button>
+      <div className="section-title pr-8">
         <Camera className="h-4 w-4" /> Photo demandée
       </div>
       <div className="text-sm font-semibold">
