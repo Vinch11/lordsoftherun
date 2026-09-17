@@ -1,22 +1,35 @@
-export type TeamColor = { name: string; hex: string };
+export type TeamColor = { name: string; hex: string; kind: "normal" | "fluo" };
 
 export const TEAM_COLORS: TeamColor[] = [
-  { name: "Rouge", hex: "#e63946" },
-  { name: "Bleu", hex: "#1d6fe0" },
-  { name: "Vert", hex: "#2a9d3f" },
-  { name: "Orange", hex: "#f77f00" },
-  { name: "Violet", hex: "#8338ec" },
-  { name: "Cyan", hex: "#0bb4c4" },
-  { name: "Rose", hex: "#ef476f" },
-  { name: "Jaune", hex: "#e9c500" },
-  { name: "Turquoise", hex: "#06d6a0" },
-  { name: "Indigo", hex: "#3a0ca3" },
-  { name: "Vert fluo", hex: "#39ff14" },
-  { name: "Rose fluo", hex: "#ff2079" },
-  { name: "Lime", hex: "#a3e635" },
-  { name: "Bordeaux", hex: "#9d0208" },
-  { name: "Bleu ciel", hex: "#48cae4" },
-  { name: "Magenta", hex: "#b5179e" },
+  // Couleurs normales — teintes vives mais mates, un tour complet du cercle
+  // chromatique pour rester distinguables même à une dizaine d'équipes.
+  { name: "Rouge", hex: "#e63946", kind: "normal" },
+  { name: "Orange", hex: "#f77f00", kind: "normal" },
+  { name: "Jaune", hex: "#e9c500", kind: "normal" },
+  { name: "Olive", hex: "#8a9a01", kind: "normal" },
+  { name: "Vert", hex: "#2a9d3f", kind: "normal" },
+  { name: "Lime", hex: "#a3e635", kind: "normal" },
+  { name: "Turquoise", hex: "#06d6a0", kind: "normal" },
+  { name: "Cyan", hex: "#0bb4c4", kind: "normal" },
+  { name: "Bleu ciel", hex: "#48cae4", kind: "normal" },
+  { name: "Bleu", hex: "#1d6fe0", kind: "normal" },
+  { name: "Indigo", hex: "#3a0ca3", kind: "normal" },
+  { name: "Violet", hex: "#8338ec", kind: "normal" },
+  { name: "Magenta", hex: "#b5179e", kind: "normal" },
+  { name: "Rose", hex: "#ef476f", kind: "normal" },
+  { name: "Bordeaux", hex: "#9d0208", kind: "normal" },
+  { name: "Marron", hex: "#8b5e34", kind: "normal" },
+  { name: "Gris ardoise", hex: "#5c6c76", kind: "normal" },
+  // Couleurs fluo — mêmes familles de teintes, poussées au maximum de
+  // saturation et de luminosité pour un look néon assumé.
+  { name: "Jaune fluo", hex: "#eaff00", kind: "fluo" },
+  { name: "Orange fluo", hex: "#ff4d00", kind: "fluo" },
+  { name: "Rouge fluo", hex: "#ff073a", kind: "fluo" },
+  { name: "Rose fluo", hex: "#ff2079", kind: "fluo" },
+  { name: "Violet fluo", hex: "#cc00ff", kind: "fluo" },
+  { name: "Bleu fluo", hex: "#00c8ff", kind: "fluo" },
+  { name: "Turquoise fluo", hex: "#00ffcc", kind: "fluo" },
+  { name: "Vert fluo", hex: "#39ff14", kind: "fluo" },
 ];
 
 export const MIN_LOOP_DISTANCE_M = 100;

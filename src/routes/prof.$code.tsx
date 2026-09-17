@@ -5596,33 +5596,42 @@ function TeacherDashboard() {
                       </button>
                     </div>
                     {colorPickerTeamId === tm.id && (
-                      <div className="grid grid-cols-8 gap-2 pl-8">
-                        {TEAM_COLORS.map((c) => {
-                          const taken = colorTaken(c.hex);
-                          return (
-                            <button
-                              key={c.hex}
-                              type="button"
-                              aria-label={taken ? `${c.name} (déjà prise)` : c.name}
-                              disabled={taken}
-                              onClick={() => void updateTeamColor(tm.id, c.hex)}
-                              className={`relative h-8 w-8 rounded-full border-2 transition-transform ${
-                                taken
-                                  ? "cursor-not-allowed opacity-30"
-                                  : tm.color === c.hex
-                                    ? "scale-110 border-foreground"
-                                    : "border-transparent opacity-80"
-                              }`}
-                              style={{ backgroundColor: c.hex }}
-                            >
-                              {taken && (
-                                <span className="absolute inset-0 flex items-center justify-center text-xs text-foreground">
-                                  ✕
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                      <div className="flex flex-col gap-2 pl-8">
+                        {(["normal", "fluo"] as const).map((kind) => (
+                          <div key={kind} className="flex flex-col gap-1">
+                            <span className="label-xs">
+                              {kind === "fluo" ? "Fluo" : "Couleurs"}
+                            </span>
+                            <div className="grid grid-cols-8 gap-2">
+                              {TEAM_COLORS.filter((c) => c.kind === kind).map((c) => {
+                                const taken = colorTaken(c.hex);
+                                return (
+                                  <button
+                                    key={c.hex}
+                                    type="button"
+                                    aria-label={taken ? `${c.name} (déjà prise)` : c.name}
+                                    disabled={taken}
+                                    onClick={() => void updateTeamColor(tm.id, c.hex)}
+                                    className={`relative h-8 w-8 rounded-full border-2 transition-transform ${
+                                      taken
+                                        ? "cursor-not-allowed opacity-30"
+                                        : tm.color === c.hex
+                                          ? "scale-110 border-foreground"
+                                          : "border-transparent opacity-80"
+                                    }`}
+                                    style={{ backgroundColor: c.hex }}
+                                  >
+                                    {taken && (
+                                      <span className="absolute inset-0 flex items-center justify-center text-xs text-foreground">
+                                        ✕
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
