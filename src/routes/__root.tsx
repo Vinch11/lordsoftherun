@@ -47,10 +47,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          Cette page n'a pas pu s'afficher
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Une erreur inattendue s'est produite. Réessayez ou revenez à l'accueil.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
@@ -60,15 +60,29 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            Réessayer
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            Go home
+            Retour à l'accueil
           </a>
         </div>
+        {/* No error monitoring is wired up for real deployments (only the
+            Lovable editor preview sees reportLovableError above) — without
+            this, a crash on a student's phone leaves no trace anywhere.
+            Showing the raw message/stack here is the only way to get that
+            detail back: ask whoever hits this screen for a screenshot. */}
+        <details className="mt-6 text-left">
+          <summary className="cursor-pointer text-xs text-muted-foreground">
+            Détails techniques (à partager si le problème se reproduit)
+          </summary>
+          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md border border-input bg-muted p-2 text-xs text-muted-foreground">
+            {error?.message || String(error)}
+            {error?.stack ? `\n\n${error.stack}` : ""}
+          </pre>
+        </details>
       </div>
     </div>
   );
