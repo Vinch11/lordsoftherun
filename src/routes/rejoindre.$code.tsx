@@ -544,34 +544,39 @@ function Join() {
 
               <div className="flex flex-col gap-2">
                 <span className="section-title">Couleur</span>
-                <div className="grid grid-cols-4 gap-3">
-                  {TEAM_COLORS.map((c) => {
-                    const taken = usedColors.has(c.hex);
-                    return (
-                      <button
-                        key={c.hex}
-                        type="button"
-                        aria-label={taken ? `${c.name} (déjà prise)` : c.name}
-                        disabled={taken}
-                        onClick={() => setColor(c.hex)}
-                        className={`relative h-16 rounded-2xl border-4 transition-transform ${
-                          taken
-                            ? "cursor-not-allowed opacity-30"
-                            : color === c.hex
-                              ? "scale-105 border-foreground"
-                              : "border-transparent opacity-80"
-                        }`}
-                        style={{ backgroundColor: c.hex }}
-                      >
-                        {taken && (
-                          <span className="absolute inset-0 flex items-center justify-center text-2xl text-foreground">
-                            ✕
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                {(["normal", "fluo"] as const).map((kind) => (
+                  <div key={kind} className="flex flex-col gap-2">
+                    <span className="label-xs">{kind === "fluo" ? "Fluo" : "Couleurs"}</span>
+                    <div className="grid grid-cols-4 gap-3">
+                      {TEAM_COLORS.filter((c) => c.kind === kind).map((c) => {
+                        const taken = usedColors.has(c.hex);
+                        return (
+                          <button
+                            key={c.hex}
+                            type="button"
+                            aria-label={taken ? `${c.name} (déjà prise)` : c.name}
+                            disabled={taken}
+                            onClick={() => setColor(c.hex)}
+                            className={`relative h-16 rounded-2xl border-4 transition-transform ${
+                              taken
+                                ? "cursor-not-allowed opacity-30"
+                                : color === c.hex
+                                  ? "scale-105 border-foreground"
+                                  : "border-transparent opacity-80"
+                            }`}
+                            style={{ backgroundColor: c.hex }}
+                          >
+                            {taken && (
+                              <span className="absolute inset-0 flex items-center justify-center text-2xl text-foreground">
+                                ✕
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
                 {usedColors.size > 0 && (
                   <p className="text-xs text-muted-foreground">
                     Une couleur déjà prise par une autre équipe ne peut plus être choisie.
