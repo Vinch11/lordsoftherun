@@ -113,6 +113,12 @@ import {
 import { resolveGraceStatus } from "@/lib/grace";
 import { useTeamTrails } from "@/lib/teamTrails";
 import {
+  applyGameTemplate,
+  deleteGameTemplate,
+  saveGameTemplate,
+  useGameTemplates,
+} from "@/lib/gameTemplates";
+import {
   addStudent,
   applyRosterComposition,
   assignStudentTeam,
@@ -776,6 +782,9 @@ function TeacherDashboard() {
     user?.id ?? null,
   );
   const { circuits: savedCircuits, refresh: refreshSavedCircuits } = useSavedCircuits(
+    user?.id ?? null,
+  );
+  const { templates: gameTemplates, refresh: refreshGameTemplates } = useGameTemplates(
     user?.id ?? null,
   );
 
@@ -2103,6 +2112,50 @@ function TeacherDashboard() {
     }
   }
 
+  async function handleSaveGameTemplate() {
+    if (!user || !game) return;
+    const name = window.prompt("Nom du modèle de partie à enregistrer :");
+    if (!name || !name.trim()) return;
+    try {
+      await saveGameTemplate(user.id, name.trim(), game);
+      toast.success("Modèle de partie enregistré !");
+      void refreshGameTemplates();
+    } catch {
+      toast.error("Impossible d'enregistrer ce modèle.");
+    }
+  }
+
+  async function handleApplyGameTemplate(template: (typeof gameTemplates)[number]) {
+    if (!gameId) return;
+    if (
+      !window.confirm(
+        `Remplacer la configuration actuelle de cette partie par le modèle « ${template.name} » ?`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await applyGameTemplate(gameId, template);
+      toast.success(`« ${template.name} » appliqué — rechargement…`);
+      // The rest of this dashboard's config only ever reads `game` once (on
+      // first load) into its own local state — a raw settings overwrite
+      // like this one would otherwise leave every field on screen stale
+      // until the teacher reloaded manually anyway.
+      window.location.reload();
+    } catch {
+      toast.error("Impossible d'appliquer ce modèle.");
+    }
+  }
+
+  async function handleDeleteGameTemplate(id: string) {
+    try {
+      await deleteGameTemplate(id);
+      void refreshGameTemplates();
+    } catch {
+      toast.error("Impossible de supprimer ce modèle.");
+    }
+  }
+
   async function updateMode(next: GameMode) {
     setGameModeState(next);
     if (!gameId || !isOwner) return;
@@ -2576,6 +2629,62 @@ function TeacherDashboard() {
             {getGameModeDescriptions(t.circuitHostPhrase)[gameMode]}
           </p>
         </section>
+
+        {isOwner && (
+          <section
+            className="panel relative flex flex-col gap-3 p-4"
+            {...sectionProps("modeles-partie")}
+          >
+            <CollapseToggle
+              id="modeles-partie"
+              collapsed={!!collapsed["modeles-partie"]}
+              onToggle={toggleSection}
+            />
+            <div className="section-title">
+              <Bookmark className="h-4 w-4" /> Modèles de partie
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Enregistrez la configuration de cette partie (mode et tous les réglages, hors carte)
+              pour la réappliquer d'un coup à une future partie — pratique pour donner le même jeu à
+              plusieurs classes.
+            </p>
+            <button
+              className="btn-huge btn-huge-dark"
+              onClick={() => void handleSaveGameTemplate()}
+            >
+              <Bookmark className="h-5 w-5" /> Enregistrer cette configuration comme modèle
+            </button>
+            {gameTemplates.length > 0 && (
+              <div className="flex flex-col gap-1 border-t border-border pt-2">
+                <span className="label-xs">Mes modèles</span>
+                {gameTemplates.map((tpl) => (
+                  <div key={tpl.id} className="flex items-center gap-3 py-1">
+                    <Bookmark className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="flex-1 truncate text-sm">{tpl.name}</span>
+                    {game?.status === "lobby" ? (
+                      <button
+                        className="mini-btn"
+                        onClick={() => void handleApplyGameTemplate(tpl)}
+                      >
+                        Appliquer
+                      </button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        verrouillé après le lancement
+                      </span>
+                    )}
+                    <button
+                      aria-label={`Supprimer le modèle ${tpl.name}`}
+                      onClick={() => void handleDeleteGameTemplate(tpl.id)}
+                    >
+                      <X className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {isOwner && (gameMode === "territoire" || gameMode === "grille") && (
           <section className="panel relative flex flex-col gap-3 p-4" {...sectionProps("quiz")}>
