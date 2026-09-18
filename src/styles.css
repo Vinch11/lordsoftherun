@@ -605,6 +605,15 @@
   border-top-color: var(--color-border) !important;
 }
 
+/* Team name tags on the map: a colored left accent instead of a plain
+   pill everyone shares, so a glance at the label alone says whose it is —
+   the --team-tag-color custom property is set per marker in GameMap.tsx. */
+.leaflet-tooltip.team-tag {
+  border-color: var(--team-tag-color, var(--color-border)) !important;
+  border-left-width: 4px !important;
+  font-weight: 700;
+}
+
 .leaflet-container {
   background: #eef2f6 !important;
 }

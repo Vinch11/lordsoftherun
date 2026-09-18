@@ -741,24 +741,31 @@ export default function GameMap({
     const layer = teamLayer.current;
     if (!layer) return;
     layer.clearLayers();
+    // Color-coded name tags (a left accent border in the team's own color,
+    // set via a CSS variable since Leaflet tooltips take a static class,
+    // not per-instance styles) — reads like a broadcast driver tag rather
+    // than a plain black pill everyone shares.
+    function tagTooltip(marker: L.Marker, label: string, color: string) {
+      marker.bindTooltip(label, {
+        permanent: true,
+        direction: "top",
+        offset: [0, -12],
+        className: "team-tag",
+      });
+      marker.getTooltip()?.getElement()?.style.setProperty("--team-tag-color", color);
+    }
     for (const t of teams) {
       if (t.members && t.members.length > 0) {
         const multiple = t.members.length > 1;
         t.members.forEach((m, i) => {
-          L.marker([m.lat, m.lng], { icon: blipIcon(t.color, spec) })
-            .bindTooltip(multiple ? `${t.name} #${i + 1}` : t.name, {
-              permanent: true,
-              direction: "top",
-              offset: [0, -12],
-            })
-            .addTo(layer);
+          const marker = L.marker([m.lat, m.lng], { icon: blipIcon(t.color, spec) }).addTo(layer);
+          tagTooltip(marker, multiple ? `${t.name} #${i + 1}` : t.name, t.color);
         });
         continue;
       }
       if (t.lat == null || t.lng == null) continue;
-      L.marker([t.lat, t.lng], { icon: blipIcon(t.color, spec) })
-        .bindTooltip(t.name, { permanent: true, direction: "top", offset: [0, -12] })
-        .addTo(layer);
+      const marker = L.marker([t.lat, t.lng], { icon: blipIcon(t.color, spec) }).addTo(layer);
+      tagTooltip(marker, t.name, t.color);
     }
   }, [teams, spec]);
 
