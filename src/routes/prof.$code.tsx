@@ -515,6 +515,7 @@ function TeacherDashboard() {
   const [sendingQuiz, setSendingQuiz] = useState(false);
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [overviewMessageOpen, setOverviewMessageOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -2301,8 +2302,10 @@ function TeacherDashboard() {
   }
 
   if (view === "overview") {
+    const leader = ranked[0];
+    const leaderScore = leader ? teamScore(leader) : 0;
     return (
-      <main className="relative h-[100dvh] w-full overflow-hidden">
+      <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
         <div className="absolute inset-0">
           <MapCanvas
             center={center}
@@ -2325,6 +2328,11 @@ function TeacherDashboard() {
           />
         </div>
 
+        {/* Broadcast-style vignettes so the HUD and leaderboard stay legible
+            over a live map, whatever colors happen to be underneath them. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[999] h-36 bg-gradient-to-b from-black/70 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[999] h-56 bg-gradient-to-t from-black/75 to-transparent" />
+
         <div
           className="pointer-events-none absolute inset-x-3 z-[1000] flex flex-wrap items-center gap-2"
           style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}
@@ -2336,78 +2344,127 @@ function TeacherDashboard() {
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="hud-badge px-3 py-2">
-            <div className="label-xs">Code</div>
-            <div className="display text-2xl tracking-[0.3em]">{code}</div>
-          </div>
-          <div className="hud-badge px-3 py-2">
-            <div className="label-xs">Temps</div>
-            <div className="display text-2xl tabular-nums">{formatCountdown(remaining)}</div>
+          <div className="panel pointer-events-auto flex items-center gap-3 px-3 py-2 sm:gap-4 sm:px-4">
+            <span className="chip chip-accent gap-1.5">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+              En direct
+            </span>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex flex-col leading-none">
+              <span className="label-xs">Code</span>
+              <span className="display text-xl tracking-[0.3em] sm:text-2xl">{code}</span>
+            </div>
+            <div className="h-6 w-px bg-border" />
+            <div className="flex flex-col leading-none">
+              <span className="label-xs">Temps</span>
+              <span className="display text-xl tabular-nums sm:text-2xl">
+                {formatCountdown(remaining)}
+              </span>
+            </div>
           </div>
         </div>
 
         <div
-          className="pointer-events-auto absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2 p-3 lg:max-w-4xl lg:flex-row lg:items-end"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-md flex-col gap-2 p-3 lg:max-w-4xl lg:flex-row lg:items-end"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
         >
-          <div className="panel flex max-h-40 flex-1 flex-col gap-1 overflow-y-auto p-3 lg:max-h-56">
+          <div className="panel pointer-events-auto flex max-h-48 flex-1 flex-col gap-1 overflow-y-auto p-3 lg:max-h-64">
+            <div className="mb-1 flex items-center justify-between px-1">
+              <div className="flex items-center gap-1.5 text-sm font-bold uppercase tracking-wide">
+                <Trophy className="h-4 w-4 text-accent" /> Classement
+              </div>
+              <span className="chip chip-muted">{ranked.length}</span>
+            </div>
             {ranked.length === 0 && (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 En attente des groupes…
               </p>
             )}
-            {ranked.map((team, i) => (
-              <div key={team.id} className="flex items-center gap-2 py-1">
-                <span className="w-5 text-center text-sm text-muted-foreground">{i + 1}</span>
-                <span
-                  className="h-4 w-4 shrink-0 rounded-full border-2 border-foreground"
-                  style={{ backgroundColor: team.color }}
-                />
-                <span className="flex-1 truncate text-sm font-semibold">{team.name}</span>
-                <span className="display text-sm tabular-nums">
-                  {gameMode === "circuit"
-                    ? formatTeamScore(teamScore(team))
-                    : gameMode === "capture_drapeau"
-                      ? `🚩 ${team.flags_captured}`
-                      : gameMode === "grille"
-                        ? `${Math.round(teamScore(team))} cases`
-                        : formatArea(teamScore(team))}
-                </span>
-              </div>
-            ))}
-          </div>
-          {isOwner && (
-            <div className="panel flex flex-1 flex-col gap-2 p-3">
-              <select
-                className="field"
-                value={messageTarget}
-                onChange={(e) => setMessageTarget(e.target.value)}
-              >
-                <option value="all">Toutes les équipes</option>
-                {teams.map((tm) => (
-                  <option key={tm.id} value={tm.id}>
-                    {tm.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <input
-                  className="field"
-                  placeholder="Votre message..."
-                  value={messageBody}
-                  onChange={(e) => setMessageBody(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
-                />
-                <button
-                  aria-label="Envoyer"
-                  className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
-                  onClick={sendMessage}
+            {ranked.map((team, i) => {
+              const gap = leaderScore - teamScore(team);
+              return (
+                <div
+                  key={team.id}
+                  className={`flex items-center gap-3 rounded-xl border-l-4 px-2 py-2 ${
+                    i === 0 ? "rank-gold" : ""
+                  }`}
+                  style={{ borderLeftColor: team.color }}
                 >
-                  <Send className="h-5 w-5" />
-                </button>
+                  <span className="display w-6 shrink-0 text-center text-lg text-muted-foreground">
+                    {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
+                  </span>
+                  <span className="flex-1 truncate text-sm font-semibold">{team.name}</span>
+                  <div className="flex flex-col items-end leading-tight">
+                    <span className="display text-sm tabular-nums">
+                      {gameMode === "circuit"
+                        ? formatTeamScore(teamScore(team))
+                        : gameMode === "capture_drapeau"
+                          ? `🚩 ${team.flags_captured}`
+                          : gameMode === "grille"
+                            ? `${Math.round(teamScore(team))} cases`
+                            : formatArea(teamScore(team))}
+                    </span>
+                    {i > 0 && (gameMode === "territoire" || gameMode === "grille") && gap > 0 && (
+                      <span className="text-[0.65rem] text-muted-foreground">
+                        -{gameMode === "grille" ? `${Math.round(gap)} cases` : formatArea(gap)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {isOwner &&
+            (overviewMessageOpen ? (
+              <div className="panel pointer-events-auto flex flex-1 flex-col gap-2 p-3 lg:max-w-xs">
+                <div className="flex items-center justify-between">
+                  <span className="label-xs">Message aux équipes</span>
+                  <button
+                    aria-label="Fermer"
+                    className="icon-btn h-7 w-7"
+                    onClick={() => setOverviewMessageOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <select
+                  className="field"
+                  value={messageTarget}
+                  onChange={(e) => setMessageTarget(e.target.value)}
+                >
+                  <option value="all">Toutes les équipes</option>
+                  {teams.map((tm) => (
+                    <option key={tm.id} value={tm.id}>
+                      {tm.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <input
+                    className="field"
+                    placeholder="Votre message..."
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
+                  />
+                  <button
+                    aria-label="Envoyer"
+                    className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
+                    onClick={sendMessage}
+                  >
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              <button
+                aria-label="Message aux équipes"
+                className="icon-btn pointer-events-auto h-12 w-12 shrink-0 self-end bg-primary text-primary-foreground shadow-lg lg:self-auto"
+                onClick={() => setOverviewMessageOpen(true)}
+              >
+                <Send className="h-5 w-5" />
+              </button>
+            ))}
         </div>
       </main>
     );
