@@ -9,6 +9,7 @@ import {
   Camera,
   Check,
   ChevronDown,
+  Copy,
   Download,
   Eye,
   EyeOff,
@@ -248,6 +249,8 @@ const UNIT_MAX: Record<DurationUnit, number> = { minutes: 180, heures: 72, jours
 const UNIT_DEFAULT: Record<DurationUnit, number> = { minutes: 20, heures: 1, jours: 1 };
 
 export const Route = createFileRoute("/prof/$code")({
+  validateSearch: (search: Record<string, unknown>): { spectateur?: boolean } =>
+    search["spectateur"] === "1" ? { spectateur: true } : {},
   head: () => ({
     meta: [
       { title: "Tableau de bord enseignant — Conquête" },
@@ -496,6 +499,7 @@ function CollapseToggle({
 
 function TeacherDashboard() {
   const { code } = Route.useParams();
+  const { spectateur } = Route.useSearch();
   const navigate = useNavigate();
   const { account: user } = useAuth();
   const { profile } = useProfile(user?.id);
@@ -652,7 +656,7 @@ function TeacherDashboard() {
   const [selfPos, setSelfPos] = useState<[number, number] | null>(null);
   const [photoDelay, setPhotoDelay] = useState(3);
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
-  const [view, setView] = useState<"dashboard" | "overview">("dashboard");
+  const [view, setView] = useState<"dashboard" | "overview">(spectateur ? "overview" : "dashboard");
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
@@ -2156,6 +2160,16 @@ function TeacherDashboard() {
     }
   }
 
+  async function copySpectatorLink() {
+    const url = `${window.location.origin}/prof/${code}?spectateur=1`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Lien spectateur copié !");
+    } catch {
+      toast.error("Impossible de copier le lien.");
+    }
+  }
+
   async function updateMode(next: GameMode) {
     setGameModeState(next);
     if (!gameId || !isOwner) return;
@@ -3322,6 +3336,21 @@ function TeacherDashboard() {
             {typeof window !== "undefined" ? window.location.host : ""}
           </p>
         </section>
+
+        {isOwner && (
+          <section className="panel flex flex-col gap-2 p-4">
+            <div className="section-title">
+              <Eye className="h-4 w-4" /> Écran spectateur
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Un lien en lecture seule : carte plein écran et classement en direct, sans les
+              réglages — à partager avec un projecteur, d'autres classes ou des parents.
+            </p>
+            <button className="btn-huge btn-huge-dark" onClick={() => void copySpectatorLink()}>
+              <Copy className="h-5 w-5" /> Copier le lien spectateur
+            </button>
+          </section>
+        )}
 
         {qrFullscreen && (
           <div
