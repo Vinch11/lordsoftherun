@@ -2302,6 +2302,8 @@ function TeacherDashboard() {
   }
 
   if (view === "overview") {
+    const leader = ranked[0];
+    const leaderScore = leader ? teamScore(leader) : 0;
     return (
       <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
         <div className="absolute inset-0">
@@ -2326,10 +2328,11 @@ function TeacherDashboard() {
           />
         </div>
 
-        {/* Broadcast-style vignettes so the HUD and leaderboard stay legible
-            over a live map, whatever colors happen to be underneath them. */}
+        {/* Broadcast-style vignette so the HUD stays legible over a live map,
+            whatever colors happen to be underneath it. The timing tower and
+            message button below carry their own dark backing instead, like a
+            real broadcast graphic, so they don't need one here. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[999] h-36 bg-gradient-to-b from-black/70 to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[999] h-28 bg-gradient-to-t from-black/75 to-transparent" />
 
         <div
           className="pointer-events-none absolute inset-x-3 z-[1000] flex flex-wrap items-center gap-2"
@@ -2362,98 +2365,117 @@ function TeacherDashboard() {
           </div>
         </div>
 
+        {/* Timing tower, broadcast-style: a stack of individually-plated rows
+            down the right edge, like an F1 world-feed leaderboard graphic —
+            not a single panel, so it reads as a HUD overlay rather than a
+            list UI sitting on top of the map. */}
         <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] mx-auto flex w-full max-w-5xl flex-col gap-2 p-3"
-          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          className="pointer-events-auto absolute right-3 z-[1000] flex w-60 flex-col gap-1 overflow-y-auto sm:w-64"
+          style={{
+            top: "max(5.5rem, calc(env(safe-area-inset-top) + 4.75rem))",
+            maxHeight:
+              "calc(100dvh - max(5.5rem, calc(env(safe-area-inset-top) + 4.75rem)) - max(0.75rem, env(safe-area-inset-bottom)) - 4rem)",
+          }}
         >
-          {isOwner && overviewMessageOpen && (
-            <div className="panel pointer-events-auto flex flex-col gap-2 self-end p-3 sm:w-80">
-              <div className="flex items-center justify-between">
-                <span className="label-xs">Message aux équipes</span>
-                <button
-                  aria-label="Fermer"
-                  className="icon-btn h-7 w-7"
-                  onClick={() => setOverviewMessageOpen(false)}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <select
-                className="field"
-                value={messageTarget}
-                onChange={(e) => setMessageTarget(e.target.value)}
-              >
-                <option value="all">Toutes les équipes</option>
-                {teams.map((tm) => (
-                  <option key={tm.id} value={tm.id}>
-                    {tm.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex gap-2">
-                <input
-                  className="field"
-                  placeholder="Votre message..."
-                  value={messageBody}
-                  onChange={(e) => setMessageBody(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
-                />
-                <button
-                  aria-label="Envoyer"
-                  className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
-                  onClick={sendMessage}
-                >
-                  <Send className="h-5 w-5" />
-                </button>
-              </div>
-            </div>
+          {ranked.length === 0 && (
+            <p className="rounded-md bg-black/70 px-3 py-2 text-center text-xs text-white/80 backdrop-blur-sm">
+              En attente des groupes…
+            </p>
           )}
-
-          {/* F1-style timing strip: one thin scrollable row instead of a tall
-              list, so the leaderboard stops covering the map underneath it. */}
-          <div className="flex items-stretch gap-2">
-            <div className="panel pointer-events-auto flex flex-1 items-center gap-1.5 overflow-x-auto px-2 py-1.5">
-              <Trophy className="h-4 w-4 shrink-0 text-accent" />
-              {ranked.length === 0 && (
-                <p className="px-2 text-xs text-muted-foreground">En attente des groupes…</p>
-              )}
-              {ranked.map((team, i) => (
-                <div
-                  key={team.id}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-lg border-l-4 px-2 py-1 ${
-                    i === 0 ? "rank-gold" : ""
-                  }`}
-                  style={{ borderLeftColor: team.color }}
-                >
-                  <span className="display w-4 shrink-0 text-center text-sm text-muted-foreground">
-                    {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
-                  </span>
-                  <span className="max-w-[6rem] truncate text-xs font-semibold sm:max-w-[9rem]">
+          {ranked.map((team, i) => {
+            const gap = leaderScore - teamScore(team);
+            return (
+              <div
+                key={team.id}
+                className={`flex items-center gap-2 rounded-md border-l-[5px] py-1.5 pl-2 pr-3 shadow-lg backdrop-blur-sm ${
+                  i === 0 ? "bg-gradient-to-r from-amber-500/30 to-black/75" : "bg-black/70"
+                }`}
+                style={{ borderLeftColor: team.color }}
+              >
+                <span className="w-5 shrink-0 text-center text-sm font-black text-white">
+                  {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col leading-tight">
+                  <span className="truncate text-xs font-bold uppercase tracking-wide text-white">
                     {team.name}
                   </span>
-                  <span className="display shrink-0 text-xs font-bold tabular-nums">
-                    {gameMode === "circuit"
-                      ? formatTeamScore(teamScore(team))
-                      : gameMode === "capture_drapeau"
-                        ? `🚩 ${team.flags_captured}`
-                        : gameMode === "grille"
-                          ? `${Math.round(teamScore(team))}`
-                          : formatArea(teamScore(team))}
-                  </span>
+                  {i > 0 && (gameMode === "territoire" || gameMode === "grille") && gap > 0 && (
+                    <span className="text-[0.65rem] text-white/60">
+                      -{gameMode === "grille" ? `${Math.round(gap)}` : formatArea(gap)}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-            {isOwner && !overviewMessageOpen && (
+                <span className="shrink-0 text-xs font-bold tabular-nums text-white">
+                  {gameMode === "circuit"
+                    ? formatTeamScore(teamScore(team))
+                    : gameMode === "capture_drapeau"
+                      ? `🚩 ${team.flags_captured}`
+                      : gameMode === "grille"
+                        ? `${Math.round(teamScore(team))}`
+                        : formatArea(teamScore(team))}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {isOwner && (
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex justify-start p-3"
+            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+          >
+            {overviewMessageOpen ? (
+              <div className="panel pointer-events-auto flex w-full max-w-xs flex-col gap-2 p-3">
+                <div className="flex items-center justify-between">
+                  <span className="label-xs">Message aux équipes</span>
+                  <button
+                    aria-label="Fermer"
+                    className="icon-btn h-7 w-7"
+                    onClick={() => setOverviewMessageOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <select
+                  className="field"
+                  value={messageTarget}
+                  onChange={(e) => setMessageTarget(e.target.value)}
+                >
+                  <option value="all">Toutes les équipes</option>
+                  {teams.map((tm) => (
+                    <option key={tm.id} value={tm.id}>
+                      {tm.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <input
+                    className="field"
+                    placeholder="Votre message..."
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && void sendMessage()}
+                  />
+                  <button
+                    aria-label="Envoyer"
+                    className="icon-btn h-12 w-12 shrink-0 bg-primary text-primary-foreground"
+                    onClick={sendMessage}
+                  >
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
               <button
                 aria-label="Message aux équipes"
-                className="icon-btn pointer-events-auto w-12 shrink-0 bg-primary text-primary-foreground shadow-lg"
+                className="icon-btn pointer-events-auto h-12 w-12 shrink-0 bg-primary text-primary-foreground shadow-lg"
                 onClick={() => setOverviewMessageOpen(true)}
               >
                 <Send className="h-5 w-5" />
               </button>
             )}
           </div>
-        </div>
+        )}
       </main>
     );
   }
