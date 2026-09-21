@@ -5743,19 +5743,19 @@ function TeacherDashboard() {
                 className="h-6 w-6 shrink-0 rounded-full border-2 border-foreground"
                 style={{ backgroundColor: t.color }}
               />
-              <span className="flex-1 truncate text-lg font-semibold">
-                {t.name}
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="min-w-0 flex-1 truncate text-lg font-semibold">{t.name}</span>
                 {t.penalty_m2 > 0 && (
-                  <span className="ml-2 text-xs font-semibold text-destructive">
+                  <span className="shrink-0 text-xs font-semibold text-destructive">
                     -{formatArea(t.penalty_m2)}
                   </span>
                 )}
                 {graceStatusFor(t).remainingS != null && (
-                  <span className="ml-2 text-xs font-semibold text-accent">
+                  <span className="shrink-0 text-xs font-semibold text-accent">
                     ⏳ {formatClock(graceStatusFor(t).remainingS!)}
                   </span>
                 )}
-              </span>
+              </div>
               <span className="flex flex-col items-end">
                 <span className="display text-xl tabular-nums">
                   {gameMode === "circuit"
