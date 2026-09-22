@@ -267,6 +267,9 @@ export type TeamMemberPosition = {
   lng: number | null;
   total_distance_m: number;
   updated_at: string;
+  /** This device's own in-progress Territoire loop, if any (Grille leaves this empty). */
+  current_trail: [number, number][] | null;
+  loop_active: boolean;
 };
 
 /**
@@ -298,7 +301,9 @@ export function useTeamMemberPositions(gameId: string | null) {
     if (!gameId) return;
     const { data } = await supabase
       .from("team_members")
-      .select("team_id, member_uid, lat, lng, total_distance_m, updated_at")
+      .select(
+        "team_id, member_uid, lat, lng, total_distance_m, updated_at, current_trail, loop_active",
+      )
       .eq("game_id", gameId);
     setPositions((data ?? []) as unknown as TeamMemberPosition[]);
   }, [gameId]);

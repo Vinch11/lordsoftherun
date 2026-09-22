@@ -1044,10 +1044,12 @@ export type Database = {
       }
       team_members: {
         Row: {
+          current_trail: Json
           game_id: string
           joined_at: string
           lat: number | null
           lng: number | null
+          loop_active: boolean
           member_uid: string
           student_id: string | null
           team_id: string
@@ -1055,10 +1057,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          current_trail?: Json
           game_id: string
           joined_at?: string
           lat?: number | null
           lng?: number | null
+          loop_active?: boolean
           member_uid: string
           student_id?: string | null
           team_id: string
@@ -1066,10 +1070,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          current_trail?: Json
           game_id?: string
           joined_at?: string
           lat?: number | null
           lng?: number | null
+          loop_active?: boolean
           member_uid?: string
           student_id?: string | null
           team_id?: string
@@ -1435,9 +1441,11 @@ export type Database = {
       }
       update_team_member_position: {
         Args: {
+          _current_trail?: Json
           _distance_delta_m: number
           _lat: number
           _lng: number
+          _loop_active?: boolean
           _team_id: string
         }
         Returns: undefined
