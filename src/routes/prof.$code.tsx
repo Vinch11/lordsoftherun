@@ -1053,6 +1053,12 @@ function TeacherDashboard() {
     const seconds = activeS > 0 ? activeS : gameElapsedS;
     return seconds > 0 ? (distanceM / seconds) * 3.6 : 0;
   }
+  // "Temps d'arrêt" ≈ time the game was running but the team had no loop
+  // active (between loops, or simply not moving) — the gap between the
+  // game's own clock and the "in a loop" time already tracked above.
+  function stoppedS(t: (typeof teams)[number]): number {
+    return Math.max(0, gameElapsedS - t.total_active_s);
+  }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1244,6 +1250,8 @@ function TeacherDashboard() {
 
   const joinUrl =
     typeof window !== "undefined" ? `${window.location.origin}/rejoindre/${code}` : "";
+  const spectatorUrl =
+    typeof window !== "undefined" ? `${window.location.origin}/prof/${code}?spectateur=1` : "";
 
   async function importRosterFile(file: File) {
     if (!gameId) return;
@@ -2162,9 +2170,8 @@ function TeacherDashboard() {
   }
 
   async function copySpectatorLink() {
-    const url = `${window.location.origin}/prof/${code}?spectateur=1`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(spectatorUrl);
       toast.success("Lien spectateur copié !");
     } catch {
       toast.error("Impossible de copier le lien.");
@@ -3405,15 +3412,25 @@ function TeacherDashboard() {
         </section>
 
         {isOwner && (
-          <section className="panel flex flex-col gap-2 p-4">
-            <div className="section-title">
+          <section className="panel flex flex-col items-center gap-2 p-4">
+            <div className="section-title self-start">
               <Eye className="h-4 w-4" /> Écran spectateur
             </div>
             <p className="text-xs text-muted-foreground">
               Un lien en lecture seule : carte plein écran et classement en direct, sans les
               réglages — à partager avec un projecteur, d'autres classes ou des parents.
             </p>
-            <button className="btn-huge btn-huge-dark" onClick={() => void copySpectatorLink()}>
+            {spectatorUrl && (
+              <JoinQRCode
+                url={spectatorUrl}
+                label="QR code pour ouvrir l'écran spectateur"
+                size={160}
+              />
+            )}
+            <button
+              className="btn-huge btn-huge-dark w-full"
+              onClick={() => void copySpectatorLink()}
+            >
               <Copy className="h-5 w-5" /> Copier le lien spectateur
             </button>
           </section>
@@ -5791,7 +5808,8 @@ function TeacherDashboard() {
                 )}
                 <span className="label-xs">
                   {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
-                  {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h
+                  {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h · ⏸{" "}
+                  {formatCountdown(stoppedS(t))}
                 </span>
               </span>
               <button
@@ -5816,13 +5834,20 @@ function TeacherDashboard() {
                     className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
                     style={{ backgroundColor: t.color }}
                   />
-                  <span className="flex-1 truncate font-semibold">{t.name}</span>
-                  <span className="display text-base tabular-nums line-through">
-                    {gameMode === "circuit"
-                      ? formatTeamScore(teamScore(t))
-                      : gameMode === "grille"
-                        ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
-                        : formatArea(teamScore(t))}
+                  <span className="min-w-0 flex-1 truncate font-semibold">{t.name}</span>
+                  <span className="flex flex-col items-end">
+                    <span className="display text-base tabular-nums line-through">
+                      {gameMode === "circuit"
+                        ? formatTeamScore(teamScore(t))
+                        : gameMode === "grille"
+                          ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
+                          : formatArea(teamScore(t))}
+                    </span>
+                    <span className="label-xs">
+                      {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
+                      {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h · ⏸{" "}
+                      {formatCountdown(stoppedS(t))}
+                    </span>
                   </span>
                   <button
                     type="button"
