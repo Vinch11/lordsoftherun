@@ -723,9 +723,14 @@ function TeacherDashboard() {
     [quizAnswers, game?.quiz_sent_at],
   );
   const memberPositions = useTeamMemberPositions(gameId);
+  // Not just grille: territoire teams can also have several teammates
+  // playing at once from separate phones, so their live positions live in
+  // team_members too now — this falls back to each team's own lat/lng
+  // whenever it has no member rows with a position (e.g. one device per
+  // team, the common case), so nothing changes for a typical solo team.
   const mapTeams = useMemo(
-    () => (gameMode === "grille" ? teamsWithMemberMarkers(teams, memberPositions) : teams),
-    [gameMode, teams, memberPositions],
+    () => teamsWithMemberMarkers(teams, memberPositions),
+    [teams, memberPositions],
   );
   useEffect(
     () => setNotificationSounds(game),
