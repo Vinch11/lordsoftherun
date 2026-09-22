@@ -516,6 +516,7 @@ function TeacherDashboard() {
   const [themePreview, setThemePreview] = useState<StudentTheme | null>(null);
   const [panelOpen, setPanelOpen] = useState(true);
   const [overviewMessageOpen, setOverviewMessageOpen] = useState(false);
+  const [spectatorQrOpen, setSpectatorQrOpen] = useState(false);
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   useEffect(() => {
@@ -2433,7 +2434,7 @@ function TeacherDashboard() {
 
         {isOwner && (
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex justify-start p-3"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[1000] flex justify-end p-3"
             style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
           >
             {overviewMessageOpen ? (
@@ -3425,7 +3426,15 @@ function TeacherDashboard() {
               Un lien en lecture seule : carte plein écran et classement en direct, sans les
               réglages — à partager avec un projecteur, d'autres classes ou des parents.
             </p>
-            {spectatorUrl && (
+            <button
+              type="button"
+              className="btn-huge w-full"
+              onClick={() => setSpectatorQrOpen((v) => !v)}
+            >
+              <QrCode className="h-5 w-5" />{" "}
+              {spectatorQrOpen ? "Masquer le QR code" : "Afficher le QR code"}
+            </button>
+            {spectatorQrOpen && spectatorUrl && (
               <JoinQRCode
                 url={spectatorUrl}
                 label="QR code pour ouvrir l'écran spectateur"
@@ -5813,8 +5822,9 @@ function TeacherDashboard() {
                 )}
                 <span className="label-xs">
                   {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
-                  {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h · ⏸{" "}
-                  {formatCountdown(stoppedS(t))}
+                  {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h
+                  {(gameMode === "territoire" || gameMode === "grille") &&
+                    ` · ⏸ ${formatCountdown(stoppedS(t))}`}
                 </span>
               </span>
               <button
@@ -5850,8 +5860,9 @@ function TeacherDashboard() {
                     </span>
                     <span className="label-xs">
                       {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
-                      {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h · ⏸{" "}
-                      {formatCountdown(stoppedS(t))}
+                      {avgSpeedKmh(t.total_distance_m, t.total_active_s).toFixed(1)} km/h
+                      {(gameMode === "territoire" || gameMode === "grille") &&
+                        ` · ⏸ ${formatCountdown(stoppedS(t))}`}
                     </span>
                   </span>
                   <button
