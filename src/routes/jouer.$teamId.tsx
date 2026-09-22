@@ -491,6 +491,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             _lat: point[0],
             _lng: point[1],
             _distance_delta_m: Math.max(delta, 0),
+            // Publishes THIS device's own in-progress trail separately from
+            // teammates' — the shared teams.current_trail write above still
+            // exists for this device's own resume-after-restart, but the
+            // map now draws from here so several simultaneous loops each
+            // get their own line instead of overwriting one shared one.
+            _current_trail: trackRef.current,
+            _loop_active: runningRef.current,
           }),
           8000,
         ).then(

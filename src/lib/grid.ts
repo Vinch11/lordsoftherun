@@ -200,18 +200,23 @@ export function useGridCells(gameId: string | null) {
 
 /**
  * Enriches each team with the live positions of its individual members, for
- * Grille's multi-participant mode: the map then draws one marker per device
- * instead of the single (and otherwise last-write-wins) team.lat/lng blip.
+ * multi-participant modes (Grille, and Territoire when several teammates
+ * play at once): the map then draws one marker — and, if the member has an
+ * in-progress loop, one trail — per device instead of the single (and
+ * otherwise last-write-wins) team.lat/lng blip.
  */
 export function teamsWithMemberMarkers<T extends { id: string }>(
   teams: T[],
   positions: TeamMemberPosition[],
-): (T & { members: { lat: number; lng: number }[] })[] {
-  const byTeam = new Map<string, { lat: number; lng: number }[]>();
+): (T & { members: { lat: number; lng: number; current_trail?: [number, number][] | null }[] })[] {
+  const byTeam = new Map<
+    string,
+    { lat: number; lng: number; current_trail?: [number, number][] | null }[]
+  >();
   for (const p of positions) {
     if (p.lat == null || p.lng == null) continue;
     const arr = byTeam.get(p.team_id) ?? [];
-    arr.push({ lat: p.lat, lng: p.lng });
+    arr.push({ lat: p.lat, lng: p.lng, current_trail: p.loop_active ? p.current_trail : null });
     byTeam.set(p.team_id, arr);
   }
   return teams.map((t) => ({ ...t, members: byTeam.get(t.id) ?? [] }));

@@ -13,12 +13,15 @@ export type MapTeam = {
   lng: number | null;
   current_trail?: [number, number][] | null;
   /**
-   * Per-participant positions (Grille's multi-device mode). When present
-   * and non-empty, one marker is drawn per member instead of the single
-   * team.lat/lng blip, which under several simultaneous devices only ever
-   * holds whichever one last synced.
+   * Per-participant positions (multi-device teams: Grille always, Territoire
+   * when several teammates play at once). When present and non-empty, one
+   * marker is drawn per member instead of the single team.lat/lng blip,
+   * which under several simultaneous devices only ever holds whichever one
+   * last synced. A member with an in-progress loop also carries its own
+   * current_trail, so each teammate's dashed line renders independently
+   * instead of one shared line flickering between whoever synced last.
    */
-  members?: { lat: number; lng: number }[];
+  members?: { lat: number; lng: number; current_trail?: [number, number][] | null }[];
 };
 
 export type MapTerritory = {
@@ -727,6 +730,17 @@ export default function GameMap({
     if (!layer) return;
     layer.clearLayers();
     for (const t of teams) {
+      const memberTrails = (t.members ?? [])
+        .map((m) => m.current_trail)
+        .filter((tr): tr is [number, number][] => !!tr && tr.length >= 2);
+      if (memberTrails.length > 0) {
+        for (const trail of memberTrails) {
+          L.polyline(trail, { color: t.color, weight: 4, opacity: 0.5, dashArray: "2 8" }).addTo(
+            layer,
+          );
+        }
+        continue;
+      }
       if (!t.current_trail || t.current_trail.length < 2) continue;
       L.polyline(t.current_trail, {
         color: t.color,
