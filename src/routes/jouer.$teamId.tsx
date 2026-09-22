@@ -258,31 +258,57 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const loopResumedRef = useRef(false);
   useEffect(() => {
     if (loopResumedRef.current || !me) return;
-    loopResumedRef.current = true;
-    const resumedTrail = me.current_trail ?? [];
     let ownsActiveLoop = false;
     try {
       ownsActiveLoop = localStorage.getItem(loopOwnerKey) === "1";
     } catch {
       /* private browsing or storage disabled — treat as not our loop */
     }
-    if (me.loop_active && ownsActiveLoop && resumedTrail.length > 0) {
-      let d = 0;
-      for (let i = 1; i < resumedTrail.length; i++) {
-        d += haversine(resumedTrail[i - 1]!, resumedTrail[i]!);
-      }
-      trackRef.current = resumedTrail;
-      distRef.current = d;
-      loopStartRef.current = me.loop_started_at
-        ? new Date(me.loop_started_at).getTime()
-        : Date.now();
-      runningRef.current = true;
-      setTrack(trackRef.current);
-      setDistance(d);
-      setRunning(true);
-      toast("Boucle reprise là où vous l'aviez laissée.");
+    if (!ownsActiveLoop) {
+      // We never started a loop ourselves (or already closed it) — nothing
+      // to resume, and no need to wait on this device's own team_members
+      // row below.
+      loopResumedRef.current = true;
+      return;
     }
-  }, [me, loopOwnerKey]);
+    // Several teammates can have a loop active at once, so the shared
+    // teams.current_trail (last-write-wins across every device on the
+    // team) can no longer be trusted for resume — it may belong to
+    // whoever synced most recently, not to us. Wait for THIS device's own
+    // team_members row instead, even if memberPositions hasn't loaded yet
+    // on the very first render.
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const myUid = data.session?.user?.id;
+      const mine = memberPositions.find((p) => p.team_id === teamId && p.member_uid === myUid);
+      if (!mine || cancelled || loopResumedRef.current) return;
+      loopResumedRef.current = true;
+      const resumedTrail = mine.current_trail ?? [];
+      if (mine.loop_active && resumedTrail.length > 0) {
+        let d = 0;
+        for (let i = 1; i < resumedTrail.length; i++) {
+          d += haversine(resumedTrail[i - 1]!, resumedTrail[i]!);
+        }
+        trackRef.current = resumedTrail;
+        distRef.current = d;
+        // team_members has no per-loop start timestamp — the team-level one
+        // is only a rough stand-in, used just for the post-loop duration
+        // stat, never for anything scoring-related.
+        loopStartRef.current = me.loop_started_at
+          ? new Date(me.loop_started_at).getTime()
+          : Date.now();
+        runningRef.current = true;
+        setTrack(trackRef.current);
+        setDistance(d);
+        setRunning(true);
+        toast("Boucle reprise là où vous l'aviez laissée.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [me, memberPositions, teamId, loopOwnerKey]);
 
   const myMessages = useMemo(
     () =>
