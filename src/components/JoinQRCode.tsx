@@ -4,10 +4,11 @@ import QRCode from "qrcode";
 type Props = {
   url: string;
   size?: number;
+  label?: string;
 };
 
-/** Renders a scannable QR code pointing at the join URL for a game. */
-export function JoinQRCode({ url, size = 220 }: Props) {
+/** Renders a scannable QR code pointing at the given URL. */
+export function JoinQRCode({ url, size = 220, label = "QR code pour rejoindre la partie" }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -26,7 +27,7 @@ export function JoinQRCode({ url, size = 220 }: Props) {
       width={size}
       height={size}
       className="mx-auto rounded-xl"
-      aria-label="QR code pour rejoindre la partie"
+      aria-label={label}
     />
   );
 }
