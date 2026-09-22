@@ -56,6 +56,8 @@ import { checkGraceArrival, resolveGraceStatus } from "@/lib/grace";
 import { appendTeamTrailPoint } from "@/lib/teamTrails";
 import { GeoKalmanFilter } from "@/lib/geoFilter";
 import { SpeedTracker } from "@/lib/speed";
+import { useTeamMemberPositions } from "@/lib/students";
+import { teamsWithMemberMarkers } from "@/lib/grid";
 import { CtfPlayView } from "@/components/CtfPlayView";
 import { GridPlayView } from "@/components/GridPlayView";
 import { CircuitPlayView } from "@/components/CircuitPlayView";
@@ -170,6 +172,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const myStudentIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(studentStorageKey(teamId)) : null,
   );
+  // Marks that THIS device is the one that started the currently-active loop
+  // (if any) — checked before resuming a loop from the server below, so a
+  // teammate's phone joining the same team never inherits and corrupts a
+  // loop it didn't run itself.
+  const loopOwnerKey = `conquete:myLoop:${teamId}`;
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
   // period players are still moving, but nothing they do may change the board.
@@ -215,6 +222,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const t = getTerminology(game?.terminology);
   const gameRef = useRef(game);
   gameRef.current = game;
+  // Several teammates can run at once from separate phones (a class split
+  // into small groups all playing under one team name) — show each one's
+  // own live position instead of a single team.lat/lng blip that would
+  // otherwise flicker between whichever teammate synced most recently.
+  const memberPositions = useTeamMemberPositions(gameId);
+  const mapTeams = useMemo(
+    () => teamsWithMemberMarkers(teams, memberPositions),
+    [teams, memberPositions],
+  );
   useEffect(
     () => setNotificationSounds(game),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,7 +260,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (loopResumedRef.current || !me) return;
     loopResumedRef.current = true;
     const resumedTrail = me.current_trail ?? [];
-    if (me.loop_active && resumedTrail.length > 0) {
+    let ownsActiveLoop = false;
+    try {
+      ownsActiveLoop = localStorage.getItem(loopOwnerKey) === "1";
+    } catch {
+      /* private browsing or storage disabled — treat as not our loop */
+    }
+    if (me.loop_active && ownsActiveLoop && resumedTrail.length > 0) {
       let d = 0;
       for (let i = 1; i < resumedTrail.length; i++) {
         d += haversine(resumedTrail[i - 1]!, resumedTrail[i]!);
@@ -260,7 +282,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       setRunning(true);
       toast("Boucle reprise là où vous l'aviez laissée.");
     }
-  }, [me]);
+  }, [me, loopOwnerKey]);
 
   const myMessages = useMemo(
     () =>
@@ -319,6 +341,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     if (finishedRef.current) {
       runningRef.current = false;
       setRunning(false);
+      try {
+        localStorage.removeItem(loopOwnerKey);
+      } catch {
+        /* ignore */
+      }
       void supabase
         .from("teams")
         .update({ loop_active: false, current_trail: [] })
@@ -378,9 +405,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     distRef.current = 0;
     setTrack([]);
     setDistance(0);
+    try {
+      localStorage.removeItem(loopOwnerKey);
+    } catch {
+      /* ignore */
+    }
     void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
     closing.current = false;
-  }, [gameId, teamId]);
+  }, [gameId, teamId, loopOwnerKey]);
 
   const onPosition = useCallback(
     (p: GeolocationPosition) => {
@@ -434,37 +466,71 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             void applyPenalty({ game_id: gameId, penalty_m2: penaltyM2 }, teamId);
           });
         }
+        // Loop state (current_trail/loop_active) is genuinely team-level —
+        // teammates running separate loops at once still only get one
+        // in-progress line rendered, a known limit — but the *position*
+        // below goes through team_members instead of teams.lat/lng: several
+        // teammates each writing their own device's coordinates onto that
+        // single shared field would otherwise overwrite one another every
+        // few seconds, turning the team's map blip into a flicker between
+        // whichever teammate synced most recently.
+        void supabase
+          .from("teams")
+          .update({
+            current_trail: trackRef.current,
+            loop_active: runningRef.current,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", teamId);
+
+        const delta = distanceDeltaRef.current;
+        distanceDeltaRef.current = 0;
         void withTimeout(
-          supabase
-            .from("teams")
-            .update({
-              lat: point[0],
-              lng: point[1],
-              current_trail: trackRef.current,
-              loop_active: runningRef.current,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", teamId),
+          supabase.rpc("update_team_member_position", {
+            _team_id: teamId,
+            _lat: point[0],
+            _lng: point[1],
+            _distance_delta_m: Math.max(delta, 0),
+          }),
           8000,
         ).then(
           ({ error }) => {
-            // This write is fire-and-forget by design (it can't block the GPS
-            // loop), but a silent failure here means the team's position
-            // never reaches the map — surface it instead of vanishing.
-            if (error && !syncFailWarnedRef.current) {
-              syncFailWarnedRef.current = true;
-              console.error("Échec de synchronisation de la position :", error);
-              toast.error("Position non synchronisée — vérifiez votre connexion.", {
-                duration: 8000,
-              });
-            } else if (!error) {
-              syncFailWarnedRef.current = false;
+            if (error) {
+              // Put the unflushed distance back so the next tick retries it,
+              // and fall back to the shared team position so the blip stays
+              // alive for a team with only this one device connected.
+              distanceDeltaRef.current += delta;
+              void supabase
+                .from("teams")
+                .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
+                .eq("id", teamId);
+              if (!syncFailWarnedRef.current) {
+                syncFailWarnedRef.current = true;
+                console.error("Échec de synchronisation de la position :", error);
+                toast.error("Position non synchronisée — vérifiez votre connexion.", {
+                  duration: 8000,
+                });
+              }
+              return;
+            }
+            syncFailWarnedRef.current = false;
+            if (delta > 0) {
+              void supabase
+                .rpc("add_distance", {
+                  _team_id: teamId,
+                  ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
+                  _delta_m: delta,
+                })
+                .then(({ error: distError }) => {
+                  if (distError) distanceDeltaRef.current += delta;
+                });
             }
           },
           (err: unknown) => {
             // A stalled request (no error, no success — just never resolves)
             // would otherwise hide the failure forever; the timeout above
             // turns it into a rejection so it's caught here too.
+            distanceDeltaRef.current += delta;
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
               console.error("Échec de synchronisation de la position :", err);
@@ -474,22 +540,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             }
           },
         );
-
-        if (distanceDeltaRef.current > 0) {
-          const delta = distanceDeltaRef.current;
-          distanceDeltaRef.current = 0;
-          void supabase
-            .rpc("add_distance", {
-              _team_id: teamId,
-              ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
-              _delta_m: delta,
-            })
-            .then(({ error }) => {
-              // Put the unflushed distance back so the next tick retries it
-              // instead of silently losing ground covered while offline.
-              if (error) distanceDeltaRef.current += delta;
-            });
-        }
       }
 
       if (gameRef.current) {
@@ -772,6 +822,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     setTrack([pos]);
     setDistance(0);
     setRunning(true);
+    try {
+      localStorage.setItem(loopOwnerKey, "1");
+    } catch {
+      /* ignore */
+    }
     toast.success("Boucle lancée ! Reviens à ton point de départ.");
     void supabase
       .from("teams")
@@ -790,6 +845,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     distRef.current = 0;
     setRunning(false);
     setTrack([]);
+    try {
+      localStorage.removeItem(loopOwnerKey);
+    } catch {
+      /* ignore */
+    }
     setDistance(0);
     void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
     if (elapsedS > 0) {
@@ -830,7 +890,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       <div className="absolute inset-0">
         <MapCanvas
           center={pos}
-          teams={teams}
+          teams={mapTeams}
           territories={mapTerritories}
           trail={track}
           trailColor={myColor}
