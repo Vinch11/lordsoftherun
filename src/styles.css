@@ -1666,6 +1666,7 @@
   --hud-rank-top: max(6.5rem, calc(env(safe-area-inset-top) + 4.25rem));
   --hud-icon-1-top: max(12rem, calc(env(safe-area-inset-top) + 9.5rem));
   --hud-icon-2-top: max(16rem, calc(env(safe-area-inset-top) + 13.5rem));
+  --hud-icon-3-top: max(20rem, calc(env(safe-area-inset-top) + 17.5rem));
   --circuit-icon-top: max(9.5rem, calc(env(safe-area-inset-top) + 7rem));
 }
 

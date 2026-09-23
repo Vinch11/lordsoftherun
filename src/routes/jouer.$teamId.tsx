@@ -1,7 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Crosshair, Flag, HelpCircle, MessageCircle, Send, Square, X } from "lucide-react";
+import {
+  Camera,
+  Crosshair,
+  Flag,
+  HelpCircle,
+  Maximize2,
+  MessageCircle,
+  Minimize2,
+  Send,
+  Square,
+  X,
+} from "lucide-react";
 import { RulesIntro } from "@/components/RulesIntro";
 import { LoopSummary, type LoopSummaryData } from "@/components/LoopSummary";
 import { ScoreStrip } from "@/components/ScoreStrip";
@@ -199,6 +210,26 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const [rulesOpen, setRulesOpen] = useState(false);
   const [summary, setSummary] = useState<LoopSummaryData | null>(null);
   const [followMe, setFollowMe] = useState(true);
+  // A personal display preference (not per-team), so it sticks across games
+  // on the same phone once a student has picked it.
+  const [compactView, setCompactView] = useState(() => {
+    try {
+      return localStorage.getItem("conquete:compactView") === "1";
+    } catch {
+      return false;
+    }
+  });
+  function toggleCompactView() {
+    setCompactView((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem("conquete:compactView", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
   const [resultsOpen, setResultsOpen] = useState(false);
   const [trapArmed, setTrapArmed] = useState<{
     landmarkId: string;
@@ -967,26 +998,28 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       )}
 
       <div
-        className="hud-instrument pointer-events-none absolute inset-x-0 top-0 z-[1000] grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 p-3"
+        className="hud-instrument pointer-events-none absolute inset-x-0 top-0 z-[1000] flex items-start gap-2 p-3"
         style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}
       >
-        <div className="hud-badge min-w-0 px-3 py-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <span
-              className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
-              style={{ backgroundColor: myColor }}
-            />
-            <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
-          </div>
-          <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
-          <div className="label-xs">Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}</div>
-          {!!me?.penalty_m2 && (
-            <div className="label-xs text-destructive">
-              Pénalités · -{formatArea(me.penalty_m2)}
+        {!compactView && (
+          <div className="hud-badge min-w-0 flex-1 px-3 py-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className="h-5 w-5 shrink-0 rounded-full border-2 border-foreground"
+                style={{ backgroundColor: myColor }}
+              />
+              <span className="truncate text-lg font-bold">{me?.name ?? "…"}</span>
             </div>
-          )}
-        </div>
-        <div className="hud-badge shrink-0 px-3 py-2 text-right">
+            <div className="display text-xl">{formatArea(me?.score_m2 ?? 0)}</div>
+            <div className="label-xs">Total conquis · {formatArea(me?.total_captured_m2 ?? 0)}</div>
+            {!!me?.penalty_m2 && (
+              <div className="label-xs text-destructive">
+                Pénalités · -{formatArea(me.penalty_m2)}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="hud-badge ml-auto shrink-0 px-3 py-2 text-right">
           <div className="label-xs">Temps</div>
           <div className="display text-2xl tabular-nums">
             {remaining === null ? "--:--" : formatCountdown(remaining)}
@@ -994,39 +1027,60 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         </div>
       </div>
 
-      <div
-        className="pointer-events-none absolute inset-x-3 z-[999]"
-        style={{ top: "var(--hud-rank-top, max(9rem, calc(env(safe-area-inset-top) + 6.75rem)))" }}
-      >
-        <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatArea} />
-      </div>
+      {!compactView && (
+        <div
+          className="pointer-events-none absolute inset-x-3 z-[999]"
+          style={{
+            top: "var(--hud-rank-top, max(9rem, calc(env(safe-area-inset-top) + 6.75rem)))",
+          }}
+        >
+          <ScoreStrip teams={scoreStripTeams} myTeamId={teamId} formatScore={formatArea} />
+        </div>
+      )}
+
+      {!compactView && (
+        <button
+          aria-label="Messages"
+          className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+          style={{
+            top: "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))",
+          }}
+          onClick={() => {
+            setChatOpen(true);
+            setUnread(false);
+          }}
+        >
+          <MessageCircle className="h-6 w-6" />
+          {unread && (
+            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
+          )}
+        </button>
+      )}
+
+      {!compactView && (
+        <button
+          aria-label="Règles et consignes"
+          className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
+          style={{
+            top: "var(--hud-icon-2-top, max(18.5rem, calc(env(safe-area-inset-top) + 16rem)))",
+          }}
+          onClick={() => setRulesOpen(true)}
+        >
+          <HelpCircle className="h-6 w-6" />
+        </button>
+      )}
 
       <button
-        aria-label="Messages"
+        aria-label={compactView ? "Afficher l'interface complète" : "Réduire l'interface"}
         className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
         style={{
-          top: "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))",
+          top: compactView
+            ? "var(--hud-icon-1-top, max(14.5rem, calc(env(safe-area-inset-top) + 12rem)))"
+            : "var(--hud-icon-3-top, max(22.5rem, calc(env(safe-area-inset-top) + 20rem)))",
         }}
-        onClick={() => {
-          setChatOpen(true);
-          setUnread(false);
-        }}
+        onClick={toggleCompactView}
       >
-        <MessageCircle className="h-6 w-6" />
-        {unread && (
-          <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-destructive" />
-        )}
-      </button>
-
-      <button
-        aria-label="Règles et consignes"
-        className="hud-badge hud-icon-btn pointer-events-auto absolute right-3 z-[1000] flex h-12 w-12 items-center justify-center"
-        style={{
-          top: "var(--hud-icon-2-top, max(18.5rem, calc(env(safe-area-inset-top) + 16rem)))",
-        }}
-        onClick={() => setRulesOpen(true)}
-      >
-        <HelpCircle className="h-6 w-6" />
+        {compactView ? <Maximize2 className="h-6 w-6" /> : <Minimize2 className="h-6 w-6" />}
       </button>
 
       {chatOpen && (
@@ -1098,7 +1152,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </button>
         )}
 
-        {running && (
+        {running && !compactView && (
           <div className="hud-stats-row grid grid-cols-2 gap-2">
             <div className="stat">
               <span className="label-xs">Distance</span>
@@ -1113,7 +1167,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           </div>
         )}
 
-        {!running && (
+        {!running && !compactView && (
           <div className="gps-status panel flex items-center gap-2 px-4 py-2">
             <Crosshair className="h-4 w-4 shrink-0 text-accent" />
             <span className="label-xs">
