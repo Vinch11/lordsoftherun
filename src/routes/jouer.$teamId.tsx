@@ -159,6 +159,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   const trackRef = useRef<[number, number][]>([]);
   const distRef = useRef(0);
   const loopStartRef = useRef(0);
+  // True once this loop has actually left the start point at least once —
+  // guards the auto-close check below against GPS jitter closing the loop
+  // within a few seconds of pressing "commencer" (async mode drops the
+  // usual 100m minimum, so without this a player still lingering near the
+  // start line could trigger an instant, degenerate close).
+  const hasLeftStartRef = useRef(false);
   const lastSync = useRef(0);
   const syncFailWarnedRef = useRef(false);
   const closing = useRef(false);
@@ -291,6 +297,9 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           d += haversine(resumedTrail[i - 1]!, resumedTrail[i]!);
         }
         trackRef.current = resumedTrail;
+        hasLeftStartRef.current = resumedTrail.some(
+          (p) => haversine(resumedTrail[0]!, p) > CLOSE_RADIUS_M,
+        );
         distRef.current = d;
         // team_members has no per-loop start timestamp — the team-level one
         // is only a rough stand-in, used just for the post-loop duration
@@ -428,6 +437,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       }
     }
     trackRef.current = [];
+    hasLeftStartRef.current = false;
     distRef.current = 0;
     setTrack([]);
     setDistance(0);
@@ -731,11 +741,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       setTrack(trackRef.current);
 
       const start = trackRef.current[0]!;
+      const distFromStart = haversine(start, point);
+      if (distFromStart > CLOSE_RADIUS_M) hasLeftStartRef.current = true;
       const minLoopDistance = gameRef.current?.async_mode ? 0 : MIN_LOOP_DISTANCE_M;
       if (
         gameRef.current?.loop_close_mode !== "manual" &&
         distRef.current >= minLoopDistance &&
-        haversine(start, point) <= CLOSE_RADIUS_M &&
+        hasLeftStartRef.current &&
+        distFromStart <= CLOSE_RADIUS_M &&
         trackRef.current.length >= 4
       ) {
         void closeLoop();
@@ -849,6 +862,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       return;
     }
     trackRef.current = [pos];
+    hasLeftStartRef.current = false;
     distRef.current = 0;
     loopStartRef.current = Date.now();
     runningRef.current = true;
@@ -875,6 +889,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     const elapsedS = (Date.now() - loopStartRef.current) / 1000;
     runningRef.current = false;
     trackRef.current = [];
+    hasLeftStartRef.current = false;
     distRef.current = 0;
     setRunning(false);
     setTrack([]);
