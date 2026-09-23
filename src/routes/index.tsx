@@ -23,6 +23,8 @@ type MyGame = {
 
 type ResumeTeam = { teamId: string; teamName: string; code: string; gameName: string | null };
 
+const GAMES_PAGE_SIZE = 20;
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -66,6 +68,8 @@ function Home() {
   const [creating, setCreating] = useState(false);
   const [showKindPicker, setShowKindPicker] = useState(false);
   const [myGames, setMyGames] = useState<MyGame[]>([]);
+  const [hasMoreGames, setHasMoreGames] = useState(false);
+  const [loadingMoreGames, setLoadingMoreGames] = useState(false);
   const [resumeTeams, setResumeTeams] = useState<ResumeTeam[]>([]);
   const [qrCodeGame, setQrCodeGame] = useState<string | null>(null);
   const [deletingGame, setDeletingGame] = useState<string | null>(null);
@@ -133,41 +137,45 @@ function Home() {
     };
   }, []);
 
+  async function fetchMyGamesPage(ownerId: string, offset: number): Promise<MyGame[]> {
+    const { data: games } = await supabase
+      .from("games")
+      .select("id, code, name, status, created_at")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + GAMES_PAGE_SIZE - 1);
+    if (!games) return [];
+    const ids = games.map((g) => g.id);
+    const { data: teams } = ids.length
+      ? await supabase.from("teams").select("game_id, name, score_m2").in("game_id", ids)
+      : { data: [] };
+    return games.map((g) => {
+      const gameTeams = (teams ?? []).filter((t) => t.game_id === g.id);
+      const top = gameTeams.reduce<(typeof gameTeams)[number] | null>(
+        (best, t) => (!best || t.score_m2 > best.score_m2 ? t : best),
+        null,
+      );
+      return {
+        ...g,
+        teamCount: gameTeams.length,
+        topTeam: top?.name ?? null,
+        topScore: top?.score_m2 ?? 0,
+      };
+    });
+  }
+
   useEffect(() => {
     if (!account) {
       setMyGames([]);
+      setHasMoreGames(false);
       return;
     }
     let active = true;
-    void supabase
-      .from("games")
-      .select("id, code, name, status, created_at")
-      .eq("owner_id", account.id)
-      .order("created_at", { ascending: false })
-      .limit(20)
-      .then(async ({ data: games }) => {
-        if (!active || !games) return;
-        const ids = games.map((g) => g.id);
-        const { data: teams } = ids.length
-          ? await supabase.from("teams").select("game_id, name, score_m2").in("game_id", ids)
-          : { data: [] };
-        if (!active) return;
-        setMyGames(
-          games.map((g) => {
-            const gameTeams = (teams ?? []).filter((t) => t.game_id === g.id);
-            const top = gameTeams.reduce<(typeof gameTeams)[number] | null>(
-              (best, t) => (!best || t.score_m2 > best.score_m2 ? t : best),
-              null,
-            );
-            return {
-              ...g,
-              teamCount: gameTeams.length,
-              topTeam: top?.name ?? null,
-              topScore: top?.score_m2 ?? 0,
-            };
-          }),
-        );
-      });
+    void fetchMyGamesPage(account.id, 0).then((page) => {
+      if (!active) return;
+      setMyGames(page);
+      setHasMoreGames(page.length === GAMES_PAGE_SIZE);
+    });
     return () => {
       active = false;
     };
@@ -211,6 +219,18 @@ function Home() {
       toast("Partie supprimée.");
     } finally {
       setDeletingGame(null);
+    }
+  }
+
+  async function loadMoreGames() {
+    if (!account) return;
+    setLoadingMoreGames(true);
+    try {
+      const page = await fetchMyGamesPage(account.id, myGames.length);
+      setMyGames((prev) => [...prev, ...page]);
+      setHasMoreGames(page.length === GAMES_PAGE_SIZE);
+    } finally {
+      setLoadingMoreGames(false);
     }
   }
 
@@ -414,6 +434,15 @@ function Home() {
                 </button>
               </div>
             ))}
+            {hasMoreGames && (
+              <button
+                className="btn-huge mt-2 justify-center !py-3 text-sm"
+                disabled={loadingMoreGames}
+                onClick={() => void loadMoreGames()}
+              >
+                {loadingMoreGames ? "Chargement…" : "Voir les parties précédentes"}
+              </button>
+            )}
           </section>
         )}
 
