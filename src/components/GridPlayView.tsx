@@ -273,7 +273,10 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         lastPosRef.current = { point, t: nowMs };
       }
 
-      if (Date.now() - lastSync.current > 3000) {
+      // 5s rather than 3s to cut the realtime write/broadcast volume that
+      // was freezing the database under concurrent classroom load (several
+      // classes/games at once).
+      if (Date.now() - lastSync.current > 5000) {
         lastSync.current = Date.now();
         if (gameRef.current?.status === "running") {
           void appendTeamTrailPoint(teamId, point[0], point[1]);
