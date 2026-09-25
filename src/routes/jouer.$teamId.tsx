@@ -522,7 +522,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         lastPosRef.current = { point, t: nowMs };
       }
 
-      if (Date.now() - lastSync.current > 3000) {
+      // 5s rather than 3s: with several classes running at once, this sync
+      // (writes across teams/team_members/team_trails, each broadcast to
+      // every connected device) was the main driver behind the database
+      // freezing under concurrent classroom load.
+      if (Date.now() - lastSync.current > 5000) {
         lastSync.current = Date.now();
         if (gameRef.current?.status === "running") {
           void appendTeamTrailPoint(teamId, point[0], point[1]);
