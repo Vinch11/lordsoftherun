@@ -193,6 +193,21 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   // until their first loop actually closed. Now accumulated continuously,
   // the same way Grille already does, so it reflects real progress mid-loop.
   const totalActiveRef = useRef(0);
+  // "Temps d'arrêt" needs its own independent accounting rather than being
+  // derived as (elapsed time - active time) on the prof's side: that
+  // subtraction is only as good as the two clocks it compares (this
+  // device's dt measurements vs. the prof's browser's wall clock), and any
+  // small, structural skew between them — batching, network latency,
+  // sample-boundary rounding — accumulates until active time can tip past
+  // elapsed time, at which point the derived "temps d'arrêt" collapses to
+  // zero right as a team resumes moving, even after a real, lengthy stop.
+  // Tracked here from a separately-updating "last raw sample" reference
+  // (updated on every GPS callback, unlike lastPosRef below which freezes
+  // at the last *accepted* — i.e. moved — sample) so consecutive
+  // non-moving samples each measure their own interval once, rather than
+  // all re-measuring the same growing gap since movement last happened.
+  const totalStoppedRef = useRef(0);
+  const lastRawSampleRef = useRef<{ point: [number, number]; t: number } | null>(null);
   const myStudentIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(studentStorageKey(teamId)) : null,
   );
@@ -523,6 +538,16 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         lastPosRef.current = { point, t: nowMs };
       }
 
+      const lastRaw = lastRawSampleRef.current;
+      lastRawSampleRef.current = { point, t: nowMs };
+      if (lastRaw && gameRef.current?.status === "running") {
+        const dtRaw = (nowMs - lastRaw.t) / 1000;
+        const distRaw = haversine(lastRaw.point, point);
+        if (dtRaw > 0.5 && distRaw <= 2) {
+          totalStoppedRef.current += Math.min(dtRaw, 30);
+        }
+      }
+
       // 5s rather than 3s: with several classes running at once, this sync
       // (writes across teams/team_members/team_trails, each broadcast to
       // every connected device) was the main driver behind the database
@@ -559,6 +584,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         distanceDeltaRef.current = 0;
         const activeDelta = totalActiveRef.current;
         totalActiveRef.current = 0;
+        const stoppedDelta = totalStoppedRef.current;
+        totalStoppedRef.current = 0;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -582,6 +609,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               // alive for a team with only this one device connected.
               distanceDeltaRef.current += delta;
               totalActiveRef.current += activeDelta;
+              totalStoppedRef.current += stoppedDelta;
               void supabase
                 .from("teams")
                 .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
@@ -596,18 +624,20 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               return;
             }
             syncFailWarnedRef.current = false;
-            if (delta > 0 || activeDelta > 0) {
+            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0) {
               void supabase
                 .rpc("add_distance", {
                   _team_id: teamId,
                   ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
                   _delta_m: delta,
                   _delta_active_s: activeDelta,
+                  _delta_stopped_s: stoppedDelta,
                 })
                 .then(({ error: distError }) => {
                   if (distError) {
                     distanceDeltaRef.current += delta;
                     totalActiveRef.current += activeDelta;
+                    totalStoppedRef.current += stoppedDelta;
                   }
                 });
             }
@@ -626,6 +656,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             if (!(err instanceof TimeoutError)) {
               distanceDeltaRef.current += delta;
               totalActiveRef.current += activeDelta;
+              totalStoppedRef.current += stoppedDelta;
             }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;

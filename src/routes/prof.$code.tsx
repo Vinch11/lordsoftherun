@@ -1085,11 +1085,15 @@ function TeacherDashboard() {
     const seconds = clampedActiveS(activeS) || gameElapsedS;
     return seconds > 0 ? (distanceM / seconds) * 3.6 : 0;
   }
-  // "Temps d'arrêt" ≈ time the game was running but the team had no loop
-  // active (between loops, or simply not moving) — the gap between the
-  // game's own clock and the "in a loop" time already tracked above.
+  // "Temps d'arrêt" — accumulated directly on the student's device (the
+  // same way total_active_s is), rather than derived here as (elapsed time
+  // - active time): that subtraction compared two independently-drifting
+  // clocks (this device's dt measurements vs. this browser's wall clock),
+  // and once total_active_s crept past gameElapsedS from even a small,
+  // structural skew between them, the derived value would collapse to zero
+  // right as a team resumed moving — even after a real, lengthy stop.
   function stoppedS(t: (typeof teams)[number]): number {
-    return Math.max(0, gameElapsedS - clampedActiveS(t.total_active_s));
+    return Math.max(0, t.total_stopped_s);
   }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
@@ -1414,7 +1418,7 @@ function TeacherDashboard() {
         stoppedSeconds: gameMode === "territoire" || gameMode === "grille" ? stoppedS(tm) : null,
         activeSeconds:
           gameMode === "territoire" || gameMode === "grille"
-            ? Math.max(0, gameElapsedS - stoppedS(tm))
+            ? clampedActiveS(tm.total_active_s)
             : null,
         flagsCaptured: gameMode === "capture_drapeau" ? tm.flags_captured : null,
         penaltyLabel:

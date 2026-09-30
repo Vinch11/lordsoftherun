@@ -85,6 +85,19 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   // Seconds actually spent moving, flushed with the distance so the teacher
   // dashboard can compute an average speed.
   const totalActiveRef = useRef(0);
+  // "Temps d'arrêt" needs its own independent accounting rather than being
+  // derived as (elapsed time - active time) on the prof's side: that
+  // subtraction is only as good as the two clocks it compares (this
+  // device's dt measurements vs. the prof's browser's wall clock), and any
+  // small, structural skew between them accumulates until active time can
+  // tip past elapsed time, at which point the derived "temps d'arrêt"
+  // collapses to zero right as a team resumes moving, even after a real,
+  // lengthy stop. Tracked from a separately-updating "last raw sample"
+  // reference (updated on every GPS callback, unlike lastPosRef above which
+  // freezes at the last *accepted* — i.e. moved — sample) so consecutive
+  // non-moving samples each measure their own interval once.
+  const totalStoppedRef = useRef(0);
+  const lastRawSampleRef = useRef<{ point: [number, number]; t: number } | null>(null);
 
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
@@ -274,6 +287,16 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         lastPosRef.current = { point, t: nowMs };
       }
 
+      const lastRaw = lastRawSampleRef.current;
+      lastRawSampleRef.current = { point, t: nowMs };
+      if (lastRaw && gameRef.current?.status === "running") {
+        const dtRaw = (nowMs - lastRaw.t) / 1000;
+        const distRaw = haversine(lastRaw.point, point);
+        if (dtRaw > 0.5 && distRaw <= 2) {
+          totalStoppedRef.current += Math.min(dtRaw, 30);
+        }
+      }
+
       // 5s rather than 3s to cut the realtime write/broadcast volume that
       // was freezing the database under concurrent classroom load (several
       // classes/games at once).
@@ -284,6 +307,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         }
         const delta = totalDistanceRef.current;
         const activeDelta = totalActiveRef.current;
+        const stoppedDelta = totalStoppedRef.current;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -313,7 +337,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             }
 
             syncFailWarnedRef.current = false;
-            if (delta > 0 || activeDelta > 0) {
+            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0) {
               // The member's own row already has this delta; add it to the
               // team's aggregate too — kept as a separate call rather than
               // rolled into one RPC so the two can fail independently.
@@ -321,6 +345,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
                 _team_id: teamId,
                 _delta_m: delta,
                 _delta_active_s: activeDelta,
+                _delta_stopped_s: stoppedDelta,
               });
               if (distError) {
                 console.error("Échec de synchronisation de la distance :", distError);
@@ -331,6 +356,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             // while this round-trip was in flight.
             totalDistanceRef.current -= delta;
             totalActiveRef.current -= activeDelta;
+            totalStoppedRef.current -= stoppedDelta;
           },
 
           (err: unknown) => {
@@ -347,6 +373,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             if (err instanceof TimeoutError) {
               totalDistanceRef.current -= delta;
               totalActiveRef.current -= activeDelta;
+              totalStoppedRef.current -= stoppedDelta;
             }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
