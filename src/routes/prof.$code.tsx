@@ -510,6 +510,10 @@ function TeacherDashboard() {
   const { account: user } = useAuth();
   const { profile } = useProfile(user?.id);
   const t = getTerminology(profile?.terminology);
+  // Capture du drapeau and Circuit are hidden from regular teachers for now
+  // — only an admin account can still pick them — while the other two modes
+  // stay fully open.
+  const isAdmin = profile?.role === "admin";
   const [creatingGame, setCreatingGame] = useState(false);
   const [showKindPicker, setShowKindPicker] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
@@ -2730,6 +2734,7 @@ function TeacherDashboard() {
           busy={creatingGame}
           onSelect={(kind) => void createAnotherGame(kind)}
           onClose={() => setShowKindPicker(false)}
+          isAdmin={isAdmin}
         />
         {(placingMode !== "none" || placingFlagForTeam) && (
           <div
@@ -2818,7 +2823,9 @@ function TeacherDashboard() {
             <Gamepad2 className="h-4 w-4" /> Mode de jeu
           </div>
           {isOwner && game?.status === "lobby" ? (
-            <div className={`grid grid-cols-2 gap-2 ${asyncMode ? "" : "sm:grid-cols-4"}`}>
+            <div
+              className={`grid grid-cols-2 gap-2 ${!asyncMode && isAdmin ? "sm:grid-cols-4" : ""}`}
+            >
               <button
                 className="seg-btn"
                 data-active={gameMode === "territoire"}
@@ -2833,7 +2840,7 @@ function TeacherDashboard() {
               >
                 Grille
               </button>
-              {!asyncMode && (
+              {!asyncMode && isAdmin && (
                 <>
                   <button
                     className="seg-btn"

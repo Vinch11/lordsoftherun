@@ -462,6 +462,7 @@ function Home() {
           busy={creating}
           onSelect={(kind) => void createGame(kind)}
           onClose={() => setShowKindPicker(false)}
+          isAdmin={profile?.role === "admin"}
         />
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">
