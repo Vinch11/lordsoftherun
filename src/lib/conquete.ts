@@ -376,6 +376,17 @@ export function rememberMyTeam(teamId: string, code: string): void {
  * QR-code rejoin over what was really just one failed request.
  */
 /**
+ * Thrown by withTimeout when its own clock — not the underlying request —
+ * is what gave up. Callers that retry an additive delta on failure (e.g.
+ * add_distance) must NOT treat this the same as a normal rejection: a
+ * genuine rejection means the request never reached the server, so nothing
+ * was applied and it's safe to resend; a TimeoutError means the request is
+ * still in flight and may well succeed moments later (a slow, congested
+ * database, not a dead one) — resending the same delta then would double it.
+ */
+export class TimeoutError extends Error {}
+
+/**
  * Races a Supabase call against a timeout — the client has none built in,
  * so a stalled request (weak school WiFi) would otherwise hang forever
  * instead of failing and letting the caller retry on the next attempt.
@@ -384,7 +395,7 @@ export function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T> 
   return Promise.race([
     Promise.resolve(promise),
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Délai dépassé (${Math.round(ms / 1000)}s).`)), ms),
+      setTimeout(() => reject(new TimeoutError(`Délai dépassé (${Math.round(ms / 1000)}s).`)), ms),
     ),
   ]);
 }

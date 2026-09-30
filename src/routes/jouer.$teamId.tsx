@@ -47,6 +47,7 @@ import {
   kmhToMs,
   studentStorageKey,
   withTimeout,
+  TimeoutError,
   studentThemeClass,
 } from "@/lib/conquete";
 import { captureTerritory, polygonFromTrack, recomputeScores } from "@/lib/capture";
@@ -614,9 +615,18 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           (err: unknown) => {
             // A stalled request (no error, no success — just never resolves)
             // would otherwise hide the failure forever; the timeout above
-            // turns it into a rejection so it's caught here too.
-            distanceDeltaRef.current += delta;
-            totalActiveRef.current += activeDelta;
+            // turns it into a rejection so it's caught here too. But a
+            // TimeoutError only means OUR clock gave up first — under a
+            // congested database the request can still land moments later
+            // and apply this same delta server-side. Requeuing it here too
+            // would then double-count it (this is how "temps d'arrêt" and
+            // average speed ended up wildly wrong for some teams). Only
+            // requeue on a genuine rejection, where the request never
+            // reached the server and nothing was applied.
+            if (!(err instanceof TimeoutError)) {
+              distanceDeltaRef.current += delta;
+              totalActiveRef.current += activeDelta;
+            }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
               console.error("Échec de synchronisation de la position :", err);

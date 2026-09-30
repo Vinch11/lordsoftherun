@@ -1058,15 +1058,25 @@ function TeacherDashboard() {
   // game can span weeks (mode chacun chez soi) — total_active_s only counts
   // time actually spent in a loop, so it stays a sensible denominator.
   // Falls back to gameElapsedS for teams/games predating that column.
+  //
+  // total_active_s can never legitimately exceed the game's own elapsed
+  // time (nor be negative) — clamped here as a safety net against rows
+  // corrupted by a since-fixed sync bug (an ambiguous request timeout could
+  // get double-counted), which otherwise showed up as a ~0 km/h average
+  // speed next to a real distance, or a multi-day "temps d'arrêt" in a
+  // 20-minute game.
+  function clampedActiveS(activeS: number): number {
+    return Math.max(0, Math.min(activeS, gameElapsedS));
+  }
   function avgSpeedKmh(distanceM: number, activeS: number): number {
-    const seconds = activeS > 0 ? activeS : gameElapsedS;
+    const seconds = clampedActiveS(activeS) || gameElapsedS;
     return seconds > 0 ? (distanceM / seconds) * 3.6 : 0;
   }
   // "Temps d'arrêt" ≈ time the game was running but the team had no loop
   // active (between loops, or simply not moving) — the gap between the
   // game's own clock and the "in a loop" time already tracked above.
   function stoppedS(t: (typeof teams)[number]): number {
-    return Math.max(0, gameElapsedS - t.total_active_s);
+    return Math.max(0, gameElapsedS - clampedActiveS(t.total_active_s));
   }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),

@@ -22,6 +22,7 @@ import {
   haversine,
   kmhToMs,
   withTimeout,
+  TimeoutError,
   studentThemeClass,
 } from "@/lib/conquete";
 import { sendTeamMessage, useMessages } from "@/lib/messages";
@@ -333,6 +334,20 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
           },
 
           (err: unknown) => {
+            // A TimeoutError only means OUR clock gave up first — under a
+            // congested database the request can still land moments later
+            // and apply this same delta server-side. totalDistanceRef only
+            // gets decremented on confirmed success, so left alone here it
+            // would resend this same amount next tick on top of whatever
+            // the server already applied — double-counting it (this is how
+            // "temps d'arrêt" and average speed ended up wildly wrong for
+            // some teams). Discard the tentative amount instead; a genuine
+            // rejection means the request never reached the server, so it's
+            // safe to keep queued for the next attempt.
+            if (err instanceof TimeoutError) {
+              totalDistanceRef.current -= delta;
+              totalActiveRef.current -= activeDelta;
+            }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
               console.error("Échec de synchronisation de la position :", err);
