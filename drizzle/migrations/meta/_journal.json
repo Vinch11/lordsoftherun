@@ -631,6 +631,13 @@
       "when": 1790400002000,
       "tag": "0089_stopped_time_own_accounting",
       "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1790400003000,
+      "tag": "0090_app_settings_drapeau_circuit_toggle",
+      "breakpoints": true
     }
   ]
 }

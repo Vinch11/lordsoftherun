@@ -7,6 +7,7 @@ import { JoinQRCode } from "@/components/JoinQRCode";
 import { GameKindDialog, type GameKind } from "@/components/GameKindDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
+import { useAppSettings } from "@/lib/appSettings";
 import { getTerminology } from "@/lib/terminology";
 import { formatArea, getMyTeams, randomCode, rememberMyTeam, setMyTeams } from "@/lib/conquete";
 
@@ -50,6 +51,8 @@ function Home() {
   const { account, loading } = useAuth();
   const { profile, refresh: refreshProfile } = useProfile(account?.id);
   const t = getTerminology(profile?.terminology);
+  const { settings: appSettings } = useAppSettings();
+  const showDrapeauCircuit = profile?.role === "admin" || appSettings.drapeauCircuitEnabled;
 
   async function toggleTerminology() {
     if (!profile) return;
@@ -462,7 +465,7 @@ function Home() {
           busy={creating}
           onSelect={(kind) => void createGame(kind)}
           onClose={() => setShowKindPicker(false)}
-          isAdmin={profile?.role === "admin"}
+          showDrapeauCircuit={showDrapeauCircuit}
         />
 
         <div className="flex flex-col items-center gap-2 pt-4 text-center">

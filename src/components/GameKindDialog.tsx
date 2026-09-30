@@ -5,10 +5,10 @@ type Props = {
   busy: boolean;
   onSelect: (kind: GameKind) => void;
   onClose: () => void;
-  /** Capture du drapeau and Circuit are hidden from regular teachers for
-   * now — only an admin account can still pick them — so this description
-   * shouldn't advertise modes the teacher won't actually be offered next. */
-  isAdmin: boolean;
+  /** Capture du drapeau and Circuit sit behind an admin-controlled toggle,
+   * off by default — this description shouldn't advertise modes the
+   * teacher won't actually be offered next. */
+  showDrapeauCircuit: boolean;
 };
 
 /**
@@ -17,7 +17,7 @@ type Props = {
  * Grille only, the two modes built for it). Decided once, up front, rather
  * than buried in a toggle discovered after the fact.
  */
-export function GameKindDialog({ open, busy, onSelect, onClose, isAdmin }: Props) {
+export function GameKindDialog({ open, busy, onSelect, onClose, showDrapeauCircuit }: Props) {
   if (!open) return null;
   return (
     <div
@@ -37,7 +37,7 @@ export function GameKindDialog({ open, busy, onSelect, onClose, isAdmin }: Props
           <span className="text-lg font-bold">Individuel</span>
           <span className="text-sm text-muted-foreground">
             Un appareil par équipe.{" "}
-            {isAdmin
+            {showDrapeauCircuit
               ? "Tous les modes : Territoire, Drapeau, Grille, Circuit."
               : "Territoire et Grille."}
           </span>

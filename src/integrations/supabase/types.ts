@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: boolean
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: boolean
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: boolean
+        }
+        Relationships: []
+      }
       circuit_bananas: {
         Row: {
           created_at: string

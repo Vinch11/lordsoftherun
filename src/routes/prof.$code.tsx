@@ -51,6 +51,7 @@ import { useGameState } from "@/lib/useGameState";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile } from "@/lib/profile";
+import { useAppSettings } from "@/lib/appSettings";
 import { getTerminology } from "@/lib/terminology";
 import { sendProfMessage, useMessages } from "@/lib/messages";
 import {
@@ -510,10 +511,13 @@ function TeacherDashboard() {
   const { account: user } = useAuth();
   const { profile } = useProfile(user?.id);
   const t = getTerminology(profile?.terminology);
-  // Capture du drapeau and Circuit are hidden from regular teachers for now
-  // — only an admin account can still pick them — while the other two modes
-  // stay fully open.
   const isAdmin = profile?.role === "admin";
+  // Capture du drapeau and Circuit are hidden behind an admin-controlled
+  // toggle (Réglages, in the admin page) — off by default, while the other
+  // two modes stay fully open. An admin account can always see and pick
+  // them regardless of the toggle, to test before turning it on for everyone.
+  const { settings: appSettings } = useAppSettings();
+  const showDrapeauCircuit = isAdmin || appSettings.drapeauCircuitEnabled;
   const [creatingGame, setCreatingGame] = useState(false);
   const [showKindPicker, setShowKindPicker] = useState(false);
   const [qrFullscreen, setQrFullscreen] = useState(false);
@@ -2734,7 +2738,7 @@ function TeacherDashboard() {
           busy={creatingGame}
           onSelect={(kind) => void createAnotherGame(kind)}
           onClose={() => setShowKindPicker(false)}
-          isAdmin={isAdmin}
+          showDrapeauCircuit={showDrapeauCircuit}
         />
         {(placingMode !== "none" || placingFlagForTeam) && (
           <div
@@ -2824,7 +2828,7 @@ function TeacherDashboard() {
           </div>
           {isOwner && game?.status === "lobby" ? (
             <div
-              className={`grid grid-cols-2 gap-2 ${!asyncMode && isAdmin ? "sm:grid-cols-4" : ""}`}
+              className={`grid grid-cols-2 gap-2 ${!asyncMode && showDrapeauCircuit ? "sm:grid-cols-4" : ""}`}
             >
               <button
                 className="seg-btn"
@@ -2840,7 +2844,7 @@ function TeacherDashboard() {
               >
                 Grille
               </button>
-              {!asyncMode && isAdmin && (
+              {!asyncMode && showDrapeauCircuit && (
                 <>
                   <button
                     className="seg-btn"
