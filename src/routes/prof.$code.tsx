@@ -2,6 +2,7 @@ import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+  Activity,
   ArrowLeft,
   Bell,
   Bike,
@@ -199,6 +200,9 @@ import {
   DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
   DEFAULT_ENDURANCE_SLOW_GRACE_S,
   DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
+  DEFAULT_ENDURANCE_SPEED_REF_KMH,
+  ENDURANCE_YEAR_LEVELS,
+  type EnduranceYearLevel,
   getGameModeDescriptions,
   GAME_MODE_LABELS,
   GRID_CELL_SIZE_WARNING_THRESHOLD_M,
@@ -642,6 +646,8 @@ function TeacherDashboard() {
   const [enduranceSlowPenalty, setEnduranceSlowPenalty] = useState(
     DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
   );
+  const [enduranceYearLevel, setEnduranceYearLevel] = useState<EnduranceYearLevel | null>(null);
+  const [enduranceSpeedRef, setEnduranceSpeedRef] = useState(DEFAULT_ENDURANCE_SPEED_REF_KMH["3e"]);
   const [placingFlagForTeam, setPlacingFlagForTeam] = useState<string | null>(null);
   const [editingLandmarkId, setEditingLandmarkId] = useState<string | null>(null);
   const [forbiddenRadius, setForbiddenRadius] = useState(DEFAULT_FORBIDDEN_RADIUS_M);
@@ -865,6 +871,13 @@ function TeacherDashboard() {
       setEnduranceSlowSpeed(game.endurance_slow_speed_kmh);
       setEnduranceSlowGrace(game.endurance_slow_grace_s);
       setEnduranceSlowPenalty(game.endurance_slow_penalty_m2);
+      setEnduranceYearLevel(game.endurance_year_level as EnduranceYearLevel | null);
+      setEnduranceSpeedRef(
+        game.endurance_speed_ref_kmh ??
+          DEFAULT_ENDURANCE_SPEED_REF_KMH[
+            (game.endurance_year_level as EnduranceYearLevel) ?? "3e"
+          ],
+      );
       setCircuitCheckpointCount(game.circuit_checkpoint_count);
       setCircuitLapCount(game.circuit_lap_count);
       setCircuitCaptureRadius(game.circuit_capture_radius_m);
@@ -1388,6 +1401,10 @@ function TeacherDashboard() {
         distanceKm: tm.total_distance_m / 1000,
         speedKmh: avgSpeedKmh(tm.total_distance_m, tm.total_active_s),
         stoppedSeconds: gameMode === "territoire" || gameMode === "grille" ? stoppedS(tm) : null,
+        activeSeconds:
+          gameMode === "territoire" || gameMode === "grille"
+            ? Math.max(0, gameElapsedS - stoppedS(tm))
+            : null,
         flagsCaptured: gameMode === "capture_drapeau" ? tm.flags_captured : null,
         penaltyLabel:
           tm.penalty_m2 > 0
@@ -1415,6 +1432,9 @@ function TeacherDashboard() {
         showStopped: gameMode === "territoire" || gameMode === "grille",
         showFlags: gameMode === "capture_drapeau",
         totalCapturedLabel,
+        gameElapsedS,
+        enduranceYearLevel,
+        enduranceSpeedRefKmh: enduranceYearLevel ? enduranceSpeedRef : null,
         rankedTeams: validatedRanked.map(toRaw),
         unvalidatedTeams: unvalidated.map(toRaw),
       });
@@ -1967,6 +1987,26 @@ function TeacherDashboard() {
     setEnduranceSlowPenalty(next);
     if (!gameId || !isOwner) return;
     await supabase.from("games").update({ endurance_slow_penalty_m2: next }).eq("id", gameId);
+  }
+
+  async function updateEnduranceYearLevel(next: EnduranceYearLevel | null) {
+    setEnduranceYearLevel(next);
+    // Reset the reference speed to that year's default whenever the level
+    // itself changes — a teacher picking "3e" wants that year's starting
+    // point, not whatever number happened to be left over from before.
+    const nextSpeedRef = next ? DEFAULT_ENDURANCE_SPEED_REF_KMH[next] : enduranceSpeedRef;
+    setEnduranceSpeedRef(nextSpeedRef);
+    if (!gameId || !isOwner) return;
+    await supabase
+      .from("games")
+      .update({ endurance_year_level: next, endurance_speed_ref_kmh: next ? nextSpeedRef : null })
+      .eq("id", gameId);
+  }
+
+  async function updateEnduranceSpeedRef(next: number) {
+    setEnduranceSpeedRef(next);
+    if (!gameId || !isOwner) return;
+    await supabase.from("games").update({ endurance_speed_ref_kmh: next }).eq("id", gameId);
   }
 
   async function updateRunningBonusEnabled(next: boolean) {
@@ -4111,6 +4151,90 @@ function TeacherDashboard() {
                   </>
                 )}
               </>
+            )}
+          </section>
+        )}
+
+        {(gameMode === "territoire" || gameMode === "grille") && (
+          <section
+            className="panel relative flex flex-col gap-3 p-4"
+            {...sectionProps("endurance-score")}
+          >
+            <CollapseToggle
+              id="endurance-score"
+              collapsed={!!collapsed["endurance-score"]}
+              onToggle={toggleSection}
+            />
+            <div className="section-title">
+              <Activity className="h-4 w-4" /> Coefficient d'endurance (rapport)
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Affiché dans le rapport PDF de fin de partie : la régularité (courir sans s'arrêter)
+              compte pour 70%, avec un bonus de vitesse et de distance par rapport au repère
+              ci-dessous. Ce repère est indicatif — il n'existe pas de table nationale/européenne
+              officielle pour une course libre en extérieur — ajustez-le selon votre réalité de
+              terrain.
+            </p>
+            {isOwner ? (
+              <>
+                <label className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">Année</span>
+                  <select
+                    className="field w-auto"
+                    value={enduranceYearLevel ?? ""}
+                    onChange={(e) =>
+                      void updateEnduranceYearLevel(
+                        (e.target.value || null) as EnduranceYearLevel | null,
+                      )
+                    }
+                  >
+                    <option value="">Désactivé</option>
+                    {ENDURANCE_YEAR_LEVELS.map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {enduranceYearLevel && (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold">Vitesse de référence</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        aria-label="Réduire le repère"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateEnduranceSpeedRef(
+                            Math.max(1, Math.round((enduranceSpeedRef - 0.5) * 10) / 10),
+                          )
+                        }
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <span className="display w-20 text-center text-lg">
+                        {enduranceSpeedRef.toFixed(1)} km/h
+                      </span>
+                      <button
+                        aria-label="Augmenter le repère"
+                        className="icon-btn"
+                        onClick={() =>
+                          void updateEnduranceSpeedRef(
+                            Math.min(20, Math.round((enduranceSpeedRef + 0.5) * 10) / 10),
+                          )
+                        }
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              enduranceYearLevel && (
+                <p className="text-sm font-semibold">
+                  Année {enduranceYearLevel} · repère {enduranceSpeedRef.toFixed(1)} km/h
+                </p>
+              )
             )}
           </section>
         )}

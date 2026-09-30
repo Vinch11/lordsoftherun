@@ -77,6 +77,8 @@ export type Game = {
   endurance_slow_speed_kmh: number;
   endurance_slow_grace_s: number;
   endurance_slow_penalty_m2: number;
+  endurance_year_level: string | null;
+  endurance_speed_ref_kmh: number | null;
   circuit_checkpoint_count: number;
   circuit_lap_count: number;
   circuit_capture_radius_m: number;

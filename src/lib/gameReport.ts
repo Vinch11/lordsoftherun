@@ -17,6 +17,7 @@ export type ReportTeamStat = {
   memberCount: number;
   trail: [number, number][];
   narrative: string;
+  enduranceScore: number | null;
 };
 
 export type GameReportHighlight = {
@@ -43,7 +44,36 @@ export type GameReportData = {
   rankingNarrative: string;
   overviewNarrative: string;
   highlights: GameReportHighlight[];
+  enduranceYearLevel: string | null;
+  enduranceSpeedRefKmh: number | null;
+  enduranceAvgScore: number | null;
 };
+
+/**
+ * "Coefficient d'endurance": régularité (time spent actually moving,
+ * without stopping) is the dominant factor — matching the point of an
+ * endurance session, which is to keep running rather than to run fast —
+ * with a capped bonus for reaching a reference pace and the distance that
+ * pace would cover over the game's own duration. Returns null when there's
+ * no reference speed to bonus against (the teacher hasn't set one) or the
+ * mode doesn't track active/stopped time at all.
+ */
+export function computeEnduranceScore(args: {
+  activeSeconds: number;
+  gameElapsedS: number;
+  distanceKm: number;
+  speedKmh: number;
+  speedRefKmh: number | null;
+}): number | null {
+  if (args.gameElapsedS <= 0) return null;
+  const regularity = Math.max(0, Math.min(1, args.activeSeconds / args.gameElapsedS));
+  const regularityPts = regularity * 70;
+  if (!args.speedRefKmh || args.speedRefKmh <= 0) return Math.round(regularityPts);
+  const speedBonus = Math.min(1, args.speedKmh / args.speedRefKmh) * 15;
+  const distanceRefKm = args.speedRefKmh * (args.gameElapsedS / 3600);
+  const distanceBonus = distanceRefKm > 0 ? Math.min(1, args.distanceKm / distanceRefKm) * 15 : 0;
+  return Math.round(Math.min(100, regularityPts + speedBonus + distanceBonus));
+}
 
 /** Projects a lat/lng trail into a flat [0,1]-normalized square (x right, y
  * up) so it can be drawn as a simple route shape without map tiles — a flat
@@ -79,6 +109,7 @@ type RawTeamInput = {
   distanceKm: number;
   speedKmh: number;
   stoppedSeconds: number | null;
+  activeSeconds: number | null;
   flagsCaptured: number | null;
   penaltyLabel: string | null;
   trail: [number, number][];
@@ -96,6 +127,9 @@ export function buildGameReportData(args: {
   showStopped: boolean;
   showFlags: boolean;
   totalCapturedLabel: string | null;
+  gameElapsedS: number;
+  enduranceYearLevel: string | null;
+  enduranceSpeedRefKmh: number | null;
   rankedTeams: RawTeamInput[];
   unvalidatedTeams: RawTeamInput[];
 }): GameReportData {
@@ -117,6 +151,19 @@ export function buildGameReportData(args: {
           ? `${raw.name} finit ${ordinal(rank)}, à ${gapPct}% du score de tête, avec ${speedLine}.`
           : `${raw.name} finit ${ordinal(rank)} avec ${raw.scoreLabel}, à ${speedLine}.`;
     }
+    const enduranceScore =
+      raw.activeSeconds != null
+        ? computeEnduranceScore({
+            activeSeconds: raw.activeSeconds,
+            gameElapsedS: args.gameElapsedS,
+            distanceKm: raw.distanceKm,
+            speedKmh: raw.speedKmh,
+            speedRefKmh: args.enduranceSpeedRefKmh,
+          })
+        : null;
+    if (enduranceScore != null) {
+      narrative += ` Coefficient d'endurance : ${enduranceScore}%.`;
+    }
     return {
       id: raw.id,
       rank,
@@ -134,6 +181,7 @@ export function buildGameReportData(args: {
       memberCount,
       trail: raw.trail,
       narrative,
+      enduranceScore,
     };
   };
 
@@ -221,7 +269,29 @@ export function buildGameReportData(args: {
         }
       }
     }
+    const enduranceTeams = allTeams.filter((t) => t.enduranceScore != null);
+    if (enduranceTeams.length > 0) {
+      const best = [...enduranceTeams].sort(
+        (a, b) => (b.enduranceScore ?? 0) - (a.enduranceScore ?? 0),
+      )[0]!;
+      highlights.push({
+        label: "Meilleur coefficient d'endurance",
+        teamName: best.name,
+        teamColor: best.color,
+        value: `${best.enduranceScore}%`,
+      });
+    }
   }
+
+  const enduranceTeamsForAvg = allTeams.filter(
+    (t): t is ReportTeamStat & { enduranceScore: number } => t.enduranceScore != null,
+  );
+  const enduranceAvgScore = enduranceTeamsForAvg.length
+    ? Math.round(
+        enduranceTeamsForAvg.reduce((sum, t) => sum + t.enduranceScore, 0) /
+          enduranceTeamsForAvg.length,
+      )
+    : null;
 
   return {
     code: args.code,
@@ -240,6 +310,9 @@ export function buildGameReportData(args: {
     rankingNarrative,
     overviewNarrative,
     highlights,
+    enduranceYearLevel: args.enduranceYearLevel,
+    enduranceSpeedRefKmh: args.enduranceSpeedRefKmh,
+    enduranceAvgScore,
   };
 }
 

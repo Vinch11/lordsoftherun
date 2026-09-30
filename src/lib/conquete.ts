@@ -293,6 +293,28 @@ export const DEFAULT_ENDURANCE_SLOW_SPEED_KMH = 3;
 export const DEFAULT_ENDURANCE_SLOW_GRACE_S = 20;
 export const DEFAULT_ENDURANCE_SLOW_PENALTY_M2 = 5;
 
+/**
+ * Year levels for the end-of-game report's "coefficient d'endurance"
+ * (distinct from the in-game endurance penalty above): a continuous
+ * outdoor run of arbitrary duration doesn't map onto any single official
+ * national/European reference table (those use different protocols —
+ * incremental shuttle runs, or fixed-%-VMA fractionated efforts), so these
+ * are indicative starting points — roughly 70-75% of commonly cited
+ * average VMA by age, a sustainable pace for a 20-45 minute continuous
+ * run — meant to be recalibrated by the teacher, not treated as official
+ * norms.
+ */
+export const ENDURANCE_YEAR_LEVELS = ["1re", "2e", "3e", "4e", "5e", "6e"] as const;
+export type EnduranceYearLevel = (typeof ENDURANCE_YEAR_LEVELS)[number];
+export const DEFAULT_ENDURANCE_SPEED_REF_KMH: Record<EnduranceYearLevel, number> = {
+  "1re": 8.5,
+  "2e": 9,
+  "3e": 9.5,
+  "4e": 10,
+  "5e": 10.5,
+  "6e": 11,
+};
+
 export function randomCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
 }

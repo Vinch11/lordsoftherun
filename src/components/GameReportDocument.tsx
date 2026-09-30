@@ -605,11 +605,25 @@ function OverviewPage({
         {data.totalCapturedLabel && (
           <LightStat label="Total conquis (brut)" value={data.totalCapturedLabel} />
         )}
+        {data.enduranceAvgScore != null && (
+          <LightStat
+            label="Coefficient d'endurance (classe)"
+            value={`${data.enduranceAvgScore}%`}
+          />
+        )}
       </div>
-      <div style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 24 }}>
         <Callout lead="Repère clé." accent={COLORS.green} bg={COLORS.greenSoft}>
           {data.overviewNarrative}
         </Callout>
+        {data.enduranceAvgScore != null && (
+          <Callout lead="Coefficient d'endurance.">
+            Régularité (temps couru sans s'arrêter) : 70% du score. Bonus de vitesse et de distance
+            par rapport à un repère de {data.enduranceSpeedRefKmh?.toFixed(1)} km/h (
+            {data.enduranceYearLevel}) : jusqu'à 30% de plus. Ce repère est indicatif, réglé par
+            l'enseignant — l'objectif reste de courir sans s'arrêter, pas d'aller vite.
+          </Callout>
+        )}
       </div>
       <div
         style={{
@@ -751,6 +765,11 @@ function TeamPage({
               value={`${t.memberCount} ${t.memberCount > 1 ? "joueurs" : "joueur"}`}
             />
           </div>
+          {t.enduranceScore != null && (
+            <div style={{ display: "flex", gap: 10 }}>
+              <LightStat label="Coefficient d'endurance" value={`${t.enduranceScore}%`} />
+            </div>
+          )}
         </div>
       </div>
       {t.penaltyLabel && (
