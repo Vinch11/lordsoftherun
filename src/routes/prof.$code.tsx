@@ -13,6 +13,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileText,
   Flag,
   Flame,
   Footprints,
@@ -241,6 +242,7 @@ import {
   type StudentIdMode,
 } from "@/lib/conquete";
 import { StudentThemePreview } from "@/components/StudentThemePreview";
+import { buildGameReportData } from "@/lib/gameReport";
 
 type DurationUnit = "minutes" | "heures" | "jours";
 const UNIT_TO_MINUTES: Record<DurationUnit, number> = { minutes: 1, heures: 60, jours: 1440 };
@@ -661,6 +663,7 @@ function TeacherDashboard() {
   const [view, setView] = useState<"dashboard" | "overview">(spectateur ? "overview" : "dashboard");
   const [teamCount, setTeamCount] = useState(4);
   const [rosterBusy, setRosterBusy] = useState(false);
+  const [reportBusy, setReportBusy] = useState(false);
   const [newStudentName, setNewStudentName] = useState("");
   const [wizardPlayers, setWizardPlayers] = useState<ParsedStudent[]>([]);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -1347,6 +1350,76 @@ function TeacherDashboard() {
     }
 
     downloadCsv(`conquete-${code}.csv`, rows);
+  }
+
+  async function onExportGameReportPdf() {
+    setReportBusy(true);
+    try {
+      const freshTrails = await refreshTeamTrails();
+      const trailFor = (teamId: string) =>
+        freshTrails.find((tr) => tr.team_id === teamId)?.points ?? [];
+      const memberCountByTeamId = new Map<string, number>();
+      for (const s of students) {
+        if (!s.present || !s.team_id) continue;
+        memberCountByTeamId.set(s.team_id, (memberCountByTeamId.get(s.team_id) ?? 0) + 1);
+      }
+      const scoreLabelFor = (tm: (typeof teams)[number]) =>
+        gameMode === "circuit"
+          ? formatTeamScore(teamScore(tm))
+          : gameMode === "grille"
+            ? `${Math.round(teamScore(tm))} case${Math.round(teamScore(tm)) > 1 ? "s" : ""}`
+            : formatArea(teamScore(tm));
+      const toRaw = (tm: (typeof teams)[number]) => ({
+        id: tm.id,
+        name: tm.name,
+        color: tm.color,
+        scoreLabel: scoreLabelFor(tm),
+        scoreValue: teamScore(tm),
+        distanceKm: tm.total_distance_m / 1000,
+        speedKmh: avgSpeedKmh(tm.total_distance_m, tm.total_active_s),
+        stoppedSeconds: gameMode === "territoire" || gameMode === "grille" ? stoppedS(tm) : null,
+        flagsCaptured: gameMode === "capture_drapeau" ? tm.flags_captured : null,
+        penaltyLabel:
+          tm.penalty_m2 > 0
+            ? `Pénalité de ${formatArea(tm.penalty_m2)} appliquée pendant la partie (zone interdite, arrêt prolongé...).`
+            : null,
+        trail: trailFor(tm.id),
+      });
+      const totalCapturedLabel =
+        gameMode === "territoire"
+          ? formatArea(teams.reduce((sum, tm) => sum + tm.total_captured_m2, 0))
+          : null;
+      const reportData = buildGameReportData({
+        code,
+        gameName: game?.name || `Partie ${code}`,
+        modeLabel: GAME_MODE_LABELS[gameMode],
+        dateLabel: new Date(game?.started_at ?? Date.now()).toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+        durationLabel: formatCountdown(gameElapsedS),
+        participantNounPlural: t.participantNounPlural,
+        memberCountByTeamId,
+        totalParticipants: students.filter((s) => s.present && s.team_id).length,
+        showStopped: gameMode === "territoire" || gameMode === "grille",
+        showFlags: gameMode === "capture_drapeau",
+        totalCapturedLabel,
+        rankedTeams: validatedRanked.map(toRaw),
+        unvalidatedTeams: unvalidated.map(toRaw),
+      });
+      // Dynamically imported: jsPDF + html2canvas-pro are heavy (~200 KB
+      // gzipped) and only ever needed once, at the very end of a game — not
+      // worth adding to every teacher's initial dashboard load.
+      const { exportGameReportPdf } = await import("@/lib/gameReportPdf");
+      await exportGameReportPdf(reportData, `rapport-conquete-${code}.pdf`);
+    } catch (e) {
+      toast.error(
+        `Échec de la génération du rapport : ${e instanceof Error ? e.message : "erreur inconnue"}`,
+      );
+    } finally {
+      setReportBusy(false);
+    }
   }
 
   async function start() {
@@ -5883,6 +5956,16 @@ function TeacherDashboard() {
                 </div>
               ))}
             </div>
+          )}
+          {finished && (
+            <button
+              className="btn-huge btn-huge-dark mt-2"
+              onClick={() => void onExportGameReportPdf()}
+              disabled={reportBusy}
+            >
+              <FileText className="h-5 w-5" />
+              {reportBusy ? "Génération du rapport…" : "Rapport PDF de la partie"}
+            </button>
           )}
           {finished && students.length > 0 && (
             <button className="btn-huge btn-huge-dark mt-2" onClick={exportIdoceoCsv}>
