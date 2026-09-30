@@ -186,6 +186,12 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   // teammates playing at once from separate phones can't clobber each
   // other's progress with a stale read-modify-write.
   const distanceDeltaRef = useRef(0);
+  // Time actually spent moving since the last flush — was only ever sent
+  // once, as the whole loop's duration, when a loop closed. That left every
+  // team's "temps d'arrêt" stat identical (all stuck at 0 active seconds)
+  // until their first loop actually closed. Now accumulated continuously,
+  // the same way Grille already does, so it reflects real progress mid-loop.
+  const totalActiveRef = useRef(0);
   const myStudentIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(studentStorageKey(teamId)) : null,
   );
@@ -424,13 +430,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     runningRef.current = false;
     setRunning(false);
     const elapsedS = (Date.now() - loopStartRef.current) / 1000;
-    if (elapsedS > 0) {
-      void supabase.rpc("add_distance", {
-        _team_id: teamId,
-        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
-        _delta_active_s: elapsedS,
-      });
-    }
     if (!poly) {
       toast.error("Boucle invalide, réessayez.");
     } else {
@@ -516,6 +515,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
             distanceDeltaRef.current += dist;
+            totalActiveRef.current += Math.min(dt, 30);
           }
         }
       } else {
@@ -556,6 +556,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
 
         const delta = distanceDeltaRef.current;
         distanceDeltaRef.current = 0;
+        const activeDelta = totalActiveRef.current;
+        totalActiveRef.current = 0;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -578,6 +580,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               // and fall back to the shared team position so the blip stays
               // alive for a team with only this one device connected.
               distanceDeltaRef.current += delta;
+              totalActiveRef.current += activeDelta;
               void supabase
                 .from("teams")
                 .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
@@ -592,15 +595,19 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               return;
             }
             syncFailWarnedRef.current = false;
-            if (delta > 0) {
+            if (delta > 0 || activeDelta > 0) {
               void supabase
                 .rpc("add_distance", {
                   _team_id: teamId,
                   ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
                   _delta_m: delta,
+                  _delta_active_s: activeDelta,
                 })
                 .then(({ error: distError }) => {
-                  if (distError) distanceDeltaRef.current += delta;
+                  if (distError) {
+                    distanceDeltaRef.current += delta;
+                    totalActiveRef.current += activeDelta;
+                  }
                 });
             }
           },
@@ -609,6 +616,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             // would otherwise hide the failure forever; the timeout above
             // turns it into a rejection so it's caught here too.
             distanceDeltaRef.current += delta;
+            totalActiveRef.current += activeDelta;
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;
               console.error("Échec de synchronisation de la position :", err);
@@ -921,7 +929,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   }
 
   function abortLoop() {
-    const elapsedS = (Date.now() - loopStartRef.current) / 1000;
     runningRef.current = false;
     trackRef.current = [];
     hasLeftStartRef.current = false;
@@ -935,13 +942,6 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
     }
     setDistance(0);
     void supabase.from("teams").update({ loop_active: false, current_trail: [] }).eq("id", teamId);
-    if (elapsedS > 0) {
-      void supabase.rpc("add_distance", {
-        _team_id: teamId,
-        ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
-        _delta_active_s: elapsedS,
-      });
-    }
   }
 
   function finishLoopManually() {
