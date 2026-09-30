@@ -12,8 +12,24 @@ import type { GameReportData } from "@/lib/gameReport";
  * which the ambient stylesheet uses everywhere and the standard html2canvas
  * can't parse), then assembles a multi-page PDF at those exact page
  * dimensions so the retina-scale capture is downsampled to normal size.
+ *
+ * `targetWindow`, when given, should be a tab the caller opened
+ * *synchronously* in direct response to the click (before any of this
+ * function's awaits) — it gets navigated to the finished PDF once ready.
+ * iOS Safari (including installed PWAs, which is how most teachers use
+ * this app) silently ignores a forced `<a download>` click, which is what
+ * jsPDF's own .save() relies on, and every browser blocks a *new*
+ * window.open() once it's no longer tied to the original user gesture —
+ * exactly what happens after this function's several awaits. Pre-opening
+ * the tab sidesteps both: the browser shows something immediately instead
+ * of appearing to do nothing for several seconds, and the later
+ * navigation isn't a new popup.
  */
-export async function exportGameReportPdf(data: GameReportData, filename: string): Promise<void> {
+export async function exportGameReportPdf(
+  data: GameReportData,
+  filename: string,
+  targetWindow?: Window | null,
+): Promise<void> {
   const container = document.createElement("div");
   container.style.position = "fixed";
   container.style.left = "-10000px";
@@ -50,7 +66,19 @@ export async function exportGameReportPdf(data: GameReportData, filename: string
       pdf.addImage(img, "JPEG", 0, 0, PAGE_W, PAGE_H);
     }
 
-    pdf.save(filename);
+    if (targetWindow && !targetWindow.closed) {
+      const blob = pdf.output("blob");
+      const url = URL.createObjectURL(blob);
+      targetWindow.location.href = url;
+      // The tab needs the URL to stay alive after it navigates — revoke it
+      // well after that navigation has had time to complete, not on a
+      // fixed short timer tied to this function returning.
+      setTimeout(() => URL.revokeObjectURL(url), 5 * 60_000);
+    } else {
+      // No tab to navigate (blocked, or none was passed) — fall back to
+      // jsPDF's own download, which at least works outside iOS Safari/PWA.
+      pdf.save(filename);
+    }
   } finally {
     root.unmount();
     container.remove();

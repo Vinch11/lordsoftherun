@@ -1376,6 +1376,17 @@ function TeacherDashboard() {
   }
 
   async function onExportGameReportPdf() {
+    // Opened synchronously, before any await below — see the long comment
+    // in exportGameReportPdf for why (iOS Safari/PWA silently drops a
+    // forced download, and a window.open() after this function starts
+    // awaiting things is no longer tied to the click and gets blocked).
+    const reportWindow = window.open("", "_blank");
+    if (reportWindow) {
+      reportWindow.document.title = "Rapport en cours…";
+      reportWindow.document.body.style.cssText =
+        "font-family:system-ui,sans-serif;padding:40px;color:#444";
+      reportWindow.document.body.textContent = "Génération du rapport en cours…";
+    }
     setReportBusy(true);
     try {
       const freshTrails = await refreshTeamTrails();
@@ -1442,8 +1453,9 @@ function TeacherDashboard() {
       // gzipped) and only ever needed once, at the very end of a game — not
       // worth adding to every teacher's initial dashboard load.
       const { exportGameReportPdf } = await import("@/lib/gameReportPdf");
-      await exportGameReportPdf(reportData, `rapport-conquete-${code}.pdf`);
+      await exportGameReportPdf(reportData, `rapport-conquete-${code}.pdf`, reportWindow);
     } catch (e) {
+      reportWindow?.close();
       toast.error(
         `Échec de la génération du rapport : ${e instanceof Error ? e.message : "erreur inconnue"}`,
       );
