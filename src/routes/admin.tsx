@@ -1,11 +1,12 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Gamepad2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Gamepad2, Settings, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfile, type Profile } from "@/lib/profile";
 import { GAME_MODE_LABELS, type GameMode } from "@/lib/conquete";
+import { setDrapeauCircuitEnabled, useAppSettings } from "@/lib/appSettings";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -33,6 +34,7 @@ function AdminPage() {
   const [loadingTeachers, setLoadingTeachers] = useState(true);
   const [games, setGames] = useState<AdminGame[]>([]);
   const [loadingGames, setLoadingGames] = useState(true);
+  const { settings: appSettings, refresh: refreshAppSettings } = useAppSettings();
 
   const loading = authLoading || profileLoading;
   const isAdmin = profile?.role === "admin";
@@ -112,6 +114,18 @@ function AdminPage() {
     void refresh();
   }
 
+  async function toggleDrapeauCircuit(next: boolean) {
+    try {
+      await setDrapeauCircuitEnabled(next);
+      toast.success(
+        next ? "Drapeau et Circuit réactivés pour tous." : "Drapeau et Circuit masqués.",
+      );
+      void refreshAppSettings();
+    } catch {
+      toast.error("Action impossible.");
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center px-5">
@@ -157,6 +171,27 @@ function AdminPage() {
             <span className="stat-value">{runningCount}</span>
           </div>
         </div>
+
+        <section className="panel flex flex-col gap-3 p-4">
+          <div className="section-title">
+            <Settings className="h-4 w-4" /> Réglages
+          </div>
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold">
+              Modes Drapeau et Circuit
+              <span className="block text-xs font-normal text-muted-foreground">
+                Masqués pour les profs tant que c'est désactivé — visibles pour vous dans tous les
+                cas.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              className="h-5 w-5 shrink-0"
+              checked={appSettings.drapeauCircuitEnabled}
+              onChange={(e) => void toggleDrapeauCircuit(e.target.checked)}
+            />
+          </label>
+        </section>
 
         <section className="panel flex flex-col gap-1 p-4">
           <div className="section-title mb-2">En attente d'approbation ({pending.length})</div>
