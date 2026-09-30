@@ -119,6 +119,7 @@ export type Team = {
   loop_active: boolean;
   loop_started_at: string | null;
   total_active_s: number;
+  total_stopped_s: number;
 };
 
 export type Territory = {
