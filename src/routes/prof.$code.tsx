@@ -5785,40 +5785,53 @@ function TeacherDashboard() {
           {(finished ? validatedRanked : ranked).map((t, i) => (
             <div
               key={t.id}
-              className={`flex items-center gap-3 rounded-xl border-b border-border px-2 py-3 last:border-0 ${
+              className={`flex flex-col gap-1 rounded-xl border-b border-border px-2 py-3 last:border-0 ${
                 i === 0 ? "rank-gold" : ""
               }`}
             >
-              <span className="display w-6 text-xl text-muted-foreground">
-                {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
-              </span>
-              <span
-                className="h-6 w-6 shrink-0 rounded-full border-2 border-foreground"
-                style={{ backgroundColor: t.color }}
-              />
-              <div className="flex min-w-0 flex-1 items-center gap-2">
+              <div className="flex items-center gap-3">
+                <span className="display w-6 shrink-0 text-xl text-muted-foreground">
+                  {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
+                </span>
+                <span
+                  className="h-6 w-6 shrink-0 rounded-full border-2 border-foreground"
+                  style={{ backgroundColor: t.color }}
+                />
                 <span className="min-w-0 flex-1 truncate text-lg font-semibold">{t.name}</span>
-                {t.penalty_m2 > 0 && (
-                  <span className="shrink-0 text-xs font-semibold text-destructive">
-                    -{formatArea(t.penalty_m2)}
-                  </span>
-                )}
-                {graceStatusFor(t).remainingS != null && (
-                  <span className="shrink-0 text-xs font-semibold text-accent">
-                    ⏳ {formatClock(graceStatusFor(t).remainingS!)}
-                  </span>
-                )}
-              </div>
-              <span className="flex flex-col items-end">
-                <span className="display text-xl tabular-nums">
+                <span className="display shrink-0 text-xl tabular-nums">
                   {gameMode === "circuit"
                     ? formatTeamScore(teamScore(t))
                     : gameMode === "grille"
                       ? `${Math.round(teamScore(t))} case${Math.round(teamScore(t)) > 1 ? "s" : ""}`
                       : formatArea(teamScore(t))}
                 </span>
+                <button
+                  type="button"
+                  aria-label={
+                    selectedTrailTeamId === t.id
+                      ? "Masquer le trajet"
+                      : `Voir le trajet de ${t.name}`
+                  }
+                  aria-pressed={selectedTrailTeamId === t.id}
+                  className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
+                  onClick={() => void toggleTrailTeam(t.id, t.name)}
+                >
+                  <RouteIcon className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-xs">
+                {t.penalty_m2 > 0 && (
+                  <span className="font-semibold text-destructive">
+                    -{formatArea(t.penalty_m2)}
+                  </span>
+                )}
+                {graceStatusFor(t).remainingS != null && (
+                  <span className="font-semibold text-accent">
+                    ⏳ {formatClock(graceStatusFor(t).remainingS!)}
+                  </span>
+                )}
                 {gameMode === "capture_drapeau" && (
-                  <span className="text-xs text-muted-foreground">🚩 {t.flags_captured}</span>
+                  <span className="text-muted-foreground">🚩 {t.flags_captured}</span>
                 )}
                 <span className="label-xs">
                   {(t.total_distance_m / 1000).toFixed(2)} km ·{" "}
@@ -5826,18 +5839,7 @@ function TeacherDashboard() {
                   {(gameMode === "territoire" || gameMode === "grille") &&
                     ` · ⏸ ${formatCountdown(stoppedS(t))}`}
                 </span>
-              </span>
-              <button
-                type="button"
-                aria-label={
-                  selectedTrailTeamId === t.id ? "Masquer le trajet" : `Voir le trajet de ${t.name}`
-                }
-                aria-pressed={selectedTrailTeamId === t.id}
-                className={`icon-btn shrink-0 ${selectedTrailTeamId === t.id ? "bg-accent text-accent-foreground" : ""}`}
-                onClick={() => void toggleTrailTeam(t.id, t.name)}
-              >
-                <RouteIcon className="h-4 w-4" />
-              </button>
+              </div>
             </div>
           ))}
           {finished && unvalidated.length > 0 && (
