@@ -359,6 +359,14 @@ export default function GameMap({
   const flagLayer = useRef<L.LayerGroup | null>(null);
   const gridZoneLayer = useRef<L.LayerGroup | null>(null);
   const gridCellLayer = useRef<L.LayerGroup | null>(null);
+  // Grid cells render as one shape per *claimed* cell, which — over a long
+  // game with a small cell size — can reach into the thousands. Leaflet's
+  // default SVG renderer gives each shape its own DOM node, and enough of
+  // those crashes the tab outright on weaker Android phones. Cells have no
+  // per-shape CSS effect (unlike territory polygons/zone glows elsewhere on
+  // this map), so routing just this layer through a single shared canvas
+  // costs nothing visually while scaling to any cell count.
+  const gridCanvasRenderer = useRef<L.Canvas | null>(null);
   const checkpointLayer = useRef<L.LayerGroup | null>(null);
   const boxLayer = useRef<L.LayerGroup | null>(null);
   const bananaLayer = useRef<L.LayerGroup | null>(null);
@@ -400,6 +408,7 @@ export default function GameMap({
     landmarkLayer.current = L.layerGroup().addTo(map);
     flagLayer.current = L.layerGroup().addTo(map);
     gridCellLayer.current = L.layerGroup().addTo(map);
+    gridCanvasRenderer.current = L.canvas({ padding: 0.5 });
     gridZoneLayer.current = L.layerGroup().addTo(map);
     checkpointLayer.current = L.layerGroup().addTo(map);
     boxLayer.current = L.layerGroup().addTo(map);
@@ -608,6 +617,7 @@ export default function GameMap({
     layer.clearLayers();
     for (const c of gridCells) {
       L.rectangle(cellRectBounds(c.lat, c.lng, c.sizeM), {
+        renderer: gridCanvasRenderer.current ?? undefined,
         color: c.color,
         weight: 1,
         fillColor: c.color,
