@@ -645,6 +645,20 @@
       "when": 1790400004000,
       "tag": "0091_app_settings_grant_update",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1790852388409,
+      "tag": "0092_app_settings_drapeau_circuit_toggle",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1790852399177,
+      "tag": "0093_app_settings_grant_update",
+      "breakpoints": true
     }
   ]
 }
