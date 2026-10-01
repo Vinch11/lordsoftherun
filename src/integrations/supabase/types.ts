@@ -14,24 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      app_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          value: boolean
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          value?: boolean
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          value?: boolean
-        }
-        Relationships: []
-      }
       circuit_bananas: {
         Row: {
           created_at: string
@@ -309,11 +291,9 @@ export type Database = {
           endurance_slow_grace_s: number
           endurance_slow_penalty_m2: number
           endurance_slow_speed_kmh: number
-          endurance_speed_ref_kmh: number | null
           endurance_stop_grace_s: number
           endurance_stop_penalty_m2: number
           endurance_stop_speed_kmh: number
-          endurance_year_level: string | null
           forbidden_zone_running_only: boolean
           grace_enabled: boolean
           grace_ends_at: string | null
@@ -388,11 +368,9 @@ export type Database = {
           endurance_slow_grace_s?: number
           endurance_slow_penalty_m2?: number
           endurance_slow_speed_kmh?: number
-          endurance_speed_ref_kmh?: number | null
           endurance_stop_grace_s?: number
           endurance_stop_penalty_m2?: number
           endurance_stop_speed_kmh?: number
-          endurance_year_level?: string | null
           forbidden_zone_running_only?: boolean
           grace_enabled?: boolean
           grace_ends_at?: string | null
@@ -467,11 +445,9 @@ export type Database = {
           endurance_slow_grace_s?: number
           endurance_slow_penalty_m2?: number
           endurance_slow_speed_kmh?: number
-          endurance_speed_ref_kmh?: number | null
           endurance_stop_grace_s?: number
           endurance_stop_penalty_m2?: number
           endurance_stop_speed_kmh?: number
-          endurance_year_level?: string | null
           forbidden_zone_running_only?: boolean
           grace_enabled?: boolean
           grace_ends_at?: string | null
@@ -1197,7 +1173,6 @@ export type Database = {
           total_active_s: number
           total_captured_m2: number
           total_distance_m: number
-          total_stopped_s: number
           updated_at: string
           validated: boolean
         }
@@ -1228,7 +1203,6 @@ export type Database = {
           total_active_s?: number
           total_captured_m2?: number
           total_distance_m?: number
-          total_stopped_s?: number
           updated_at?: string
           validated?: boolean
         }
@@ -1259,7 +1233,6 @@ export type Database = {
           total_active_s?: number
           total_captured_m2?: number
           total_distance_m?: number
-          total_stopped_s?: number
           updated_at?: string
           validated?: boolean
         }
@@ -1398,7 +1371,6 @@ export type Database = {
         Args: {
           _delta_active_s?: number
           _delta_m?: number
-          _delta_stopped_s?: number
           _student_id?: string
           _team_id: string
         }
