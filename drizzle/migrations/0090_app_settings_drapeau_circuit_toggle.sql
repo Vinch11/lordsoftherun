@@ -23,11 +23,11 @@ CREATE POLICY "app_settings readable by authenticated" ON public.app_settings
   FOR SELECT TO authenticated
   USING (true);
 
--- public.is_admin() already exists (see 0006_admin_approval.sql) as a
+-- private.is_admin() already exists (see 0006_admin_approval.sql) as a
 -- SECURITY DEFINER helper so this policy doesn't recursively re-check
 -- profiles' own RLS while evaluating.
 DROP POLICY IF EXISTS "app_settings updatable by admin" ON public.app_settings;
 CREATE POLICY "app_settings updatable by admin" ON public.app_settings
   FOR UPDATE TO authenticated
-  USING (public.is_admin(auth.uid()))
-  WITH CHECK (public.is_admin(auth.uid()));
+  USING (private.is_admin(auth.uid()))
+  WITH CHECK (private.is_admin(auth.uid()));
