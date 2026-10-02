@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Crosshair, Flag, MessageCircle, Send, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
 import { PhotoRequestCard } from "@/components/PhotoRequestCard";
@@ -518,20 +519,22 @@ export function CircuitPlayView({ gameId, teamId }: { gameId: string; teamId: st
       className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
     >
       <div className="absolute inset-0">
-        <MapCanvas
-          center={pos}
-          teams={teams}
-          territories={[]}
-          checkpoints={mapCheckpoints}
-          circuitBoxes={mapBoxes}
-          bananas={mapBananas}
-          mapStyle={game?.map_style}
-          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
-          follow={followMe}
-          onUserPan={() => setFollowMe(false)}
-          onRecenter={() => setFollowMe(true)}
-          hudFrame
-        />
+        <MapErrorBoundary>
+          <MapCanvas
+            center={pos}
+            teams={teams}
+            territories={[]}
+            checkpoints={mapCheckpoints}
+            circuitBoxes={mapBoxes}
+            bananas={mapBananas}
+            mapStyle={game?.map_style}
+            markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
+            follow={followMe}
+            onUserPan={() => setFollowMe(false)}
+            onRecenter={() => setFollowMe(true)}
+            hudFrame
+          />
+        </MapErrorBoundary>
       </div>
 
       <div

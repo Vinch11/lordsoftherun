@@ -22,6 +22,7 @@ import { FinalResults } from "@/components/FinalResults";
 
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
@@ -1012,24 +1013,26 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
       className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
     >
       <div className="absolute inset-0">
-        <MapCanvas
-          center={pos}
-          teams={mapTeams}
-          territories={mapTerritories}
-          trail={track}
-          trailColor={myColor}
-          returnZone={returnZone}
-          landmarks={mapLandmarks}
-          forbiddenZones={mapForbiddenZones}
-          traps={myTraps}
-          mapStyle={game?.map_style}
-          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
-          follow={followMe}
-          onUserPan={() => setFollowMe(false)}
-          onRecenter={() => setFollowMe(true)}
-          onMapClick={trapArmed ? (lat, lng) => void handlePlaceTrap(lat, lng) : undefined}
-          hudFrame
-        />
+        <MapErrorBoundary>
+          <MapCanvas
+            center={pos}
+            teams={mapTeams}
+            territories={mapTerritories}
+            trail={track}
+            trailColor={myColor}
+            returnZone={returnZone}
+            landmarks={mapLandmarks}
+            forbiddenZones={mapForbiddenZones}
+            traps={myTraps}
+            mapStyle={game?.map_style}
+            markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
+            follow={followMe}
+            onUserPan={() => setFollowMe(false)}
+            onRecenter={() => setFollowMe(true)}
+            onMapClick={trapArmed ? (lat, lng) => void handlePlaceTrap(lat, lng) : undefined}
+            hudFrame
+          />
+        </MapErrorBoundary>
       </div>
 
       {trapArmed && (
