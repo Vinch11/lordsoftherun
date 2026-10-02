@@ -4201,11 +4201,11 @@ function TeacherDashboard() {
               <Activity className="h-4 w-4" /> Coefficient d'endurance (rapport)
             </div>
             <p className="text-sm text-muted-foreground">
-              Affiché dans le rapport PDF de fin de partie : la régularité (courir sans s'arrêter)
-              compte pour 70%, avec un bonus de vitesse et de distance par rapport au repère
-              ci-dessous. Ce repère est indicatif — il n'existe pas de table nationale/européenne
-              officielle pour une course libre en extérieur — ajustez-le selon votre réalité de
-              terrain.
+              Affiché dans le rapport PDF de fin de partie : combine le temps passé à bouger sans
+              s'arrêter et l'allure tenue par rapport au repère ci-dessous — la régularité pèse plus
+              lourd, mais marcher sans jamais s'arrêter ne suffit plus à obtenir un score élevé. Ce
+              repère est indicatif — il n'existe pas de table nationale/européenne officielle pour
+              une course libre en extérieur — ajustez-le selon votre réalité de terrain.
             </p>
             {isOwner ? (
               <>

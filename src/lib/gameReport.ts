@@ -50,29 +50,32 @@ export type GameReportData = {
 };
 
 /**
- * "Coefficient d'endurance": régularité (time spent actually moving,
- * without stopping) is the dominant factor — matching the point of an
- * endurance session, which is to keep running rather than to run fast —
- * with a capped bonus for reaching a reference pace and the distance that
- * pace would cover over the game's own duration. Returns null when there's
- * no reference speed to bonus against (the teacher hasn't set one) or the
- * mode doesn't track active/stopped time at all.
+ * "Coefficient d'endurance": how much of the game the team spent moving
+ * (not stopped) weighted against how close their pace came to the
+ * reference speed — a team that walks the whole game without ever
+ * stopping should NOT score the same as one that runs the whole game
+ * without stopping, even though neither one "stopped". A plain weighted
+ * average can't express that (a team stuck at 0 km/h but never flagged as
+ * "stopped" would still average out to a decent score); a product of the
+ * two ratios can, since either one being poor drags the whole score down.
+ * Régularité still dominates in practice — it's raised to a higher power
+ * than pace — matching the point of an endurance session: keep moving
+ * first, keep pace second. Returns null when there's no reference speed
+ * to compare against (the teacher hasn't set one) or the mode doesn't
+ * track active/stopped time at all.
  */
 export function computeEnduranceScore(args: {
   activeSeconds: number;
   gameElapsedS: number;
-  distanceKm: number;
   speedKmh: number;
   speedRefKmh: number | null;
 }): number | null {
   if (args.gameElapsedS <= 0) return null;
   const regularity = Math.max(0, Math.min(1, args.activeSeconds / args.gameElapsedS));
-  const regularityPts = regularity * 70;
-  if (!args.speedRefKmh || args.speedRefKmh <= 0) return Math.round(regularityPts);
-  const speedBonus = Math.min(1, args.speedKmh / args.speedRefKmh) * 15;
-  const distanceRefKm = args.speedRefKmh * (args.gameElapsedS / 3600);
-  const distanceBonus = distanceRefKm > 0 ? Math.min(1, args.distanceKm / distanceRefKm) * 15 : 0;
-  return Math.round(Math.min(100, regularityPts + speedBonus + distanceBonus));
+  if (!args.speedRefKmh || args.speedRefKmh <= 0) return Math.round(regularity * 100);
+  const pace = Math.max(0, Math.min(1, args.speedKmh / args.speedRefKmh));
+  const score = 100 * regularity ** 0.7 * pace ** 0.3;
+  return Math.round(Math.min(100, score));
 }
 
 /** Projects a lat/lng trail into a flat [0,1]-normalized square (x right, y
@@ -156,7 +159,6 @@ export function buildGameReportData(args: {
         ? computeEnduranceScore({
             activeSeconds: raw.activeSeconds,
             gameElapsedS: args.gameElapsedS,
-            distanceKm: raw.distanceKm,
             speedKmh: raw.speedKmh,
             speedRefKmh: args.enduranceSpeedRefKmh,
           })
