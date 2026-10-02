@@ -550,7 +550,15 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         // was — capping it here was quietly swallowing most of a stop
         // whenever the gap was more than 30s, making "temps d'arrêt" look
         // implausibly small next to the game's actual elapsed time.
-        if (dtRaw > 0.5 && distRaw <= 2) {
+        //
+        // But the interval has to be long enough that GPS noise (a few
+        // meters, roughly constant regardless of elapsed time) can't be
+        // mistaken for "didn't move" — two fixes barely a second apart
+        // during a genuine jog can easily land under the 2m floor just from
+        // ordinary position jitter, which was inflating "temps d'arrêt" for
+        // teams that never actually stopped. Below ~2s, skip the interval
+        // entirely rather than guess.
+        if (dtRaw > 2 && distRaw <= 2) {
           totalStoppedRef.current += dtRaw;
         }
       }
