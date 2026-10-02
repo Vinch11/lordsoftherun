@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Crosshair, Flag as FlagIcon, MessageCircle, Send, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
@@ -526,21 +527,23 @@ export function CtfPlayView({ gameId, teamId }: { gameId: string; teamId: string
       className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
     >
       <div className="absolute inset-0">
-        <MapCanvas
-          center={pos}
-          teams={teams}
-          territories={[]}
-          returnZone={returnZone}
-          landmarks={mapLandmarks}
-          forbiddenZones={mapForbiddenZones}
-          flags={mapFlags}
-          mapStyle={game?.map_style}
-          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
-          follow={followMe}
-          onUserPan={() => setFollowMe(false)}
-          onRecenter={() => setFollowMe(true)}
-          hudFrame
-        />
+        <MapErrorBoundary>
+          <MapCanvas
+            center={pos}
+            teams={teams}
+            territories={[]}
+            returnZone={returnZone}
+            landmarks={mapLandmarks}
+            forbiddenZones={mapForbiddenZones}
+            flags={mapFlags}
+            mapStyle={game?.map_style}
+            markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
+            follow={followMe}
+            onUserPan={() => setFollowMe(false)}
+            onRecenter={() => setFollowMe(true)}
+            hudFrame
+          />
+        </MapErrorBoundary>
       </div>
 
       <div

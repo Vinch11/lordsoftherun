@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { JoinQRCode } from "@/components/JoinQRCode";
 import { useGameState } from "@/lib/useGameState";
 
@@ -2467,25 +2468,27 @@ function TeacherDashboard() {
     return (
       <main className="relative h-[100dvh] w-full overflow-hidden bg-black">
         <div className="absolute inset-0">
-          <MapCanvas
-            center={center}
-            teams={mapTeams}
-            territories={mapTerritories}
-            returnZone={returnZone}
-            landmarks={mapLandmarks}
-            forbiddenZones={mapForbiddenZones}
-            flags={mapFlags}
-            gridZone={gridZone}
-            gridCells={mapGridCells}
-            checkpoints={mapCheckpoints}
-            circuitBoxes={mapCircuitBoxes}
-            bananas={mapBananas}
-            gridBonuses={mapGridBonuses}
-            traps={mapTraps}
-            mapStyle={game?.map_style}
-            trail={selectedTrailPoints}
-            trailColor={selectedTrailColor}
-          />
+          <MapErrorBoundary>
+            <MapCanvas
+              center={center}
+              teams={mapTeams}
+              territories={mapTerritories}
+              returnZone={returnZone}
+              landmarks={mapLandmarks}
+              forbiddenZones={mapForbiddenZones}
+              flags={mapFlags}
+              gridZone={gridZone}
+              gridCells={mapGridCells}
+              checkpoints={mapCheckpoints}
+              circuitBoxes={mapCircuitBoxes}
+              bananas={mapBananas}
+              gridBonuses={mapGridBonuses}
+              traps={mapTraps}
+              mapStyle={game?.map_style}
+              trail={selectedTrailPoints}
+              trailColor={selectedTrailColor}
+            />
+          </MapErrorBoundary>
         </div>
 
         {/* Broadcast-style vignette so the HUD stays legible over a live map,
@@ -2643,49 +2646,51 @@ function TeacherDashboard() {
   return (
     <main className="flex min-h-screen flex-col lg:h-[100dvh] lg:flex-row lg:overflow-hidden">
       <div className="relative h-[45vh] min-h-[280px] w-full lg:h-full lg:min-w-0 lg:flex-1">
-        <MapCanvas
-          center={center}
-          teams={mapTeams}
-          territories={mapTerritories}
-          returnZone={returnZone}
-          landmarks={mapLandmarks}
-          forbiddenZones={mapForbiddenZones}
-          flags={mapFlags}
-          gridZone={gridZone}
-          gridCells={mapGridCells}
-          checkpoints={mapCheckpoints}
-          circuitBoxes={mapCircuitBoxes}
-          bananas={mapBananas}
-          gridBonuses={mapGridBonuses}
-          traps={mapTraps}
-          mapStyle={game?.map_style}
-          trail={selectedTrailPoints}
-          trailColor={selectedTrailColor}
-          drawingEnabled={circuitDrawing}
-          onFreehandDraw={(path) => {
-            setCircuitDrawing(false);
-            void onCircuitFreehandDraw(path);
-          }}
-          onMapClick={
-            placingFlagForTeam
-              ? placeTeamFlag
-              : placingMode === "zone"
-                ? placeZone
-                : placingMode === "landmark"
-                  ? placeLandmark
-                  : placingMode === "forbidden"
-                    ? placeForbidden
-                    : placingMode === "grid_zone"
-                      ? placeGridZone
-                      : placingMode === "grid_bonus"
-                        ? placeGridBonus
-                        : placingMode === "circuit_box"
-                          ? placeCircuitBox
-                          : placingMode === "circuit_point"
-                            ? placeCheckpoint
-                            : undefined
-          }
-        />
+        <MapErrorBoundary>
+          <MapCanvas
+            center={center}
+            teams={mapTeams}
+            territories={mapTerritories}
+            returnZone={returnZone}
+            landmarks={mapLandmarks}
+            forbiddenZones={mapForbiddenZones}
+            flags={mapFlags}
+            gridZone={gridZone}
+            gridCells={mapGridCells}
+            checkpoints={mapCheckpoints}
+            circuitBoxes={mapCircuitBoxes}
+            bananas={mapBananas}
+            gridBonuses={mapGridBonuses}
+            traps={mapTraps}
+            mapStyle={game?.map_style}
+            trail={selectedTrailPoints}
+            trailColor={selectedTrailColor}
+            drawingEnabled={circuitDrawing}
+            onFreehandDraw={(path) => {
+              setCircuitDrawing(false);
+              void onCircuitFreehandDraw(path);
+            }}
+            onMapClick={
+              placingFlagForTeam
+                ? placeTeamFlag
+                : placingMode === "zone"
+                  ? placeZone
+                  : placingMode === "landmark"
+                    ? placeLandmark
+                    : placingMode === "forbidden"
+                      ? placeForbidden
+                      : placingMode === "grid_zone"
+                        ? placeGridZone
+                        : placingMode === "grid_bonus"
+                          ? placeGridBonus
+                          : placingMode === "circuit_box"
+                            ? placeCircuitBox
+                            : placingMode === "circuit_point"
+                              ? placeCheckpoint
+                              : undefined
+            }
+          />
+        </MapErrorBoundary>
         <div
           className="pointer-events-none absolute inset-x-3 z-[1000] flex flex-wrap items-center gap-2"
           style={{ top: "max(0.75rem, env(safe-area-inset-top))" }}

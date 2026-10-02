@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
+import { MapErrorBoundary } from "@/components/MapErrorBoundary";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
@@ -581,20 +582,22 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       className={`${studentThemeClass(game?.student_theme)} relative h-[100dvh] w-full overflow-hidden`}
     >
       <div className="absolute inset-0">
-        <MapCanvas
-          center={pos}
-          teams={mapTeams}
-          territories={[]}
-          gridZone={game?.grid_show_overlay === false ? null : gridZone}
-          gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
-          gridBonuses={mapGridBonuses}
-          mapStyle={game?.map_style}
-          markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
-          follow={followMe}
-          onUserPan={() => setFollowMe(false)}
-          onRecenter={() => setFollowMe(true)}
-          hudFrame
-        />
+        <MapErrorBoundary>
+          <MapCanvas
+            center={pos}
+            teams={mapTeams}
+            territories={[]}
+            gridZone={game?.grid_show_overlay === false ? null : gridZone}
+            gridCells={game?.grid_show_overlay === false ? [] : mapGridCells}
+            gridBonuses={mapGridBonuses}
+            mapStyle={game?.map_style}
+            markerSkin={game?.student_theme === "mystery" ? "sticker" : "default"}
+            follow={followMe}
+            onUserPan={() => setFollowMe(false)}
+            onRecenter={() => setFollowMe(true)}
+            hudFrame
+          />
+        </MapErrorBoundary>
       </div>
 
       <div
