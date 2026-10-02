@@ -1467,12 +1467,12 @@ function TeacherDashboard() {
         totalCapturedLabel,
         gameElapsedS,
         enduranceYearLevel,
-        // No longer gated on enduranceYearLevel being set: this is now the
-        // course/marche classification threshold actually used live during
-        // play (jouer.$teamId.tsx / GridPlayView.tsx default to this same
-        // resolved value when the teacher hasn't picked a year level), not a
-        // target pace the report only shows once opted into.
-        enduranceSpeedRefKmh: enduranceSpeedRef,
+        // Gated on enduranceYearLevel being set: this is now purely the
+        // bonus's reference pace (walking itself is always classified
+        // against the fixed DEFAULT_WALK_SPEED_THRESHOLD_KMH, live, during
+        // play) — "Désactivé" means no bonus, just the base running-ratio
+        // score.
+        enduranceSpeedRefKmh: enduranceYearLevel ? enduranceSpeedRef : null,
         rankedTeams: validatedRanked.map(toRaw),
         unvalidatedTeams: unvalidated.map(toRaw),
       });
@@ -4215,12 +4215,14 @@ function TeacherDashboard() {
               <Activity className="h-4 w-4" /> Coefficient d'endurance (rapport)
             </div>
             <p className="text-sm text-muted-foreground">
-              Affiché dans le rapport PDF de fin de partie : la part du temps de jeu passée à
-              courir, ni à l'arrêt ni à marcher — pas d'allure à atteindre, juste les deux règles de
-              l'épreuve. Le repère ci-dessous sert à distinguer course et marche en temps réel
-              pendant la partie ; une équipe qui marche tout le temps doit obtenir un score proche
-              de 0%. Il est indicatif — il n'existe pas de table nationale/européenne officielle
-              pour une course libre en extérieur — ajustez-le selon votre réalité de terrain.
+              Affiché dans le rapport PDF de fin de partie : la base du score est la part du temps
+              de jeu passée à courir — ni à l'arrêt, ni à marcher (sous 5 km/h, la vitesse de marche
+              d'un adulte, fixe quel que soit l'âge) — une équipe qui marche tout le temps obtient
+              un score proche de 0%. Au-delà de cette base, un bonus récompense les équipes qui se
+              donnent à fond : plus leur vitesse et la distance parcourue dépassent le repère
+              ci-dessous, plus le score peut grimper au-delà de 100%. Ce repère est indicatif — il
+              n'existe pas de table nationale/européenne officielle pour une course libre en
+              extérieur — ajustez-le selon votre réalité de terrain.
             </p>
             {isOwner ? (
               <>
@@ -4245,7 +4247,7 @@ function TeacherDashboard() {
                 </label>
                 {enduranceYearLevel && (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold">Seuil course / marche</span>
+                    <span className="text-sm font-semibold">Vitesse de référence (bonus)</span>
                     <div className="flex items-center gap-3">
                       <button
                         aria-label="Réduire le repère"
@@ -4279,7 +4281,7 @@ function TeacherDashboard() {
             ) : (
               enduranceYearLevel && (
                 <p className="text-sm font-semibold">
-                  Année {enduranceYearLevel} · seuil {enduranceSpeedRef.toFixed(1)} km/h
+                  Année {enduranceYearLevel} · bonus dès {enduranceSpeedRef.toFixed(1)} km/h
                 </p>
               )
             )}

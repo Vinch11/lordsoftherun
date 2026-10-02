@@ -618,11 +618,19 @@ function OverviewPage({
         </Callout>
         {data.enduranceAvgScore != null && (
           <Callout lead="Coefficient d'endurance.">
-            La part du temps de jeu passée à courir — ni à l'arrêt, ni à marcher sous le seuil de{" "}
-            {data.enduranceSpeedRefKmh?.toFixed(1)} km/h
-            {data.enduranceYearLevel ? ` (${data.enduranceYearLevel})` : ""}. Pas d'allure à
-            atteindre : une équipe qui marche sans jamais s'arrêter obtient un score proche de 0%.
-            Ce seuil est indicatif, réglé par l'enseignant.
+            La base du score est la part du temps de jeu passée à courir — ni à l'arrêt, ni à
+            marcher sous 5 km/h (vitesse de marche, fixe quel que soit l'âge) : une équipe qui
+            marche sans jamais s'arrêter obtient un score proche de 0%.
+            {data.enduranceSpeedRefKmh != null && (
+              <>
+                {" "}
+                Au-delà de cette base, un bonus récompense vitesse et distance au-delà du repère de{" "}
+                {data.enduranceSpeedRefKmh.toFixed(1)} km/h
+                {data.enduranceYearLevel ? ` (${data.enduranceYearLevel})` : ""}, pouvant porter le
+                score au-dessus de 100% pour les équipes qui se donnent à fond. Ce repère est
+                indicatif, réglé par l'enseignant.
+              </>
+            )}
           </Callout>
         )}
       </div>

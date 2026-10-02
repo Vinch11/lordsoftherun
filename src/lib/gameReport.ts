@@ -1,4 +1,17 @@
-import { formatCountdown } from "@/lib/conquete";
+import { formatCountdown, kmhToMs } from "@/lib/conquete";
+
+/** Caps on how many extra points the speed/distance bonus can add on top of
+ * the base 0-100 running-ratio score — each saturates once the team beats
+ * the reference pace (or its implied full-game distance) by 50%, so the
+ * total score can run above 100% for a team that both never stops/walks
+ * AND clearly outworks the reference pace. */
+const MAX_SPEED_BONUS_PCT = 15;
+const MAX_DISTANCE_BONUS_PCT = 15;
+const BONUS_SATURATION_RATIO = 0.5;
+
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x));
+}
 
 export type ReportTeamStat = {
   id: string;
@@ -50,27 +63,56 @@ export type GameReportData = {
 };
 
 /**
- * "Coefficient d'endurance": the share of the whole game spent actually
- * running — not stopped, not walking. The test this grades has no target
- * pace to hit (each team runs "à leur propre allure"), so there's nothing
- * to compare speed against; the only two rules are "ne pas s'arrêter" and
- * "ne pas marcher", and either one failing eats directly into the score.
- * runningSeconds (activeSeconds minus the portion already classified as
- * walking, live, during the game — see totalWalkingRef in the play views)
- * is what's left once both failures are subtracted out, so a team that
- * walks the entire game without ever stopping scores close to 0%, not a
- * middling "regularity" score. Returns null when the mode doesn't track
- * active/walking time at all.
+ * "Coefficient d'endurance": a base score for clearing the test's two
+ * absolute rules, plus a bonus for teams that go beyond the bare minimum.
+ *
+ * The base is the share of the whole game spent actually running — not
+ * stopped, not walking (walking being a fixed, age-independent pace
+ * threshold, not something compared against a target — see
+ * DEFAULT_WALK_SPEED_THRESHOLD_KMH). runningSeconds (activeSeconds minus
+ * the portion already classified as walking, live, during the game — see
+ * totalWalkingRef in the play views) is what's left once both failures are
+ * subtracted out, so a team that walks the entire game without ever
+ * stopping scores close to 0%, not a middling "regularity" score.
+ *
+ * On top of that, a team that clears the bar and then pushes further earns
+ * extra credit: speedKmh (their average pace while actually moving) and
+ * distanceM (what they covered over the *whole* game, stops included)
+ * compared against the teacher's reference pace for their year level —
+ * exceeding it by up to 50% adds proportional bonus points, uncapped by
+ * the base score's own 100% ceiling, so going "à fond" is rewarded beyond
+ * just clearing the walk/stop rules. No reference pace configured (teacher
+ * left it disabled) means no bonus, just the base score.
+ *
+ * Returns null when the mode doesn't track active/walking time at all.
  */
 export function computeEnduranceScore(args: {
   activeSeconds: number;
   walkingSeconds: number;
   gameElapsedS: number;
+  distanceM: number;
+  speedKmh: number;
+  speedRefKmh: number | null;
 }): number | null {
   if (args.gameElapsedS <= 0) return null;
   const runningSeconds = Math.max(0, args.activeSeconds - args.walkingSeconds);
-  const score = (runningSeconds / args.gameElapsedS) * 100;
-  return Math.round(Math.max(0, Math.min(100, score)));
+  const base = Math.max(0, (runningSeconds / args.gameElapsedS) * 100);
+
+  let bonus = 0;
+  if (args.speedRefKmh && args.speedRefKmh > 0) {
+    const speedBonus =
+      clamp01((args.speedKmh / args.speedRefKmh - 1) / BONUS_SATURATION_RATIO) *
+      MAX_SPEED_BONUS_PCT;
+    const refDistanceM = kmhToMs(args.speedRefKmh) * args.gameElapsedS;
+    const distanceBonus =
+      refDistanceM > 0
+        ? clamp01((args.distanceM / refDistanceM - 1) / BONUS_SATURATION_RATIO) *
+          MAX_DISTANCE_BONUS_PCT
+        : 0;
+    bonus = speedBonus + distanceBonus;
+  }
+
+  return Math.round(base + bonus);
 }
 
 /** Projects a lat/lng trail into a flat [0,1]-normalized square (x right, y
@@ -156,6 +198,9 @@ export function buildGameReportData(args: {
             activeSeconds: raw.activeSeconds,
             walkingSeconds: raw.walkingSeconds,
             gameElapsedS: args.gameElapsedS,
+            distanceM: raw.distanceKm * 1000,
+            speedKmh: raw.speedKmh,
+            speedRefKmh: args.enduranceSpeedRefKmh,
           })
         : null;
     if (enduranceScore != null) {

@@ -29,7 +29,6 @@ import {
   DEFAULT_ENDURANCE_SLOW_GRACE_S,
   DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
   DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
-  DEFAULT_ENDURANCE_SPEED_REF_KMH,
   DEFAULT_ENDURANCE_STOP_GRACE_S,
   DEFAULT_ENDURANCE_STOP_PENALTY_M2,
   DEFAULT_ENDURANCE_STOP_SPEED_KMH,
@@ -37,6 +36,7 @@ import {
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
+  DEFAULT_WALK_SPEED_THRESHOLD_KMH,
   FORBIDDEN_PENALTY_COOLDOWN_MS,
   MIN_LOOP_DISTANCE_M,
   TRAP_PLACEMENT_WINDOW_S,
@@ -544,12 +544,11 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             totalActiveRef.current += creditedS;
             // This interval is already confirmed real movement (it cleared
             // the 2m/0.5s jitter floor above) — classify it as walking
-            // rather than running when its own pace falls under the game's
-            // course/marche reference speed.
+            // rather than running when its own pace falls under the fixed
+            // walking-speed threshold (not a per-game/per-year setting:
+            // walking is walking at any age).
             const paceMs = dist / dt;
-            const walkThresholdMs = kmhToMs(
-              gameRef.current.endurance_speed_ref_kmh ?? DEFAULT_ENDURANCE_SPEED_REF_KMH["3e"],
-            );
+            const walkThresholdMs = kmhToMs(DEFAULT_WALK_SPEED_THRESHOLD_KMH);
             if (paceMs < walkThresholdMs) totalWalkingRef.current += creditedS;
           }
         }
