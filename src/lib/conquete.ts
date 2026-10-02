@@ -294,15 +294,27 @@ export const DEFAULT_ENDURANCE_SLOW_GRACE_S = 20;
 export const DEFAULT_ENDURANCE_SLOW_PENALTY_M2 = 5;
 
 /**
- * Year levels for the end-of-game report's "coefficient d'endurance"
- * (distinct from the in-game endurance penalty above): a continuous
- * outdoor run of arbitrary duration doesn't map onto any single official
- * national/European reference table (those use different protocols —
- * incremental shuttle runs, or fixed-%-VMA fractionated efforts), so these
- * are indicative starting points — roughly 70-75% of commonly cited
- * average VMA by age, a sustainable pace for a 20-45 minute continuous
- * run — meant to be recalibrated by the teacher, not treated as official
- * norms.
+ * Below this pace, a moving interval counts as walking rather than running
+ * for the end-of-game "coefficient d'endurance" — the test behind that
+ * score has only two absolute rules ("ne pas s'arrêter", "ne pas marcher"),
+ * not a target pace, so the threshold is a fixed, physiological constant
+ * (the typical walking speed of an adult) rather than a per-game or
+ * per-year setting: walking is walking regardless of the runner's age.
+ */
+export const DEFAULT_WALK_SPEED_THRESHOLD_KMH = 5;
+
+/**
+ * Year levels for the end-of-game report's "coefficient d'endurance" bonus
+ * (distinct from the in-game endurance penalty above and from the fixed
+ * walk/run threshold): once a team clears the walk/stop bar, this reference
+ * pace is what earns it *extra* credit for pushing harder than the bare
+ * minimum — a continuous outdoor run of arbitrary duration doesn't map onto
+ * any single official national/European reference table (those use
+ * different protocols — incremental shuttle runs, or fixed-%-VMA
+ * fractionated efforts), so these are indicative starting points — roughly
+ * 70-75% of commonly cited average VMA by age, a sustainable pace for a
+ * 20-45 minute continuous run — meant to be recalibrated by the teacher,
+ * not treated as official norms.
  */
 export const ENDURANCE_YEAR_LEVELS = ["1re", "2e", "3e", "4e", "5e", "6e"] as const;
 export type EnduranceYearLevel = (typeof ENDURANCE_YEAR_LEVELS)[number];
