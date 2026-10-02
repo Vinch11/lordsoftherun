@@ -618,10 +618,10 @@ function OverviewPage({
         </Callout>
         {data.enduranceAvgScore != null && (
           <Callout lead="Coefficient d'endurance.">
-            Régularité (temps couru sans s'arrêter) : 70% du score. Bonus de vitesse et de distance
-            par rapport à un repère de {data.enduranceSpeedRefKmh?.toFixed(1)} km/h (
-            {data.enduranceYearLevel}) : jusqu'à 30% de plus. Ce repère est indicatif, réglé par
-            l'enseignant — l'objectif reste de courir sans s'arrêter, pas d'aller vite.
+            Combine le temps passé à bouger sans s'arrêter et l'allure tenue par rapport à un repère
+            de {data.enduranceSpeedRefKmh?.toFixed(1)} km/h ({data.enduranceYearLevel}) — la
+            régularité pèse plus lourd que l'allure, mais marcher sans jamais s'arrêter ne suffit
+            plus à obtenir un score élevé. Ce repère est indicatif, réglé par l'enseignant.
           </Callout>
         )}
       </div>
