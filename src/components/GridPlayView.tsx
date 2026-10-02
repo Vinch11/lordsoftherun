@@ -293,8 +293,14 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
       if (lastRaw && gameRef.current?.status === "running") {
         const dtRaw = (nowMs - lastRaw.t) / 1000;
         const distRaw = haversine(lastRaw.point, point);
+        // Not capped like the active-time credit above: barely moving across
+        // a long gap (phone screen locked, GPS throttled in the background)
+        // is real evidence the *whole* gap was stationary, however long it
+        // was — capping it here was quietly swallowing most of a stop
+        // whenever the gap was more than 30s, making "temps d'arrêt" look
+        // implausibly small next to the game's actual elapsed time.
         if (dtRaw > 0.5 && distRaw <= 2) {
-          totalStoppedRef.current += Math.min(dtRaw, 30);
+          totalStoppedRef.current += dtRaw;
         }
       }
 
