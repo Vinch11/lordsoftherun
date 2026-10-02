@@ -12,6 +12,7 @@ import { QuizCard } from "@/components/QuizCard";
 import { GridBonusQuestionCard } from "@/components/GridBonusQuestionCard";
 import { useGameState } from "@/lib/useGameState";
 import {
+  DEFAULT_ENDURANCE_SPEED_REF_KMH,
   DEFAULT_RUNNING_BONUS_SPEED_KMH,
   DEFAULT_VEHICLE_PENALTY_M2,
   DEFAULT_VEHICLE_SPEED_THRESHOLD_KMH,
@@ -99,6 +100,13 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
   // non-moving samples each measure their own interval once.
   const totalStoppedRef = useRef(0);
   const lastRawSampleRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  // "Marcher sans jamais s'arrêter" must count as a failure for the
+  // endurance report just as much as stopping does — the test has no target
+  // pace to compare against, only a binary course/marche distinction. Fed
+  // from the same already-jitter-filtered accepted intervals as
+  // totalActiveRef (never from lastRawSampleRef's raw, unfiltered samples),
+  // so GPS noise can't misclassify a real run as walking.
+  const totalWalkingRef = useRef(0);
 
   const speedTrackerRef = useRef(new SpeedTracker());
   // Scores freeze the instant the timer hits zero: during the return grace
@@ -281,7 +289,17 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             totalDistanceRef.current += dist;
             // Time actually spent playing, capped per sample so a phone that
             // slept for ten minutes doesn't inflate the average-speed stat.
-            totalActiveRef.current += Math.min(dt, 30);
+            const creditedS = Math.min(dt, 30);
+            totalActiveRef.current += creditedS;
+            // This interval is already confirmed real movement (it cleared
+            // the 2m/0.5s jitter floor above) — classify it as walking
+            // rather than running when its own pace falls under the game's
+            // course/marche reference speed.
+            const paceMs = dist / dt;
+            const walkThresholdMs = kmhToMs(
+              gameRef.current.endurance_speed_ref_kmh ?? DEFAULT_ENDURANCE_SPEED_REF_KMH["3e"],
+            );
+            if (paceMs < walkThresholdMs) totalWalkingRef.current += creditedS;
           }
         }
       } else {
@@ -323,6 +341,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
         const delta = totalDistanceRef.current;
         const activeDelta = totalActiveRef.current;
         const stoppedDelta = totalStoppedRef.current;
+        const walkingDelta = totalWalkingRef.current;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -352,7 +371,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             }
 
             syncFailWarnedRef.current = false;
-            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0) {
+            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0 || walkingDelta > 0) {
               // The member's own row already has this delta; add it to the
               // team's aggregate too — kept as a separate call rather than
               // rolled into one RPC so the two can fail independently.
@@ -361,6 +380,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
                 _delta_m: delta,
                 _delta_active_s: activeDelta,
                 _delta_stopped_s: stoppedDelta,
+                _delta_walking_s: walkingDelta,
               });
               if (distError) {
                 console.error("Échec de synchronisation de la distance :", distError);
@@ -372,6 +392,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
             totalDistanceRef.current -= delta;
             totalActiveRef.current -= activeDelta;
             totalStoppedRef.current -= stoppedDelta;
+            totalWalkingRef.current -= walkingDelta;
           },
 
           (err: unknown) => {
@@ -389,6 +410,7 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
               totalDistanceRef.current -= delta;
               totalActiveRef.current -= activeDelta;
               totalStoppedRef.current -= stoppedDelta;
+              totalWalkingRef.current -= walkingDelta;
             }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;

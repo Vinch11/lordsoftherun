@@ -618,10 +618,11 @@ function OverviewPage({
         </Callout>
         {data.enduranceAvgScore != null && (
           <Callout lead="Coefficient d'endurance.">
-            Combine le temps passé à bouger sans s'arrêter et l'allure tenue par rapport à un repère
-            de {data.enduranceSpeedRefKmh?.toFixed(1)} km/h ({data.enduranceYearLevel}) — la
-            régularité pèse plus lourd que l'allure, mais marcher sans jamais s'arrêter ne suffit
-            plus à obtenir un score élevé. Ce repère est indicatif, réglé par l'enseignant.
+            La part du temps de jeu passée à courir — ni à l'arrêt, ni à marcher sous le seuil de{" "}
+            {data.enduranceSpeedRefKmh?.toFixed(1)} km/h
+            {data.enduranceYearLevel ? ` (${data.enduranceYearLevel})` : ""}. Pas d'allure à
+            atteindre : une équipe qui marche sans jamais s'arrêter obtient un score proche de 0%.
+            Ce seuil est indicatif, réglé par l'enseignant.
           </Callout>
         )}
       </div>

@@ -29,6 +29,7 @@ import {
   DEFAULT_ENDURANCE_SLOW_GRACE_S,
   DEFAULT_ENDURANCE_SLOW_PENALTY_M2,
   DEFAULT_ENDURANCE_SLOW_SPEED_KMH,
+  DEFAULT_ENDURANCE_SPEED_REF_KMH,
   DEFAULT_ENDURANCE_STOP_GRACE_S,
   DEFAULT_ENDURANCE_STOP_PENALTY_M2,
   DEFAULT_ENDURANCE_STOP_SPEED_KMH,
@@ -209,6 +210,13 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
   // all re-measuring the same growing gap since movement last happened.
   const totalStoppedRef = useRef(0);
   const lastRawSampleRef = useRef<{ point: [number, number]; t: number } | null>(null);
+  // "Marcher sans jamais s'arrêter" must count as a failure for the
+  // endurance report just as much as stopping does — the test has no target
+  // pace to compare against, only a binary course/marche distinction. Fed
+  // from the same already-jitter-filtered accepted intervals as
+  // totalActiveRef (never from lastRawSampleRef's raw, unfiltered samples),
+  // so GPS noise can't misclassify a real run as walking.
+  const totalWalkingRef = useRef(0);
   const myStudentIdRef = useRef<string | null>(
     typeof window !== "undefined" ? localStorage.getItem(studentStorageKey(teamId)) : null,
   );
@@ -532,7 +540,17 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
           lastPosRef.current = { point, t: nowMs };
           if (gameRef.current?.status === "running") {
             distanceDeltaRef.current += dist;
-            totalActiveRef.current += Math.min(dt, 30);
+            const creditedS = Math.min(dt, 30);
+            totalActiveRef.current += creditedS;
+            // This interval is already confirmed real movement (it cleared
+            // the 2m/0.5s jitter floor above) — classify it as walking
+            // rather than running when its own pace falls under the game's
+            // course/marche reference speed.
+            const paceMs = dist / dt;
+            const walkThresholdMs = kmhToMs(
+              gameRef.current.endurance_speed_ref_kmh ?? DEFAULT_ENDURANCE_SPEED_REF_KMH["3e"],
+            );
+            if (paceMs < walkThresholdMs) totalWalkingRef.current += creditedS;
           }
         }
       } else {
@@ -601,6 +619,8 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
         totalActiveRef.current = 0;
         const stoppedDelta = totalStoppedRef.current;
         totalStoppedRef.current = 0;
+        const walkingDelta = totalWalkingRef.current;
+        totalWalkingRef.current = 0;
         void withTimeout(
           supabase.rpc("update_team_member_position", {
             _team_id: teamId,
@@ -625,6 +645,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               distanceDeltaRef.current += delta;
               totalActiveRef.current += activeDelta;
               totalStoppedRef.current += stoppedDelta;
+              totalWalkingRef.current += walkingDelta;
               void supabase
                 .from("teams")
                 .update({ lat: point[0], lng: point[1], updated_at: new Date().toISOString() })
@@ -639,7 +660,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               return;
             }
             syncFailWarnedRef.current = false;
-            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0) {
+            if (delta > 0 || activeDelta > 0 || stoppedDelta > 0 || walkingDelta > 0) {
               void supabase
                 .rpc("add_distance", {
                   _team_id: teamId,
@@ -647,12 +668,14 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
                   _delta_m: delta,
                   _delta_active_s: activeDelta,
                   _delta_stopped_s: stoppedDelta,
+                  _delta_walking_s: walkingDelta,
                 })
                 .then(({ error: distError }) => {
                   if (distError) {
                     distanceDeltaRef.current += delta;
                     totalActiveRef.current += activeDelta;
                     totalStoppedRef.current += stoppedDelta;
+                    totalWalkingRef.current += walkingDelta;
                   }
                 });
             }
@@ -672,6 +695,7 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
               distanceDeltaRef.current += delta;
               totalActiveRef.current += activeDelta;
               totalStoppedRef.current += stoppedDelta;
+              totalWalkingRef.current += walkingDelta;
             }
             if (!syncFailWarnedRef.current) {
               syncFailWarnedRef.current = true;

@@ -1198,6 +1198,7 @@ export type Database = {
           total_captured_m2: number
           total_distance_m: number
           total_stopped_s: number
+          total_walking_s: number
           updated_at: string
           validated: boolean
         }
@@ -1229,6 +1230,7 @@ export type Database = {
           total_captured_m2?: number
           total_distance_m?: number
           total_stopped_s?: number
+          total_walking_s?: number
           updated_at?: string
           validated?: boolean
         }
@@ -1260,6 +1262,7 @@ export type Database = {
           total_captured_m2?: number
           total_distance_m?: number
           total_stopped_s?: number
+          total_walking_s?: number
           updated_at?: string
           validated?: boolean
         }
@@ -1399,6 +1402,7 @@ export type Database = {
           _delta_active_s?: number
           _delta_m?: number
           _delta_stopped_s?: number
+          _delta_walking_s?: number
           _student_id?: string
           _team_id: string
         }
