@@ -4215,14 +4215,14 @@ function TeacherDashboard() {
               <Activity className="h-4 w-4" /> Coefficient d'endurance (rapport)
             </div>
             <p className="text-sm text-muted-foreground">
-              Affiché dans le rapport PDF de fin de partie : la base du score est la part du temps
-              de jeu passée à courir — ni à l'arrêt, ni à marcher (sous 5 km/h, la vitesse de marche
-              d'un adulte, fixe quel que soit l'âge) — une équipe qui marche tout le temps obtient
-              un score proche de 0%. Au-delà de cette base, un bonus récompense les équipes qui se
-              donnent à fond : plus leur vitesse et la distance parcourue dépassent le repère
-              ci-dessous, plus le score peut grimper au-delà de 100%. Ce repère est indicatif — il
-              n'existe pas de table nationale/européenne officielle pour une course libre en
-              extérieur — ajustez-le selon votre réalité de terrain.
+              Affiché dans le rapport PDF de fin de partie, toujours sur 100% : une équipe qui
+              marche tout le temps (sous 5 km/h, la vitesse de marche d'un adulte, fixe quel que
+              soit l'âge) ou qui s'arrête obtient un score proche de 0%. Une équipe qui ne s'arrête
+              jamais et ne marche jamais plafonne à 70% tant qu'elle ne dépasse pas le repère
+              ci-dessous en vitesse et en distance — les 30% restants récompensent les équipes qui
+              se donnent vraiment à fond. Ce repère est indicatif — il n'existe pas de table
+              nationale/européenne officielle pour une course libre en extérieur — ajustez-le selon
+              votre réalité de terrain.
             </p>
             {isOwner ? (
               <>

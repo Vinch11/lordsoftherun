@@ -618,18 +618,19 @@ function OverviewPage({
         </Callout>
         {data.enduranceAvgScore != null && (
           <Callout lead="Coefficient d'endurance.">
-            La base du score est la part du temps de jeu passée à courir — ni à l'arrêt, ni à
-            marcher sous 5 km/h (vitesse de marche, fixe quel que soit l'âge) : une équipe qui
-            marche sans jamais s'arrêter obtient un score proche de 0%.
-            {data.enduranceSpeedRefKmh != null && (
+            Toujours sur 100% : une équipe qui marche (sous 5 km/h, vitesse de marche fixe quel que
+            soit l'âge) ou qui s'arrête obtient un score proche de 0%.
+            {data.enduranceSpeedRefKmh != null ? (
               <>
                 {" "}
-                Au-delà de cette base, un bonus récompense vitesse et distance au-delà du repère de{" "}
-                {data.enduranceSpeedRefKmh.toFixed(1)} km/h
-                {data.enduranceYearLevel ? ` (${data.enduranceYearLevel})` : ""}, pouvant porter le
-                score au-dessus de 100% pour les équipes qui se donnent à fond. Ce repère est
-                indicatif, réglé par l'enseignant.
+                Une équipe qui ne s'arrête jamais et ne marche jamais plafonne à 70% tant qu'elle ne
+                dépasse pas le repère de {data.enduranceSpeedRefKmh.toFixed(1)} km/h
+                {data.enduranceYearLevel ? ` (${data.enduranceYearLevel})` : ""} en vitesse et en
+                distance — les 30% restants récompensent les équipes qui se donnent vraiment à fond.
+                Ce repère est indicatif, réglé par l'enseignant.
               </>
+            ) : (
+              " Une équipe qui ne s'arrête jamais et ne marche jamais obtient 100%."
             )}
           </Callout>
         )}
