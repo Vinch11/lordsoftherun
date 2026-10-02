@@ -1104,6 +1104,14 @@ function TeacherDashboard() {
   function stoppedS(t: (typeof teams)[number]): number {
     return Math.max(0, t.total_stopped_s);
   }
+  // Walking time is accumulated the same way active time is (and can only
+  // ever be a subset of it), so it's bounded by the same clamp for the same
+  // reason — a row corrupted by the since-fixed double-counting sync bug
+  // must never be allowed to push "temps couru" (active minus walking)
+  // negative in the endurance report.
+  function walkingS(t: (typeof teams)[number]): number {
+    return Math.max(0, Math.min(t.total_walking_s, clampedActiveS(t.total_active_s)));
+  }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1429,6 +1437,7 @@ function TeacherDashboard() {
           gameMode === "territoire" || gameMode === "grille"
             ? clampedActiveS(tm.total_active_s)
             : null,
+        walkingSeconds: gameMode === "territoire" || gameMode === "grille" ? walkingS(tm) : null,
         flagsCaptured: gameMode === "capture_drapeau" ? tm.flags_captured : null,
         penaltyLabel:
           tm.penalty_m2 > 0
@@ -1458,7 +1467,12 @@ function TeacherDashboard() {
         totalCapturedLabel,
         gameElapsedS,
         enduranceYearLevel,
-        enduranceSpeedRefKmh: enduranceYearLevel ? enduranceSpeedRef : null,
+        // No longer gated on enduranceYearLevel being set: this is now the
+        // course/marche classification threshold actually used live during
+        // play (jouer.$teamId.tsx / GridPlayView.tsx default to this same
+        // resolved value when the teacher hasn't picked a year level), not a
+        // target pace the report only shows once opted into.
+        enduranceSpeedRefKmh: enduranceSpeedRef,
         rankedTeams: validatedRanked.map(toRaw),
         unvalidatedTeams: unvalidated.map(toRaw),
       });
@@ -4201,11 +4215,12 @@ function TeacherDashboard() {
               <Activity className="h-4 w-4" /> Coefficient d'endurance (rapport)
             </div>
             <p className="text-sm text-muted-foreground">
-              Affiché dans le rapport PDF de fin de partie : combine le temps passé à bouger sans
-              s'arrêter et l'allure tenue par rapport au repère ci-dessous — la régularité pèse plus
-              lourd, mais marcher sans jamais s'arrêter ne suffit plus à obtenir un score élevé. Ce
-              repère est indicatif — il n'existe pas de table nationale/européenne officielle pour
-              une course libre en extérieur — ajustez-le selon votre réalité de terrain.
+              Affiché dans le rapport PDF de fin de partie : la part du temps de jeu passée à
+              courir, ni à l'arrêt ni à marcher — pas d'allure à atteindre, juste les deux règles de
+              l'épreuve. Le repère ci-dessous sert à distinguer course et marche en temps réel
+              pendant la partie ; une équipe qui marche tout le temps doit obtenir un score proche
+              de 0%. Il est indicatif — il n'existe pas de table nationale/européenne officielle
+              pour une course libre en extérieur — ajustez-le selon votre réalité de terrain.
             </p>
             {isOwner ? (
               <>
@@ -4230,7 +4245,7 @@ function TeacherDashboard() {
                 </label>
                 {enduranceYearLevel && (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold">Vitesse de référence</span>
+                    <span className="text-sm font-semibold">Seuil course / marche</span>
                     <div className="flex items-center gap-3">
                       <button
                         aria-label="Réduire le repère"
@@ -4264,7 +4279,7 @@ function TeacherDashboard() {
             ) : (
               enduranceYearLevel && (
                 <p className="text-sm font-semibold">
-                  Année {enduranceYearLevel} · repère {enduranceSpeedRef.toFixed(1)} km/h
+                  Année {enduranceYearLevel} · seuil {enduranceSpeedRef.toFixed(1)} km/h
                 </p>
               )
             )}

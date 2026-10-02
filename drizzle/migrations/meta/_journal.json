@@ -659,6 +659,13 @@
       "when": 1790852399177,
       "tag": "0093_app_settings_grant_update",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1790852400000,
+      "tag": "0094_endurance_walking_time",
+      "breakpoints": true
     }
   ]
 }
