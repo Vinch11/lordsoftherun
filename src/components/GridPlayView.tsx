@@ -4,6 +4,7 @@ import { Crosshair, Grid3x3, MessageCircle, Send, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
+import { callAddDistance } from "@/lib/addDistance";
 import { ScoreStrip } from "@/components/ScoreStrip";
 import { GeoPermissionHelp } from "@/components/GeoPermissionHelp";
 import { FinalResults } from "@/components/FinalResults";
@@ -374,12 +375,12 @@ export function GridPlayView({ gameId, teamId }: { gameId: string; teamId: strin
               // The member's own row already has this delta; add it to the
               // team's aggregate too — kept as a separate call rather than
               // rolled into one RPC so the two can fail independently.
-              const { error: distError } = await supabase.rpc("add_distance", {
-                _team_id: teamId,
-                _delta_m: delta,
-                _delta_active_s: activeDelta,
-                _delta_stopped_s: stoppedDelta,
-                _delta_walking_s: walkingDelta,
+              const { error: distError } = await callAddDistance({
+                teamId,
+                deltaM: delta,
+                deltaActiveS: activeDelta,
+                deltaStoppedS: stoppedDelta,
+                deltaWalkingS: walkingDelta,
               });
               if (distError) {
                 console.error("Échec de synchronisation de la distance :", distError);
