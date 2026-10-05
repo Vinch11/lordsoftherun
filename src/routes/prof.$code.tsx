@@ -1108,9 +1108,14 @@ function TeacherDashboard() {
   // ever be a subset of it), so it's bounded by the same clamp for the same
   // reason — a row corrupted by the since-fixed double-counting sync bug
   // must never be allowed to push "temps couru" (active minus walking)
-  // negative in the endurance report.
+  // negative in the endurance report. The `?? 0` guards against a game
+  // played before total_walking_s existed on the live database (migrations
+  // here don't apply themselves — see callAddDistance) — Supabase simply
+  // omits a column that doesn't exist yet, so the typed `number` can
+  // actually be `undefined` at runtime and poison the endurance score into
+  // NaN if treated as a real number.
   function walkingS(t: (typeof teams)[number]): number {
-    return Math.max(0, Math.min(t.total_walking_s, clampedActiveS(t.total_active_s)));
+    return Math.max(0, Math.min(t.total_walking_s ?? 0, clampedActiveS(t.total_active_s)));
   }
   const validatedRanked = useMemo(
     () => ranked.filter(isTeamValidated),
