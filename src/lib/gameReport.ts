@@ -120,7 +120,14 @@ export function computeEnduranceScore(args: {
   }
 
   const score = compliance * 100 * (COMPLIANCE_WEIGHT + EFFORT_WEIGHT * effort);
-  return Math.round(Math.max(0, Math.min(100, score)));
+  const rounded = Math.round(Math.max(0, Math.min(100, score)));
+  // Any NaN input anywhere above (a column missing on a game played before
+  // its migration landed, for instance — this project's recurring failure
+  // mode) silently poisons every step through Math.max/min, which never
+  // throw on NaN, just propagate it — so this is the one place that would
+  // ever actually surface it, as "NaN%" in the report. Showing no score is
+  // a far better failure than a glaring, meaningless "NaN%".
+  return Number.isFinite(rounded) ? rounded : null;
 }
 
 /** Projects a lat/lng trail into a flat [0,1]-normalized square (x right, y
