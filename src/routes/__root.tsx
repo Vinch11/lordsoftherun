@@ -13,6 +13,11 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 import { ensureSession } from "../lib/session";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { patchDomAgainstThirdPartyMutations } from "../lib/domPatches";
+
+// Must run before the first client-side render, not inside a component —
+// see domPatches.ts for why. No-ops during SSR (no DOM Node global there).
+patchDomAgainstThirdPartyMutations();
 
 function NotFoundComponent() {
   return (
