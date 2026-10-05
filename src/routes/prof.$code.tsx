@@ -2967,31 +2967,27 @@ function TeacherDashboard() {
                   {teams.length > 1 ? "s" : ""} ont répondu (
                   {currentQuizAnswers.filter((a) => a.correct).length} bonnes réponses)
                 </p>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1.5">
                   {teams.map((tm) => {
                     const a = currentQuizAnswers.find((x) => x.team_id === tm.id);
                     return (
                       <div
                         key={tm.id}
-                        className="flex items-center gap-2 border-b border-border py-1.5 last:border-0"
+                        className="flex flex-col gap-1 border-b border-border py-1.5 last:border-0"
                       >
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full border-2 border-foreground"
-                          style={{ backgroundColor: tm.color }}
-                        />
-                        <span className="w-28 shrink-0 truncate text-sm font-semibold">
-                          {tm.name}
-                        </span>
-                        {a ? (
-                          <>
-                            {a.correct ? (
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full border-2 border-foreground"
+                            style={{ backgroundColor: tm.color }}
+                          />
+                          <span className="flex-1 truncate text-sm font-semibold">{tm.name}</span>
+                          {a &&
+                            (a.correct ? (
                               <Check className="h-4 w-4 shrink-0 text-accent" />
                             ) : (
                               <X className="h-4 w-4 shrink-0 text-destructive" />
-                            )}
-                            <span className="flex-1 truncate text-sm text-muted-foreground">
-                              {a.answer}
-                            </span>
+                            ))}
+                          {a && (
                             <button
                               type="button"
                               className="mini-btn shrink-0"
@@ -3001,10 +2997,15 @@ function TeacherDashboard() {
                             >
                               {a.correct ? "Invalider" : "Valider quand même"}
                             </button>
-                          </>
-                        ) : (
-                          <span className="flex-1 text-sm text-muted-foreground">En attente…</span>
-                        )}
+                          )}
+                        </div>
+                        {/* Full answer text, wrapped rather than truncated — a
+                        one-line layout was clipping it down to a single
+                        letter once the team name, icon and button already
+                        ate most of the row's width. */}
+                        <p className="whitespace-pre-wrap break-words pl-5 text-sm text-muted-foreground">
+                          {a ? a.answer : "En attente…"}
+                        </p>
                       </div>
                     );
                   })}
