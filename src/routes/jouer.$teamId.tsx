@@ -23,6 +23,7 @@ import { FinalResults } from "@/components/FinalResults";
 import { supabase } from "@/integrations/supabase/client";
 import { MapCanvas } from "@/components/MapCanvas";
 import { MapErrorBoundary } from "@/components/MapErrorBoundary";
+import { callAddDistance } from "@/lib/addDistance";
 import { useGameState } from "@/lib/useGameState";
 import {
   CLOSE_RADIUS_M,
@@ -660,23 +661,21 @@ function TerritoryPlayView({ gameId, teamId }: { gameId: string; teamId: string 
             }
             syncFailWarnedRef.current = false;
             if (delta > 0 || activeDelta > 0 || stoppedDelta > 0 || walkingDelta > 0) {
-              void supabase
-                .rpc("add_distance", {
-                  _team_id: teamId,
-                  ...(myStudentIdRef.current ? { _student_id: myStudentIdRef.current } : {}),
-                  _delta_m: delta,
-                  _delta_active_s: activeDelta,
-                  _delta_stopped_s: stoppedDelta,
-                  _delta_walking_s: walkingDelta,
-                })
-                .then(({ error: distError }) => {
-                  if (distError) {
-                    distanceDeltaRef.current += delta;
-                    totalActiveRef.current += activeDelta;
-                    totalStoppedRef.current += stoppedDelta;
-                    totalWalkingRef.current += walkingDelta;
-                  }
-                });
+              void callAddDistance({
+                teamId,
+                studentId: myStudentIdRef.current,
+                deltaM: delta,
+                deltaActiveS: activeDelta,
+                deltaStoppedS: stoppedDelta,
+                deltaWalkingS: walkingDelta,
+              }).then(({ error: distError }) => {
+                if (distError) {
+                  distanceDeltaRef.current += delta;
+                  totalActiveRef.current += activeDelta;
+                  totalStoppedRef.current += stoppedDelta;
+                  totalWalkingRef.current += walkingDelta;
+                }
+              });
             }
           },
           (err: unknown) => {
