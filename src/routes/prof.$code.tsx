@@ -2542,20 +2542,18 @@ function TeacherDashboard() {
           </div>
         </div>
 
-        {/* Timing tower, broadcast-style: a stack of individually-plated rows
-            down the right edge, like an F1 world-feed leaderboard graphic —
-            not a single panel, so it reads as a HUD overlay rather than a
-            list UI sitting on top of the map. */}
+        {/* Broadcast-style leaderboard, now a horizontally scrollable band
+            tucked under the code/timer panel instead of a vertical stack
+            down the right edge — on a phone-width screen that stack ran
+            most of the way down, burying the map under the ranking. A
+            scrollable row keeps every team reachable without ever hiding
+            the map, and still reads as a HUD strip rather than a list UI. */}
         <div
-          className="pointer-events-auto absolute right-3 z-[1000] flex w-60 flex-col gap-1 overflow-y-auto sm:w-64"
-          style={{
-            top: "max(5.5rem, calc(env(safe-area-inset-top) + 4.75rem))",
-            maxHeight:
-              "calc(100dvh - max(5.5rem, calc(env(safe-area-inset-top) + 4.75rem)) - max(0.75rem, env(safe-area-inset-bottom)) - 4rem)",
-          }}
+          className="pointer-events-auto absolute inset-x-3 z-[1000] flex gap-2 overflow-x-auto pb-1"
+          style={{ top: "max(4.5rem, calc(env(safe-area-inset-top) + 3.75rem))" }}
         >
           {ranked.length === 0 && (
-            <p className="rounded-md bg-black/70 px-3 py-2 text-center text-xs text-white/80 backdrop-blur-sm">
+            <p className="shrink-0 rounded-md bg-black/70 px-3 py-2 text-center text-xs text-white/80 backdrop-blur-sm">
               En attente des groupes…
             </p>
           )}
@@ -2564,20 +2562,20 @@ function TeacherDashboard() {
             return (
               <div
                 key={team.id}
-                className={`flex items-center gap-2 rounded-md border-l-[5px] py-1.5 pl-2 pr-3 shadow-lg backdrop-blur-sm ${
+                className={`flex shrink-0 items-center gap-2 rounded-md border-l-[5px] py-1.5 pl-2 pr-3 shadow-lg backdrop-blur-sm ${
                   i === 0 ? "bg-gradient-to-r from-amber-500/30 to-black/75" : "bg-black/70"
                 }`}
                 style={{ borderLeftColor: team.color }}
               >
-                <span className="w-5 shrink-0 text-center text-sm font-black text-white">
+                <span className="shrink-0 text-sm font-black text-white">
                   {i < 3 ? <span className="medal-spin">{["🥇", "🥈", "🥉"][i]}</span> : i + 1}
                 </span>
-                <div className="flex min-w-0 flex-1 flex-col leading-tight">
-                  <span className="truncate text-xs font-bold uppercase tracking-wide text-white">
+                <div className="flex shrink-0 flex-col leading-tight">
+                  <span className="whitespace-nowrap text-xs font-bold uppercase tracking-wide text-white">
                     {team.name}
                   </span>
                   {i > 0 && (gameMode === "territoire" || gameMode === "grille") && gap > 0 && (
-                    <span className="text-[0.65rem] text-white/60">
+                    <span className="whitespace-nowrap text-[0.65rem] text-white/60">
                       -{gameMode === "grille" ? `${Math.round(gap)}` : formatArea(gap)}
                     </span>
                   )}
